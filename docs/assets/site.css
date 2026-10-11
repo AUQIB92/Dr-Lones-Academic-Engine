@@ -931,7 +931,11 @@ code {
   max-width: 880px;
   margin: 0 auto;
 }
-@media (max-width: 720px) { .book-grid { grid-template-columns: 1fr; max-width: 440px; } }
+/* Phones: keep BOTH covers side-by-side so the two-book menu fits on screen. */
+@media (max-width: 720px) {
+  .book-grid { gap: 0.7rem; max-width: 100%; }
+  .book-card::after { font-size: 0.62rem; padding: 0.5rem 0.7rem; letter-spacing: 0.06em; }
+}
 
 .book-card {
   position: relative;
