@@ -1,0 +1,93 @@
+% =============================================================================
+% CompetitiveExam/CS502/01-intro-os-structure-questions.tex
+% Competitive Exam Practice 1 — GATE (Computer Science) Pattern
+% Introduction to Operating Systems
+%
+% Student-facing — NO answers. Answer key: 01-intro-os-structure-answers.tex.
+% Provenance: ALL questions are Original (GATE-pattern). The repository holds no
+% verified GATE OS PYQ source (no local PYQ book indexed for Operating Systems),
+% so no item claims to be a quoted past-year question — see the MCQ provenance
+% policy in syllabi/CS502.md and .claude/rules/verification-protocol.md.
+%
+% Compile with: cd CompetitiveExam/CS502 &&
+%   TEXINPUTS=../../Preambles;$TEXINPUTS xelatex -interaction=nonstopmode 01-intro-os-structure-questions.tex
+% =============================================================================
+
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\input{../../Preambles/header}
+\coursecode{CS502}
+\renewcommand{\thesection}{1.\arabic{section}}
+
+\title{Competitive Exam Practice 1: Introduction to Operating Systems\\\large GATE (Computer Science) Pattern}
+\author{Auqib Hamid Lone\\[0.3em]
+  \emph{Department of Computer Science \& Engineering}, \emph{GCET Ganderbal}}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\noindent Each question carries 1--2 marks. MCQ = single correct option; NAT = Numerical Answer Type. \emph{All questions in this set are original, written in the GATE pattern --- the repo holds no verifiable GATE OS past-year source.}
+
+\begin{enumerate}
+\item[\textbf{Q1}] \textit{[Original, GATE-pattern]} \textbf{[MCQ, 1 mark]} Which of the following is \textbf{NOT} a function performed by the operating-system kernel?
+
+\begin{enumerate}
+  \item[(A)] Scheduling the CPU among ready processes
+  \item[(B)] Translating a C source file into assembly code
+  \item[(C)] Allocating and protecting physical memory frames
+  \item[(D)] Dispatching I/O requests to device drivers
+\end{enumerate}
+
+\item[\textbf{Q2}] \textit{[Original, GATE-pattern]} \textbf{[MCQ, 1 mark]} A user process attempts to execute an instruction that modifies the base and limit registers. The processor raises a trap and does not perform the modification. The most direct hardware reason is that:
+
+\begin{enumerate}
+  \item[(A)] the instruction is illegal in all processors
+  \item[(B)] base and limit registers are read-only in hardware
+  \item[(C)] the instruction is privileged and the process is running in user mode
+  \item[(D)] the process does not hold the file-system lock
+\end{enumerate}
+
+\item[\textbf{Q3}] \textit{[Original, GATE-pattern]} \textbf{[NAT, 2 marks]} A system calls the kernel through the \emph{parameter-block} method. Each system call has a fixed entry overhead of $3\ \mu\text{s}$ (mode switch, dispatch, return) and, in addition, $0.4\ \mu\text{s}$ per 8 bytes of parameter block copied into the kernel. A call passes a parameter block of $40$ bytes. The total time (in $\mu$s) spent inside the kernel for this call is \rule{1.5cm}{0.4pt}.
+
+\item[\textbf{Q4}] \textit{[Original, GATE-pattern]} \textbf{[MCQ, 2 marks]} Consider a microkernel-based OS and a monolithic OS running on identical hardware. A device driver contains a bug that corrupts memory. Which statement is \textbf{TRUE}?
+
+\begin{enumerate}
+  \item[(A)] Both architectures isolate the driver, so neither is affected
+  \item[(B)] In the monolithic OS the corruption propagates into kernel state; in the microkernel the driver runs as a user-space server that can be restarted
+  \item[(C)] In the microkernel the corruption propagates into kernel state; in the monolithic OS the driver is isolated
+  \item[(D)] Both architectures crash, since drivers always run in kernel mode
+\end{enumerate}
+
+\item[\textbf{Q5}] \textit{[Original, GATE-pattern]} \textbf{[MCQ, 1 mark]} Which of the following statements about system calls is \textbf{TRUE}?
+
+\begin{enumerate}
+  \item[(A)] A library call in the POSIX API always corresponds to exactly one system call
+  \item[(B)] A system call executes entirely in user mode
+  \item[(C)] A system call is the controlled mechanism by which a program requests a privileged kernel service
+  \item[(D)] A system call cannot transfer control to a device driver
+\end{enumerate}
+
+\item[\textbf{Q6}] \textit{[Original, GATE-pattern]} \textbf{[NAT, 2 marks]} A utility reads a file of $8\ \text{MB}$ using a $4\ \text{KB}$ buffer and writes it to another file, issuing exactly one \texttt{open}, one \texttt{read} and one \texttt{write} per buffer, and one \texttt{close}. The total number of system calls issued is \rule{1.5cm}{0.4pt}.
+
+\item[\textbf{Q7}] \textit{[Original, GATE-pattern]} \textbf{[MCQ, 1 mark]} The primary objective of \emph{multiprogramming} — as distinct from time-sharing — is to:
+
+\begin{enumerate}
+  \item[(A)] minimize the response time of each interactive user
+  \item[(B)] maximize CPU utilization by overlapping I/O waits with computation
+  \item[(C)] guarantee hard real-time deadlines
+  \item[(D)] eliminate the need for a scheduler
+\end{enumerate}
+
+\item[\textbf{Q8}] \textit{[Original, GATE-pattern]} \textbf{[MCQ, 1 mark]} The statement ``the operating system presents a \emph{file} to the programmer instead of an array of disk blocks'' is best described as illustrating the OS as:
+
+\begin{enumerate}
+  \item[(A)] a control program
+  \item[(B)] a resource allocator
+  \item[(C)] an extended machine (abstraction layer)
+  \item[(D)] an accounting program
+\end{enumerate}
+
+\end{enumerate}
+
+\end{document}

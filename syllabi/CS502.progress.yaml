@@ -1,0 +1,404 @@
+course: CS502
+lab_mode: none            # source syllabus PCC CS-502 is L-T-P 3-0-0 — no practical component
+last_updated: 2026-10-14
+weeks:
+  "01":
+    deck: "01-intro-os-structure"
+    stages:
+      slides:     { status: deployed, score: null, note: "29 pp; XeLaTeX 3-pass clean; no undefined citations or overfull boxes; quality score 100/100" }
+      notes:      { status: deployed, score: null, note: "7 pp; derived from the deck; clean compile" }
+      assignment: { status: deployed, score: null, note: "assignment + solutions key present; solutions gitignored and excluded from docs/" }
+      lab:        { status: skipped, score: null, note: "lab_mode: none (PCC CS-502 is 3-0-0)" }
+      gate:       { status: deployed, score: null, note: "8 original GATE-pattern questions + answers; no unverified PYQ claims" }
+      handout:    { status: deployed, score: null, note: "InstructorHandouts/CS502/01-intro-os-structure-instructor-handout.tex, 5 pp; instructor-only" }
+      hub:        { status: deployed, score: null, note: "docs/courses/cs502/index.html built" }
+  "02":
+    deck: "02-computer-system-organization"
+    stages:
+      slides:     { status: absent, score: null, note: "" }
+      notes:      { status: absent, score: null, note: "" }
+      assignment: { status: absent, score: null, note: "" }
+      lab:        { status: skipped, score: null, note: "lab_mode: none" }
+      gate:       { status: absent, score: null, note: "" }
+      handout:    { status: absent, score: null, note: "" }
+      hub:        { status: absent, score: null, note: "" }
+  "03":
+    deck: "03-os-operations-protection"
+    stages:
+      slides:     { status: absent, score: null, note: "" }
+      notes:      { status: absent, score: null, note: "" }
+      assignment: { status: absent, score: null, note: "" }
+      lab:        { status: skipped, score: null, note: "lab_mode: none" }
+      gate:       { status: absent, score: null, note: "" }
+      handout:    { status: absent, score: null, note: "" }
+      hub:        { status: absent, score: null, note: "" }
+  "04":
+    deck: "04-system-calls"
+    stages:
+      slides:     { status: absent, score: null, note: "" }
+      notes:      { status: absent, score: null, note: "" }
+      assignment: { status: absent, score: null, note: "" }
+      lab:        { status: skipped, score: null, note: "lab_mode: none" }
+      gate:       { status: absent, score: null, note: "" }
+      handout:    { status: absent, score: null, note: "" }
+      hub:        { status: absent, score: null, note: "" }
+  "05":
+    deck: "05-system-programs-os-structure"
+    stages:
+      slides:     { status: absent, score: null, note: "" }
+      notes:      { status: absent, score: null, note: "" }
+      assignment: { status: absent, score: null, note: "" }
+      lab:        { status: skipped, score: null, note: "lab_mode: none" }
+      gate:       { status: absent, score: null, note: "" }
+      handout:    { status: absent, score: null, note: "" }
+      hub:        { status: absent, score: null, note: "" }
+  "06":
+    deck: "06-process-concept-pcb"
+    stages:
+      slides:     { status: absent, score: null, note: "" }
+      notes:      { status: absent, score: null, note: "" }
+      assignment: { status: absent, score: null, note: "" }
+      lab:        { status: skipped, score: null, note: "lab_mode: none" }
+      gate:       { status: absent, score: null, note: "" }
+      handout:    { status: absent, score: null, note: "" }
+      hub:        { status: absent, score: null, note: "" }
+  "07":
+    deck: "07-process-states-schedulers"
+    stages:
+      slides:     { status: absent, score: null, note: "" }
+      notes:      { status: absent, score: null, note: "" }
+      assignment: { status: absent, score: null, note: "" }
+      lab:        { status: skipped, score: null, note: "lab_mode: none" }
+      gate:       { status: absent, score: null, note: "" }
+      handout:    { status: absent, score: null, note: "" }
+      hub:        { status: absent, score: null, note: "" }
+  "08":
+    deck: "08-process-operations"
+    stages:
+      slides:     { status: absent, score: null, note: "" }
+      notes:      { status: absent, score: null, note: "" }
+      assignment: { status: absent, score: null, note: "" }
+      lab:        { status: skipped, score: null, note: "lab_mode: none" }
+      gate:       { status: absent, score: null, note: "" }
+      handout:    { status: absent, score: null, note: "" }
+      hub:        { status: absent, score: null, note: "" }
+  "09":
+    deck: "09-cpu-scheduling-basics"
+    stages:
+      slides:     { status: absent, score: null, note: "" }
+      notes:      { status: absent, score: null, note: "" }
+      assignment: { status: absent, score: null, note: "" }
+      lab:        { status: skipped, score: null, note: "lab_mode: none" }
+      gate:       { status: absent, score: null, note: "" }
+      handout:    { status: absent, score: null, note: "" }
+      hub:        { status: absent, score: null, note: "" }
+  "10":
+    deck: "10-cpu-scheduling-advanced"
+    stages:
+      slides:     { status: absent, score: null, note: "" }
+      notes:      { status: absent, score: null, note: "" }
+      assignment: { status: absent, score: null, note: "" }
+      lab:        { status: skipped, score: null, note: "lab_mode: none" }
+      gate:       { status: absent, score: null, note: "" }
+      handout:    { status: absent, score: null, note: "" }
+      hub:        { status: absent, score: null, note: "" }
+  "11":
+    deck: "11-concurrency-critical-section"
+    stages:
+      slides:     { status: absent, score: null, note: "" }
+      notes:      { status: absent, score: null, note: "" }
+      assignment: { status: absent, score: null, note: "" }
+      lab:        { status: skipped, score: null, note: "lab_mode: none" }
+      gate:       { status: absent, score: null, note: "" }
+      handout:    { status: absent, score: null, note: "" }
+      hub:        { status: absent, score: null, note: "" }
+  "12":
+    deck: "12-mutex-software-solutions"
+    stages:
+      slides:     { status: absent, score: null, note: "" }
+      notes:      { status: absent, score: null, note: "" }
+      assignment: { status: absent, score: null, note: "" }
+      lab:        { status: skipped, score: null, note: "lab_mode: none" }
+      gate:       { status: absent, score: null, note: "" }
+      handout:    { status: absent, score: null, note: "" }
+      hub:        { status: absent, score: null, note: "" }
+  "13":
+    deck: "13-synchronization-hardware"
+    stages:
+      slides:     { status: absent, score: null, note: "" }
+      notes:      { status: absent, score: null, note: "" }
+      assignment: { status: absent, score: null, note: "" }
+      lab:        { status: skipped, score: null, note: "lab_mode: none" }
+      gate:       { status: absent, score: null, note: "" }
+      handout:    { status: absent, score: null, note: "" }
+      hub:        { status: absent, score: null, note: "" }
+  "14":
+    deck: "14-semaphores"
+    stages:
+      slides:     { status: absent, score: null, note: "" }
+      notes:      { status: absent, score: null, note: "" }
+      assignment: { status: absent, score: null, note: "" }
+      lab:        { status: skipped, score: null, note: "lab_mode: none" }
+      gate:       { status: absent, score: null, note: "" }
+      handout:    { status: absent, score: null, note: "" }
+      hub:        { status: absent, score: null, note: "" }
+  "15":
+    deck: "15-semaphore-patterns-ipc"
+    stages:
+      slides:     { status: absent, score: null, note: "" }
+      notes:      { status: absent, score: null, note: "" }
+      assignment: { status: absent, score: null, note: "" }
+      lab:        { status: skipped, score: null, note: "lab_mode: none" }
+      gate:       { status: absent, score: null, note: "" }
+      handout:    { status: absent, score: null, note: "" }
+      hub:        { status: absent, score: null, note: "" }
+  "16":
+    deck: "16-ipc-systems"
+    stages:
+      slides:     { status: absent, score: null, note: "" }
+      notes:      { status: absent, score: null, note: "" }
+      assignment: { status: absent, score: null, note: "" }
+      lab:        { status: skipped, score: null, note: "lab_mode: none" }
+      gate:       { status: absent, score: null, note: "" }
+      handout:    { status: absent, score: null, note: "" }
+      hub:        { status: absent, score: null, note: "" }
+  "17":
+    deck: "17-classical-producer-consumer"
+    stages:
+      slides:     { status: absent, score: null, note: "" }
+      notes:      { status: absent, score: null, note: "" }
+      assignment: { status: absent, score: null, note: "" }
+      lab:        { status: skipped, score: null, note: "lab_mode: none" }
+      gate:       { status: absent, score: null, note: "" }
+      handout:    { status: absent, score: null, note: "" }
+      hub:        { status: absent, score: null, note: "" }
+  "18":
+    deck: "18-classical-readers-writers-monitors"
+    stages:
+      slides:     { status: absent, score: null, note: "" }
+      notes:      { status: absent, score: null, note: "" }
+      assignment: { status: absent, score: null, note: "" }
+      lab:        { status: skipped, score: null, note: "lab_mode: none" }
+      gate:       { status: absent, score: null, note: "" }
+      handout:    { status: absent, score: null, note: "" }
+      hub:        { status: absent, score: null, note: "" }
+  "19":
+    deck: "19-deadlock-model-characterization"
+    stages:
+      slides:     { status: absent, score: null, note: "" }
+      notes:      { status: absent, score: null, note: "" }
+      assignment: { status: absent, score: null, note: "" }
+      lab:        { status: skipped, score: null, note: "lab_mode: none" }
+      gate:       { status: absent, score: null, note: "" }
+      handout:    { status: absent, score: null, note: "" }
+      hub:        { status: absent, score: null, note: "" }
+  "20":
+    deck: "20-deadlock-handling"
+    stages:
+      slides:     { status: absent, score: null, note: "" }
+      notes:      { status: absent, score: null, note: "" }
+      assignment: { status: absent, score: null, note: "" }
+      lab:        { status: skipped, score: null, note: "lab_mode: none" }
+      gate:       { status: absent, score: null, note: "" }
+      handout:    { status: absent, score: null, note: "" }
+      hub:        { status: absent, score: null, note: "" }
+  "21":
+    deck: "21-memory-management-background"
+    stages:
+      slides:     { status: absent, score: null, note: "" }
+      notes:      { status: absent, score: null, note: "" }
+      assignment: { status: absent, score: null, note: "" }
+      lab:        { status: skipped, score: null, note: "lab_mode: none" }
+      gate:       { status: absent, score: null, note: "" }
+      handout:    { status: absent, score: null, note: "" }
+      hub:        { status: absent, score: null, note: "" }
+  "22":
+    deck: "22-contiguous-allocation"
+    stages:
+      slides:     { status: absent, score: null, note: "" }
+      notes:      { status: absent, score: null, note: "" }
+      assignment: { status: absent, score: null, note: "" }
+      lab:        { status: skipped, score: null, note: "lab_mode: none" }
+      gate:       { status: absent, score: null, note: "" }
+      handout:    { status: absent, score: null, note: "" }
+      hub:        { status: absent, score: null, note: "" }
+  "23":
+    deck: "23-allocation-strategies-fragmentation"
+    stages:
+      slides:     { status: absent, score: null, note: "" }
+      notes:      { status: absent, score: null, note: "" }
+      assignment: { status: absent, score: null, note: "" }
+      lab:        { status: skipped, score: null, note: "lab_mode: none" }
+      gate:       { status: absent, score: null, note: "" }
+      handout:    { status: absent, score: null, note: "" }
+      hub:        { status: absent, score: null, note: "" }
+  "24":
+    deck: "24-paging"
+    stages:
+      slides:     { status: absent, score: null, note: "" }
+      notes:      { status: absent, score: null, note: "" }
+      assignment: { status: absent, score: null, note: "" }
+      lab:        { status: skipped, score: null, note: "lab_mode: none" }
+      gate:       { status: absent, score: null, note: "" }
+      handout:    { status: absent, score: null, note: "" }
+      hub:        { status: absent, score: null, note: "" }
+  "25":
+    deck: "25-tlb-page-table-structures"
+    stages:
+      slides:     { status: absent, score: null, note: "" }
+      notes:      { status: absent, score: null, note: "" }
+      assignment: { status: absent, score: null, note: "" }
+      lab:        { status: skipped, score: null, note: "lab_mode: none" }
+      gate:       { status: absent, score: null, note: "" }
+      handout:    { status: absent, score: null, note: "" }
+      hub:        { status: absent, score: null, note: "" }
+  "26":
+    deck: "26-segmentation"
+    stages:
+      slides:     { status: absent, score: null, note: "" }
+      notes:      { status: absent, score: null, note: "" }
+      assignment: { status: absent, score: null, note: "" }
+      lab:        { status: skipped, score: null, note: "lab_mode: none" }
+      gate:       { status: absent, score: null, note: "" }
+      handout:    { status: absent, score: null, note: "" }
+      hub:        { status: absent, score: null, note: "" }
+  "27":
+    deck: "27-virtual-memory-demand-paging"
+    stages:
+      slides:     { status: absent, score: null, note: "" }
+      notes:      { status: absent, score: null, note: "" }
+      assignment: { status: absent, score: null, note: "" }
+      lab:        { status: skipped, score: null, note: "lab_mode: none" }
+      gate:       { status: absent, score: null, note: "" }
+      handout:    { status: absent, score: null, note: "" }
+      hub:        { status: absent, score: null, note: "" }
+  "28":
+    deck: "28-page-replacement-basic"
+    stages:
+      slides:     { status: absent, score: null, note: "" }
+      notes:      { status: absent, score: null, note: "" }
+      assignment: { status: absent, score: null, note: "" }
+      lab:        { status: skipped, score: null, note: "lab_mode: none" }
+      gate:       { status: absent, score: null, note: "" }
+      handout:    { status: absent, score: null, note: "" }
+      hub:        { status: absent, score: null, note: "" }
+  "29":
+    deck: "29-page-replacement-advanced"
+    stages:
+      slides:     { status: absent, score: null, note: "" }
+      notes:      { status: absent, score: null, note: "" }
+      assignment: { status: absent, score: null, note: "" }
+      lab:        { status: skipped, score: null, note: "lab_mode: none" }
+      gate:       { status: absent, score: null, note: "" }
+      handout:    { status: absent, score: null, note: "" }
+      hub:        { status: absent, score: null, note: "" }
+  "30":
+    deck: "30-frame-allocation-thrashing"
+    stages:
+      slides:     { status: absent, score: null, note: "" }
+      notes:      { status: absent, score: null, note: "" }
+      assignment: { status: absent, score: null, note: "" }
+      lab:        { status: skipped, score: null, note: "lab_mode: none" }
+      gate:       { status: absent, score: null, note: "" }
+      handout:    { status: absent, score: null, note: "" }
+      hub:        { status: absent, score: null, note: "" }
+  "31":
+    deck: "31-io-hardware"
+    stages:
+      slides:     { status: absent, score: null, note: "" }
+      notes:      { status: absent, score: null, note: "" }
+      assignment: { status: absent, score: null, note: "" }
+      lab:        { status: skipped, score: null, note: "lab_mode: none" }
+      gate:       { status: absent, score: null, note: "" }
+      handout:    { status: absent, score: null, note: "" }
+      hub:        { status: absent, score: null, note: "" }
+  "32":
+    deck: "32-io-techniques"
+    stages:
+      slides:     { status: absent, score: null, note: "" }
+      notes:      { status: absent, score: null, note: "" }
+      assignment: { status: absent, score: null, note: "" }
+      lab:        { status: skipped, score: null, note: "lab_mode: none" }
+      gate:       { status: absent, score: null, note: "" }
+      handout:    { status: absent, score: null, note: "" }
+      hub:        { status: absent, score: null, note: "" }
+  "33":
+    deck: "33-io-interface-kernel"
+    stages:
+      slides:     { status: absent, score: null, note: "" }
+      notes:      { status: absent, score: null, note: "" }
+      assignment: { status: absent, score: null, note: "" }
+      lab:        { status: skipped, score: null, note: "lab_mode: none" }
+      gate:       { status: absent, score: null, note: "" }
+      handout:    { status: absent, score: null, note: "" }
+      hub:        { status: absent, score: null, note: "" }
+  "34":
+    deck: "34-io-buffering-performance"
+    stages:
+      slides:     { status: absent, score: null, note: "" }
+      notes:      { status: absent, score: null, note: "" }
+      assignment: { status: absent, score: null, note: "" }
+      lab:        { status: skipped, score: null, note: "lab_mode: none" }
+      gate:       { status: absent, score: null, note: "" }
+      handout:    { status: absent, score: null, note: "" }
+      hub:        { status: absent, score: null, note: "" }
+  "35":
+    deck: "35-disk-structure-performance"
+    stages:
+      slides:     { status: absent, score: null, note: "" }
+      notes:      { status: absent, score: null, note: "" }
+      assignment: { status: absent, score: null, note: "" }
+      lab:        { status: skipped, score: null, note: "lab_mode: none" }
+      gate:       { status: absent, score: null, note: "" }
+      handout:    { status: absent, score: null, note: "" }
+      hub:        { status: absent, score: null, note: "" }
+  "36":
+    deck: "36-disk-scheduling-basic"
+    stages:
+      slides:     { status: absent, score: null, note: "" }
+      notes:      { status: absent, score: null, note: "" }
+      assignment: { status: absent, score: null, note: "" }
+      lab:        { status: skipped, score: null, note: "lab_mode: none" }
+      gate:       { status: absent, score: null, note: "" }
+      handout:    { status: absent, score: null, note: "" }
+      hub:        { status: absent, score: null, note: "" }
+  "37":
+    deck: "37-disk-scheduling-advanced-raid"
+    stages:
+      slides:     { status: absent, score: null, note: "" }
+      notes:      { status: absent, score: null, note: "" }
+      assignment: { status: absent, score: null, note: "" }
+      lab:        { status: skipped, score: null, note: "lab_mode: none" }
+      gate:       { status: absent, score: null, note: "" }
+      handout:    { status: absent, score: null, note: "" }
+      hub:        { status: absent, score: null, note: "" }
+  "38":
+    deck: "38-file-concept-access"
+    stages:
+      slides:     { status: absent, score: null, note: "" }
+      notes:      { status: absent, score: null, note: "" }
+      assignment: { status: absent, score: null, note: "" }
+      lab:        { status: skipped, score: null, note: "lab_mode: none" }
+      gate:       { status: absent, score: null, note: "" }
+      handout:    { status: absent, score: null, note: "" }
+      hub:        { status: absent, score: null, note: "" }
+  "39":
+    deck: "39-file-directories"
+    stages:
+      slides:     { status: absent, score: null, note: "" }
+      notes:      { status: absent, score: null, note: "" }
+      assignment: { status: absent, score: null, note: "" }
+      lab:        { status: skipped, score: null, note: "lab_mode: none" }
+      gate:       { status: absent, score: null, note: "" }
+      handout:    { status: absent, score: null, note: "" }
+      hub:        { status: absent, score: null, note: "" }
+  "40":
+    deck: "40-file-sharing-implementation"
+    stages:
+      slides:     { status: absent, score: null, note: "" }
+      notes:      { status: absent, score: null, note: "" }
+      assignment: { status: absent, score: null, note: "" }
+      lab:        { status: skipped, score: null, note: "lab_mode: none" }
+      gate:       { status: absent, score: null, note: "" }
+      handout:    { status: absent, score: null, note: "" }
+      hub:        { status: absent, score: null, note: "" }

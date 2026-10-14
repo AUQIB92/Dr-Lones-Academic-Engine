@@ -1,0 +1,93 @@
+# =============================================================================
+# syllabi/CS502.videos.yaml
+# Video Explainers registry for the Operating Systems course (CS502).
+#
+# Single source of truth for the course hub's "Video Explainers" section
+# (docs/courses/cs502/index.html). Structure: unit -> lecture -> [ videos ].
+#
+# Entry shape:
+#   - title: "Shown in the hub"
+#     youtube_id: "XXXXXXXXXXX"        # 11-char id from a watch URL (optional)
+#     url: "https://youtu.be/XXXXXXXXXXX"
+#     lang: "English"                  # optional: English | Hindi | Hinglish
+#     note: "optional one-liner"
+#
+# NOTHING here is fabricated. Entries are intentionally empty until the owner
+# (or a verifier) confirms a real link. Only add a link you have watched, or
+# that /verify-claims can resolve.
+# =============================================================================
+
+course: CS502
+last_updated: 2026-10-14
+
+recommended_sources:
+  - name: "Neso Academy — Operating Systems"
+    search: "https://www.youtube.com/results?search_query=neso+academy+operating+systems"
+    note: "Topic-by-topic series; maps onto the 40 lectures."
+  - name: "Gate Smashers — Operating System"
+    search: "https://www.youtube.com/results?search_query=gate+smashers+operating+system"
+    note: "GATE-oriented; good for the exam-pattern connects."
+  - name: "NPTEL — Introduction to Operating Systems (IIT Madras)"
+    search: "https://www.youtube.com/results?search_query=nptel+introduction+to+operating+systems"
+    note: "University-grade lectures; use for depth on Units II-IV."
+  - name: "NPTEL — Operating System Fundamentals (IIT Kharagpur)"
+    search: "https://www.youtube.com/results?search_query=nptel+operating+system+fundamentals"
+    note: "Strong on scheduling, synchronization, and memory management."
+
+units:
+  "I":
+    title: "Introduction to Operating Systems & Process Management"
+    videos: []
+    lectures:
+      "01": { title: "Introduction to OS: Functions, Evolution, Structure, Services, System Calls", videos: [] }
+      "02": { title: "Computer-System Organization and Architecture", videos: [] }
+      "03": { title: "Operating-System Operations and System Protection", videos: [] }
+      "04": { title: "System Calls: Mechanics, Parameter Passing, and Types", videos: [] }
+      "05": { title: "System Programs and Operating-System Structures", videos: [] }
+      "06": { title: "Process Concept and the Process Control Block", videos: [] }
+      "07": { title: "Process State Diagram, Schedulers, and Context Switch", videos: [] }
+      "08": { title: "Operations on Processes: Creation, Termination, fork/exec", videos: [] }
+      "09": { title: "CPU Scheduling: Concepts, Criteria, FCFS and SJF", videos: [] }
+      "10": { title: "Priority, Round Robin, Multilevel Queues, Multiprocessor Scheduling", videos: [] }
+  "II":
+    title: "Concurrent Processes & Deadlock"
+    videos: []
+    lectures:
+      "11": { title: "Principle of Concurrency and the Critical-Section Problem", videos: [] }
+      "12": { title: "Mutual-Exclusion Requirements and Peterson's Solution", videos: [] }
+      "13": { title: "Synchronization Hardware: Test-and-Set, CAS, Atomic Variables", videos: [] }
+      "14": { title: "Semaphores: Counting, Binary, and Usage", videos: [] }
+      "15": { title: "Semaphore Patterns and Inter-Process Communication", videos: [] }
+      "16": { title: "IPC in Practice: Pipes, Message Queues, and Sockets", videos: [] }
+      "17": { title: "Classical Problem I: Bounded-Buffer Producer-Consumer", videos: [] }
+      "18": { title: "Classical Problems II: Readers-Writers, Dining Philosophers, Monitors", videos: [] }
+      "19": { title: "Deadlock: System Model, Resource-Allocation Graph, Characterization", videos: [] }
+      "20": { title: "Deadlock Prevention, Avoidance (Banker's), Detection and Recovery", videos: [] }
+  "III":
+    title: "Memory Management & Virtual Memory"
+    videos: []
+    lectures:
+      "21": { title: "Memory Management Background: Resident Monitor, Binding, MMU", videos: [] }
+      "22": { title: "Contiguous Allocation: Fixed and Variable Partitioning", videos: [] }
+      "23": { title: "Allocation Strategies, Fragmentation, and Compaction", videos: [] }
+      "24": { title: "Paging: Concept and Address Translation", videos: [] }
+      "25": { title: "TLB, Effective Access Time, and Page-Table Structures", videos: [] }
+      "26": { title: "Segmentation and Segmentation with Paging", videos: [] }
+      "27": { title: "Virtual Memory and Demand Paging", videos: [] }
+      "28": { title: "Page Replacement: FIFO, Optimal, LRU, and Belady's Anomaly", videos: [] }
+      "29": { title: "Page Replacement: Clock, Second-Chance, and Enhanced Algorithms", videos: [] }
+      "30": { title: "Allocation of Frames, Working Set, and Thrashing", videos: [] }
+  "IV":
+    title: "I/O Management, Disk Scheduling & File Systems"
+    videos: []
+    lectures:
+      "31": { title: "I/O Hardware: Devices, Controllers, Drivers, and Buses", videos: [] }
+      "32": { title: "I/O Techniques: Polling, Interrupts, and DMA", videos: [] }
+      "33": { title: "Application I/O Interface and the Kernel I/O Subsystem", videos: [] }
+      "34": { title: "I/O Buffering, Caching, Spooling, and Performance", videos: [] }
+      "35": { title: "Disk Structure, Attachment, and Performance", videos: [] }
+      "36": { title: "Disk Scheduling: FCFS, SSTF, and SCAN", videos: [] }
+      "37": { title: "Disk Scheduling: C-SCAN, LOOK, C-LOOK; Disk Management and RAID", videos: [] }
+      "38": { title: "File Concept, File Operations, and Access Methods", videos: [] }
+      "39": { title: "File Directories, Disk Structure, and File-System Mounting", videos: [] }
+      "40": { title: "File Sharing, Protection, and File-System Implementation", videos: [] }
