@@ -1,0 +1,54 @@
+% =============================================================================
+% Assignments/CS502/01-intro-os-structure-assignment.tex
+% Assignment 1: Introduction to Operating Systems
+%
+% Student set — NO answers. Solution key: 01-intro-os-structure-solutions.tex.
+% Sourced from Slides/CS502/01-intro-os-structure.tex and
+% Notes/CS502/01-intro-os-structure-notes.tex; every problem reuses the
+% lecture's own notation and extends its worked examples to new systems/
+% programs rather than repeating them verbatim.
+%
+% Compile with: cd Assignments/CS502 &&
+%   TEXINPUTS=../../Preambles;$TEXINPUTS xelatex -interaction=nonstopmode 01-intro-os-structure-assignment.tex
+%   BIBINPUTS=../..;$BIBINPUTS bibtex 01-intro-os-structure-assignment
+%   TEXINPUTS=../../Preambles;$TEXINPUTS xelatex -interaction=nonstopmode 01-intro-os-structure-assignment.tex (x2)
+%   (Windows/MiKTeX: use ; not : as the separator)
+% =============================================================================
+
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\input{../../Preambles/header}
+\coursecode{CS502}
+\renewcommand{\thesection}{1.\arabic{section}}
+
+\title{Assignment 1: Introduction to Operating Systems}
+\author{Auqib Hamid Lone\\[0.3em]
+  \emph{Department of Computer Science \& Engineering}, \emph{GCET Ganderbal}}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\noindent\textbf{Deadline:} \key{two weeks from the date of issue} --- there is no automatic late penalty; if you need more time, ask before the deadline and an extension will be granted (see the course policy in the syllabus).
+
+\noindent Answer every question. Show all working for Numerical and Design questions --- a bare final answer without the derivation earns partial credit only.
+
+\section{Conceptual}
+
+\textbf{Q1.} A student claims that ``the operating system is just the kernel, and everything else --- the shell, the file managers, the compilers --- is an ordinary application with no special status.'' Give a precise response that (a) distinguishes the \emph{three} views of an operating system from the lecture, and (b) explains what, if anything, is special about the kernel relative to the shell. Your answer must name the hardware mechanism that actually makes the kernel special.
+
+\textbf{Q2.} A runaway user process enters an infinite loop and never performs any I/O. Explain, step by step, why the machine does not hang forever. In your answer, name the two distinct hardware mechanisms involved (one that restricts \emph{what} the process may do, and one that ensures the kernel regains control), and state what would go wrong if the second mechanism were removed.
+
+\section{Numerical}
+
+\textbf{Q3.} On a certain system, a system call costs a fixed $2\ \mu\text{s}$ of kernel overhead, and an additional $0.5\ \mu\text{s}$ whenever it passes its arguments through a parameter block (instead of registers). A copy utility copies a $4\ \text{MB}$ file using a $4\ \text{KB}$ user buffer, issuing \texttt{open} once, then one \texttt{read} and one \texttt{write} per buffer, then \texttt{close} once. The \texttt{open} and \texttt{close} calls use registers; every \texttt{read} and \texttt{write} uses a parameter block. Compute (a) the total number of system calls, (b) the total system-call overhead in milliseconds, and (c) the overhead as a percentage of the file's transfer time if the disk sustains $100\ \text{MB/s}$.
+
+\textbf{Q4.} A time-sharing system programs a timer to interrupt the CPU every $10\ \text{ms}$. Servicing one timer interrupt (saving the context, running the scheduler, restoring a context) costs $12\ \mu\text{s}$ on average. Compute the fraction of CPU time spent on timer handling, expressed as a percentage. Then state, in one sentence, how this overhead changes if the quantum is reduced to $1\ \text{ms}$, and why designers do not simply make the quantum as small as possible.
+
+\section{Design}
+
+\textbf{Q5.} You must add a new system call \texttt{spawn(path, argv, envp, flags, out\_pid)} to a kernel. It takes a variable-length path string, a variable-length argument vector, a variable-length environment vector, an integer flags word, and returns a process id. Design the parameter-passing scheme you would use, choosing among registers, a parameter block, and the stack. Justify your choice by explaining why registers alone are insufficient here, and give the exact layout of the block you would pass.
+
+\textbf{Q6.} A vendor is choosing between a \emph{monolithic} kernel and a \emph{microkernel} architecture for a device that must run unattended for years and whose file server occasionally contains latent bugs. (a) Describe what happens, in each architecture, when the file server crashes. (b) Recommend one architecture for this device and justify the recommendation using the trade-offs from the lecture. (c) State the single most important performance cost the recommended architecture pays, and one technique to mitigate it.
+
+\end{document}

@@ -1,0 +1,44 @@
+% =============================================================================
+% CompetitiveExam/CS502/01-intro-os-structure-answers.tex
+% ANSWER KEY — Competitive Exam Practice 1: Introduction to Operating Systems
+%
+% Provenance: ALL questions are Original (GATE-pattern); see the questions file.
+% Every answer below has been independently re-derived.
+%
+% Compile with: cd CompetitiveExam/CS502 &&
+%   TEXINPUTS=../../Preambles;$TEXINPUTS xelatex -interaction=nonstopmode 01-intro-os-structure-answers.tex
+% =============================================================================
+
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\input{../../Preambles/header}
+\coursecode{CS502}
+\renewcommand{\thesection}{1.\arabic{section}}
+
+\title{Answer Key --- Competitive Exam Practice 1: Introduction to Operating Systems\\\large GATE (Computer Science) Pattern}
+\author{Auqib Hamid Lone\\[0.3em]
+  \emph{Department of Computer Science \& Engineering}, \emph{GCET Ganderbal}}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{enumerate}
+\item[\textbf{Q1}] \textbf{(B).} Translating C to assembly is the job of a \emph{compiler} --- a system program that runs in user mode --- not the kernel. Scheduling (A), memory-frame allocation (C), and dispatching I/O to drivers (D) are all kernel responsibilities.
+
+\item[\textbf{Q2}] \textbf{(C).} Writing the base/limit registers is a \emph{privileged} instruction; the processor traps it when the issuing process is in user mode. The registers are writable \emph{by the kernel}, so (B) is false, and the instruction is not universally illegal, so (A) is false.
+
+\item[\textbf{Q3}] \textbf{5.} Fixed overhead $= 3\ \mu\text{s}$. Block copy $= 40\ \text{bytes} / 8\ \text{bytes} = 5$ units, at $0.4\ \mu\text{s}$ each $= 2\ \mu\text{s}$. Total $= 3 + 2 = 5\ \mu\text{s}$.
+
+\item[\textbf{Q4}] \textbf{(B).} In a monolithic kernel the driver shares the kernel's address space, so its memory corruption propagates into kernel state and can crash the system. In a microkernel the driver is a user-space server; a fault there is contained and the server can be restarted. (D) is wrong because microkernel drivers explicitly do \emph{not} run in kernel mode.
+
+\item[\textbf{Q5}] \textbf{(C).} A system call is the controlled entry into the kernel for a privileged service. (A) is false: one POSIX call may map to several system calls. (B) is false: a system call executes in kernel mode. (D) is false: system calls routinely hand work to device drivers.
+
+\item[\textbf{Q6}] \textbf{4098.} The file is $8\ \text{MB} = 8 \times 2^{20} = 8{,}388{,}608$ bytes; with a $4096$-byte buffer there are $2048$ buffers. Calls $= 1\ (\text{open}) + 2048\ (\text{read}) + 2048\ (\text{write}) + 1\ (\text{close}) = 4098$.
+
+\item[\textbf{Q7}] \textbf{(B).} Multiprogramming keeps several jobs in memory and switches on I/O waits to keep the CPU busy --- its objective is utilization. Minimizing interactive response time (A) is the objective of \emph{time-sharing}. Hard real-time guarantees (C) are a different class of system entirely.
+
+\item[\textbf{Q8}] \textbf{(C).} Presenting a clean, named abstraction (a file) over raw hardware (disk blocks) is precisely the OS acting as an \emph{extended machine}. The resource-allocator (B) and control-program (A) views concern sharing and protection, not abstraction.
+\end{enumerate}
+
+\end{document}

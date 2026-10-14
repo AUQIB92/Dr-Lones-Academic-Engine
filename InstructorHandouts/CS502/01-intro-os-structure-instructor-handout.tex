@@ -1,0 +1,201 @@
+% =============================================================================
+% InstructorHandouts/CS502/01-intro-os-structure-instructor-handout.tex
+% Instructor Handout 1: Introduction to Operating Systems
+%
+% INSTRUCTOR-ONLY. Complete, self-contained teaching guide -- explanation,
+% embedded diagrams, presentation guidance, and delivery commentary are woven
+% together per topic, so an instructor can teach directly from this file with
+% no slides or Notes open. Explanations/diagrams/examples trace to
+% Slides/CS502/01-intro-os-structure.tex and
+% Notes/CS502/01-intro-os-structure-notes.tex; "Teaching note" asides are
+% instructor judgment, visually distinguished but not a separate section.
+%
+% Anchor readings: Silberschatz et al., Operating System Concepts, 8e, Ch. 1-2
+%   (page-verified); Stallings, Operating Systems: Internals and Design
+%   Principles, 6e, Ch. 1-3 (page-verified); Bovet & Cesati, Understanding the
+%   Linux Kernel, 3e, Ch. 1 & 10 (page-verified).
+%
+% Compile with: cd InstructorHandouts/CS502 &&
+%   TEXINPUTS=../../Preambles;$TEXINPUTS xelatex -interaction=nonstopmode 01-intro-os-structure-instructor-handout.tex
+% =============================================================================
+
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\input{../../Preambles/header}
+\coursecode{CS502}
+\renewcommand{\thesection}{1.\arabic{section}}
+\renewcommand{\thefigure}{1.\arabic{figure}}
+\newenvironment{definitionbox}[1]{%
+  \par\noindent\textbf{Definition (#1).}\ \itshape
+}{\par\vspace{0.3em}}
+\newenvironment{teachingaside}{\begin{quote}\small\color{primary-gold}\textbf{Teaching note:}\ }{\end{quote}}
+
+\title{Instructor Handout 1: Introduction to Operating Systems}
+\author{Auqib Hamid Lone\\[0.3em]
+  \emph{Department of Computer Science \& Engineering}, \emph{GCET Ganderbal}}
+\date{\today}
+
+\begin{document}
+\maketitle
+{\centering\large\color{negative}\textbf{Instructor Copy --- Not for Student Distribution}\par}
+\vspace{0.5cm}
+
+\section{Before You Teach This Lecture}
+
+\begin{itemize}
+  \item \textbf{Silberschatz, Galvin \& Gagne, \textit{Operating System Concepts}, 8e} --- Ch.~1 ``Introduction'' (what an OS is, pp.~3--47; dual-mode operation, pp.~20--23; system calls) and Ch.~2 ``System Structures'' (services, system calls, system programs, structure designs, pp.~49--89). \emph{Page-verified} --- index built 2026-10-14. This is your primary anchor.
+  \item \textbf{Stallings, \textit{Operating Systems: Internals and Design Principles}, 6e} --- Ch.~2 §2.2 (evolution: batch, multiprogramming, time-sharing; pp.~55--64), Ch.~3 (\S3.3 process description / PCB, pp.~107--152), Ch.~1 (interrupts, I/O techniques). \emph{Page-verified.}
+  \item \textbf{Bovet \& Cesati, \textit{Understanding the Linux Kernel}, 3e} --- Ch.~1 (basic OS concepts, files and inodes) and Ch.~10 (system calls: entering/exiting the kernel, parameter passing). Optional depth for the concrete kernel view. \emph{Page-verified.}
+  \item \textbf{Plan the running thread before class.} Choose one command you can trace end-to-end without hesitation --- \texttt{cp notes.txt backup.txt} works well because it is short, familiar, and exercises open/read/write/close. Write the five-step trace on the board from memory first; the numbers students care about (how many mode switches, where the driver enters) must be right the first time.
+  \item \textbf{Decide your concrete machine.} Name one real OS students use (Linux, Windows, macOS) and refer to it when discussing structure, so ``monolithic vs.\ modular'' is not purely abstract.
+  \item \textbf{Prerequisite check.} Students have seen CPU, registers, memory, and I/O in CS401. Spend at most two minutes recalling the memory hierarchy and interrupts; do not re-teach them here.
+\end{itemize}
+
+\section{Opening: The Question This Course Answers}
+
+Open by typing (or saying) the command \texttt{cp notes.txt backup.txt} and asking the class what happens between pressing Enter and the file appearing. Accept a few answers, then point out that everything they named is one layer of a stack: shell, kernel, system-call boundary, device driver, controller. Only some of those are ``the operating system.'' This gap --- between the command and the machine --- is the subject of the whole course.
+
+\begin{teachingaside}
+Resist defining the OS immediately. Let the class generate a messy list of guesses first; the definition lands better when it resolves a confusion they just voiced. Two minutes of guessing is worth ten of telling.
+\end{teachingaside}
+
+\section{What Is an Operating System?}
+
+Give the three definitions together, not one at a time, and make students say which view answers which question.
+
+\begin{definitionbox}{The OS as resource manager}
+Manages CPU, memory, storage, and I/O --- deciding who gets what, and when.
+\end{definitionbox}
+
+\begin{definitionbox}{The OS as control program}
+Controls the execution of user programs to prevent errors and improper use --- the referee.
+\end{definitionbox}
+
+\begin{definitionbox}{The OS as extended machine}
+Hides messy hardware behind clean abstractions (files, processes, sockets).
+\end{definitionbox}
+
+Walk the \texttt{cp} thread through the resource-manager view: the CPU runs \texttt{cp}, memory holds its buffer, the disk stores the file, the I/O path moves the bytes. The OS multiplexes all four across competing processes. Then switch to the extended-machine view: the disk is really (cylinder, head, sector) blocks, but nobody writes code against that; they write against a \key{file}.
+
+\begin{teachingaside}
+The single most useful sentence in this section: ``abstraction is what makes portability possible.'' A program that knew disk geometry would break on the next disk. Say it explicitly; students tend to treat abstraction as tidiness rather than as the enabling condition for software that survives hardware change.
+\end{teachingaside}
+
+\section{The User/Kernel Boundary}
+
+Draw the four layers on the board (Figure~1.1): user applications, the system-call interface, the kernel, the hardware. Then introduce the \key{mode bit}: user mode ($1$) vs.\ kernel mode ($0$). Privileged instructions are legal only in kernel mode.
+
+\begin{figure}[h]
+\centering
+\fbox{\parbox{0.8\linewidth}{\centering User applications (\texttt{shell}, \texttt{cp}, editor)}}\\[0.25em]
+\fbox{\parbox{0.8\linewidth}{\centering\itshape System-call interface (the boundary)}}\\[0.25em]
+\fbox{\parbox{0.8\linewidth}{\centering Kernel (process, memory, file, device, network subsystems)}}\\[0.25em]
+\fbox{\parbox{0.8\linewidth}{\centering Hardware (CPU, memory, disk controller, devices)}}
+\caption{The user/kernel boundary. User programs reach the kernel only through the system-call interface.}
+\end{figure}
+
+\begin{teachingaside}
+A crisp way to frame it: the \key{system call} is the only legal door between the two worlds. Everything a program wants from hardware --- every byte, every CPU cycle it does not already own --- must pass through that door, and the kernel gets to inspect the request. This is why ``just access the hardware'' is not an option for user code, and why that restriction is a feature, not a limitation.
+\end{teachingaside}
+
+\section{Evolution: Why Each Feature Exists}
+
+Teach the evolution as a chain of failures, not a timeline to memorize. Each step exists because the previous design failed a real workload.
+
+\begin{itemize}
+  \item \textbf{Serial processing} (1940s--50s): one job at a time; a human is the scheduler. Failure: the CPU idles while the operator mounts tapes --- terrible utilization.
+  \item \textbf{Batch OS}: a \key{resident monitor} runs jobs from a batch automatically, driven by a \key{job-control language}. Failure fixed: less operator overhead.
+  \item \textbf{Multiprogramming}: keep several jobs in memory; switch on I/O waits. Objective: \key{CPU utilization}. \textbf{Spooling} buffers I/O on disk so slow devices overlap the CPU.
+  \item \textbf{Time-sharing}: switch fast enough that every user has an interactive session. Objective: \key{response time}. This is the birth of the shell and the prompt (CTSS, Multics, UNIX).
+  \item \textbf{Real-time}: correctness depends on \emph{when}. \key{Hard} real-time --- a missed deadline is a failure; \key{soft} real-time --- a missed deadline degrades quality.
+\end{itemize}
+
+\begin{teachingaside}
+The exam-worthy contrast: multiprogramming maximizes \emph{utilization}; time-sharing minimizes \emph{response time}. These can conflict. Ask the class which one a batch payroll run wants (utilization) and which a login prompt wants (response). Getting them to say the two objectives out loud is the whole point.
+\end{teachingaside}
+
+\section{System Protection}
+
+Present the four mechanisms as a single coordinated contract, not four separate facts:
+
+\begin{itemize}
+  \item \key{Dual-mode operation} --- the mode bit restricts \emph{what} may be executed.
+  \item \key{System call} --- the controlled entry point into the kernel.
+  \item \key{Memory protection} --- base/limit registers or page tables restrict \emph{what memory} may be touched.
+  \item \key{Timer interrupt} --- guarantees the kernel regains control.
+\end{itemize}
+
+\begin{teachingaside}
+The timer is the one students forget, and it is the one that makes preemption possible. Ask: ``Suppose we have dual-mode operation but no timer. A user process loops forever in user mode. What happens?'' The answer --- nothing; the kernel never regains the CPU --- shows why the timer is non-negotiable. Then recall the Socratic Check on the slide: the timer is the exact mechanism.
+\end{teachingaside}
+
+\section{Operating-System Structure}
+
+Move through the five structures as a spectrum from least to most structured, each with a named cost.
+
+\begin{itemize}
+  \item \key{Monolithic / simple}: all services in one address space; direct calls are \good{fast} but there is no internal protection, so a subsystem bug can take down the kernel. MS-DOS had no separation at all.
+  \item \key{Layered}: level $N$ uses only level $N-1$; \good{easier to design and debug}, but layers are hard to define and add call overhead (THE OS, six layers).
+  \item \key{Microkernel}: only IPC, basic scheduling, and low-level memory in the kernel; the rest are user-space servers (Mach, QNX, L4). \good{Reliable, secure, portable}; \bad{message-passing overhead}.
+  \item \key{Modular}: core kernel plus loadable modules with defined interfaces (Linux, Solaris, macOS). \good{Near-monolithic speed with microkernel-like flexibility}.
+  \item \key{Virtual machine}: a hypervisor presents virtual hardware; each guest runs its own OS (VMware, Xen, KVM). \good{Stereo isolation}; \bad{complex, expensive I/O virtualization}.
+\end{itemize}
+
+\begin{teachingaside}
+If pressed for time, prioritize microkernel vs.\ monolithic vs.\ modular --- those three are the standard exam contrasts. The virtual-machine row is worth one sentence and can be deferred to a later lecture on virtualization, which this syllabus does not formally include but a keen class will ask about.
+\end{teachingaside}
+
+\section{OS Services, System Calls, and System Programs}
+
+Split services by audience (user-facing vs.\ system-efficiency), then spend the bulk of the remaining time on system calls, because that is where the assessment lives.
+
+\textbf{System-call families:} process control (\texttt{fork}, \texttt{exec}, \texttt{wait}, \texttt{exit}); file management (\texttt{open}, \texttt{read}, \texttt{write}, \texttt{close}, \texttt{unlink}); device management; information maintenance; communication; protection. Stress that POSIX/Win32 APIs \emph{wrap} system calls --- one library call may issue several.
+
+\textbf{The running thread, front to back:}
+\begin{enumerate}
+  \item \texttt{open("notes.txt", O\_RDONLY)} --- system call; mode switch; kernel resolves the path and checks permission.
+  \item A \key{file descriptor} returns; the kernel has created an \key{FCB} entry.
+  \item \texttt{read}/\texttt{write} move bytes through a user buffer; each call is a separate trap.
+  \item The kernel hands block requests to a \key{device driver} $\to$ disk \key{controller}.
+  \item \texttt{close} releases the descriptor; success is silent.
+\end{enumerate}
+
+\textbf{Parameter passing:} registers (simple, limited), a parameter block whose address is in a register (Linux/Solaris), or the stack.
+
+\textbf{System programs:} shells, compilers, file managers, editors, \texttt{/bin} utilities --- user-level tools built on system calls; the visible face of the OS, but not the kernel.
+
+\begin{teachingaside}
+Do the trace live, counting mode switches on the board (five for this command). Then ask: ``The programmer wrote five calls. How much OS code ran behind them?'' The answer --- path resolution, permissions, caching, scheduling, drivers --- is the payoff of the thread: it makes the ``extended machine'' concrete and shows why the abstraction earns its overhead.
+\end{teachingaside}
+
+\section{Where Students Get Stuck}
+
+\begin{itemize}
+  \item \textbf{``The OS is the kernel.''} Correct that with the three-views framing + the kernel-vs-shell distinction in the Socratic Check.
+  \item \textbf{Forgetting the timer.} They will say dual-mode is enough. Force the infinite-loop scenario.
+  \item \textbf{Confusing multiprogramming and time-sharing.} Anchor each to its objective (utilization vs.\ response).
+  \item \textbf{Microkernel as ``just a smaller kernel.''} The key is \emph{isolation}: crash containment and the IPC cost that buys it.
+  \item \textbf{System call vs.\ API.} The API is the programmer's contract; the system call is what the kernel runs. A single API call may trigger several system calls.
+\end{itemize}
+
+\section{Common Misconceptions to Preempt}
+
+\begin{itemize}
+  \item ``Protection is a software policy.'' No --- it is a hardware/OS contract (mode bit, base/limit, timer). Without hardware, no software can enforce it.
+  \item ``A faster quantum is always better for responsiveness.'' Diminishing returns; overhead grows and throughput collapses (see Assignment Q4).
+  \item ``The shell is part of the kernel because it feels like the OS.'' It is a system program in user mode.
+\end{itemize}
+
+\section{Exit Ticket / Comprehension Checks}
+
+Use the three Socratic Checks from the deck, in order: (1) is a browser/driver/firmware an OS; (2) the infinite-loop timer question; (3) is the shell part of the OS. The third doubles as the bridge to the next lecture's idea that the OS manages processes, not commands.
+
+\section{Readings to Prepare Next Time}
+
+\begin{itemize}
+  \item \textbf{Silberschatz et al., \emph{Operating System Concepts}, 8e, Ch.~3 \S3.1--3.3 (pp.~101--116)} --- process concept, process state diagram, PCB, schedulers, context switch. \emph{(Page-verified.)}
+  \item \textbf{Stallings, \emph{Operating Systems: Internals and Design Principles}, 6e, Ch.~3 (pp.~107--152)} --- the process model as the concrete counterpart. \emph{(Page-verified.)}
+  \item Skim \textbf{Bovet \& Cesati, \emph{Understanding the Linux Kernel}, 3e, Ch.~3 (pp.~79--130)} for the Linux `task\_struct` and process switch, which reappears throughout the course. \emph{(Page-verified.)}
+\end{itemize}
+
+\end{document}

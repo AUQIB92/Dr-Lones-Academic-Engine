@@ -1,0 +1,501 @@
+% =============================================================================
+% 01-intro-os-structure.tex — Week 1: Introduction to Operating Systems —
+% Functions, Evolution, Structure, Services, System Calls
+%
+% Course: Operating Systems (PCC CS-502)
+% Anchor reading: Silberschatz, Galvin & Gagne, Operating System Concepts,
+%                 8th ed. — Ch. 1 (Introduction), Ch. 2 (System Structures);
+%                 page-verified via
+%                 master_supporting_docs/CS502/supporting_books/SilberschatzOSC/index.md.
+%                 Stallings, Operating Systems: Internals and Design Principles,
+%                 6th ed. — Ch. 1-3; page-verified via .../StallingsOS/index.md.
+%                 Bovet & Cesati, Understanding the Linux Kernel, 3rd ed. —
+%                 Ch. 1, 10; page-verified via .../LinuxKernel/index.md.
+%                 Bach, The Design of the UNIX Operating System (chapter-level).
+%
+% Compile with: /compile-latex CS502/01-intro-os-structure
+% =============================================================================
+
+\documentclass[aspectratio=169]{beamer}
+\input{header}   % resolves via TEXINPUTS=../../Preambles;$TEXINPUTS — compile
+                  % from cwd Slides/CS502/ (TeX writes output next to cwd)
+\coursecode{CS502}
+
+\title{Introduction to Operating Systems}
+\subtitle{Week 1 --- Functions, Evolution, Structure, Services, and System Calls}
+\author[Dr. Auqib Hamid Lone]{%
+  \textbf{Dr. Auqib Hamid Lone}\\
+  \small Assistant Professor in Computer Science \& Engineering
+}
+\institute[GCET Ganderbal]{%
+  \small\textbf{PCC CS-502: Operating Systems}\\[0.3em]
+  Department of Computer Science \& Engineering\\
+  Government College of Engineering \& Technology (GCET), Ganderbal
+}
+\date[\today]{\small\today}
+
+\begin{document}
+
+\frame{\titlepage}
+
+% =============================================================================
+% ACT 0 --- COURSE OPENING AND ROADMAP
+% =============================================================================
+\section{Course Opening and Roadmap}
+
+\begin{frame}{Welcome: What Sits Between the Program and the Machine?}
+  \begin{block}{The big question}
+    You run \texttt{cp notes.txt backup.txt}. Between your keystroke and the
+    spinning disk are the \key{shell}, the \key{kernel}, a \key{system-call}
+    boundary, a \key{device driver}, and a \key{controller}. Which of these is
+    the operating system --- and what exactly does it do?
+  \end{block}
+  \begin{itemize}
+    \item A computer is \emph{hardware}: CPU, memory, disks, devices.
+    \item A program is \emph{logic}: code that wants to use that hardware.
+    \item The \key{operating system (OS)} is the software layer that turns
+      hardware into a safe, shared, usable machine.
+  \end{itemize}
+  \vspace{0.2cm}
+  \begin{alertblock}{Running thread for today}
+    We trace one real command --- \texttt{cp notes.txt backup.txt} --- from the
+    shell all the way to the disk controller, and back.
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}{Roadmap: Five Questions, One Command}
+  \begin{enumerate}
+    \item \key{What is an OS?} --- resource manager, control program, extended
+      machine.
+    \item \key{How did we get here?} --- batch, multiprogramming,
+      time-sharing, real-time.
+    \item \key{What protects the machine?} --- dual-mode operation.
+    \item \key{How is it built?} --- simple, layered, microkernel, modular,
+      virtual-machine structures.
+    \item \key{How do programs talk to it?} --- OS services, system calls, and
+      system programs.
+  \end{enumerate}
+\end{frame}
+
+\transitionslide{Before we can say what an OS does, we need a working definition --- one that survives every machine from a thermostat to a datacenter.}
+
+% =============================================================================
+% ACT 1 --- WHAT IS AN OPERATING SYSTEM?
+% =============================================================================
+\section{What Is an Operating System?}
+
+\begin{frame}{Three Ways to Say the Same Thing}
+  \begin{block}{Definition 1 --- the resource manager}
+    A program that manages the computer's resources: the CPU, memory, storage,
+    and I/O devices. It decides \emph{who} gets \emph{what}, and \emph{when}.
+  \end{block}
+  \begin{block}{Definition 2 --- the control program}
+    A program that controls the execution of user programs to prevent errors
+    and improper use of the computer --- the referee, not just the allocator.
+  \end{block}
+  \begin{block}{Definition 3 --- the extended machine}
+    A program that hides the messy hardware behind clean abstractions
+    (files, processes, sockets) so programmers never touch a register directly.
+  \end{block}
+  \vspace{0.15cm}
+  \muted{All three describe the same software; which one you emphasize
+  depends on what the machine is for (Silberschatz et al., Ch.~1).}
+\end{frame}
+
+\begin{frame}{The OS as Resource Manager}
+  \centering
+  \begin{tikzpicture}[every node/.style={font=\small}]
+    \node[draw=primary-blue, fill=light-bg, minimum width=3.1cm, minimum height=0.9cm] (os) at (0,0) {Operating system};
+    \node[draw=primary-gold, fill=white, minimum width=2.1cm, minimum height=0.8cm] (cpu) at (-4.6,1.9) {CPU};
+    \node[draw=primary-gold, fill=white, minimum width=2.1cm, minimum height=0.8cm] (mem) at (-1.55,2.4) {Memory};
+    \node[draw=primary-gold, fill=white, minimum width=2.1cm, minimum height=0.8cm] (disk) at (1.55,2.4) {Disks};
+    \node[draw=primary-gold, fill=white, minimum width=2.1cm, minimum height=0.8cm] (io) at (4.6,1.9) {I/O devices};
+    \draw[observed-edge] (os) -- (cpu);
+    \draw[observed-edge] (os) -- (mem);
+    \draw[observed-edge] (os) -- (disk);
+    \draw[observed-edge] (os) -- (io);
+  \end{tikzpicture}
+  \vspace{0.25cm}
+  \begin{itemize}
+    \item For \texttt{cp}: the CPU runs its instructions, memory holds its
+      buffer, the disk stores the file, the I/O path moves the bytes.
+    \item The OS \key{multiplexes} scarce resources across competing programs
+      and resolves conflicting requests.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{The OS as Extended Machine (Abstraction)}
+  \begin{itemize}
+    \item A raw disk is an array of blocks addressed by (cylinder, head,
+      sector). A programmer should not have to know that.
+    \item The OS offers a \key{file}: a named stream of bytes. Open, read,
+      write, close --- hardware details gone.
+    \item Likewise: a raw CPU becomes a \key{process}; a network card becomes a
+      \key{socket}; physical frames become \key{virtual memory}.
+  \end{itemize}
+  \vspace{0.3cm}
+  \begin{alertblock}{Why abstraction is the point}
+    The same program must run on different disks, CPUs, and networks. The OS
+    \emph{decouples} the program from the hardware --- this is what makes portability possible.
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}{Where the OS Sits: The User/Kernel Boundary}
+  \centering
+  \begin{tikzpicture}[every node/.style={font=\small},
+      blk/.style={draw=primary-blue, fill=light-bg,
+                  minimum width=9.4cm, minimum height=1.0cm},
+      bnd/.style={draw=negative, dashed, fill=white,
+                  minimum width=9.4cm, minimum height=0.7cm},
+      hwb/.style={draw=primary-gold, fill=white,
+                  minimum width=9.4cm, minimum height=0.9cm}]
+    \node[blk] (user) at (0,1.2)
+      {User applications \quad \texttt{shell} \quad \texttt{cp} \quad \texttt{editor}};
+    \node[bnd] (bound) at (0,0.15) {System-call interface (the boundary)};
+    \node[blk] (kern) at (0,-0.9)
+      {Kernel \quad (process, memory, file, device, network subsystems)};
+    \node[hwb] (hw) at (0,-2.0)
+      {Hardware \quad (CPU, memory, disk controller, devices)};
+    \draw[observed-edge] (user) -- (bound);
+    \draw[observed-edge] (bound) -- (kern);
+    \draw[observed-edge] (kern) -- (hw);
+  \end{tikzpicture}
+  \vspace{0.15cm}
+  \begin{itemize}
+    \item \key{User mode}: restricted; privileged instructions are illegal.
+    \item \key{Kernel mode}: unrestricted; the OS runs here.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Socratic Check 1}
+  \begin{block}{Think, then answer}
+    Is a web browser an operating system? Is a device driver? Is firmware?
+  \end{block}
+  \vspace{0.2cm}
+  \begin{itemize}
+    \item \key{Browser} --- no: it is an \emph{application} that \emph{uses} OS
+      services (files, sockets, processes).
+    \item \key{Device driver} --- in the kernel: it is OS code, one layer down.
+    \item \key{Firmware} --- between: it boots and initializes hardware before
+      the OS runs, but is not the OS.
+  \end{itemize}
+\end{frame}
+
+\transitionslide{The OS did not appear fully formed. Each feature exists because an earlier design failed under a real workload.}
+
+% =============================================================================
+% ACT 2 --- EVOLUTION, AND SYSTEM PROTECTION
+% =============================================================================
+\section{Evolution of Operating Systems, and System Protection}
+
+\begin{frame}{Evolution I: Serial Processing and Batch Systems}
+  \begin{itemize}
+    \item \key{Serial processing} (1940s--50s): the operator loads one job,
+      the program runs to completion, then the next. No OS --- a human is the
+      scheduler.
+    \item \bad{The problem}: the CPU idles while the operator mounts tapes and
+      cards. Utilization is terrible.
+    \item \key{Batch operating system}: jobs of similar type are grouped into a
+      batch and run by a \key{resident monitor} --- a small program that
+      transfers control to the next job automatically.
+    \item A \key{job-control language (JCL)} tells the monitor what to run.
+  \end{itemize}
+  \vspace{0.2cm}
+  \begin{alertblock}{The lesson that never goes away}
+    Any time the CPU waits on a slow human or device, an OS should take over the
+    waiting. This is the seed of multiprogramming.
+  \end{alertblock}
+  \vspace{0.1cm}
+  \muted{Evolution and its design pressures: Silberschatz et al., Ch.~1;
+  Stallings, Ch.~2 \cite{StallingsOS_internals_design_principles}.}
+\end{frame}
+
+\begin{frame}{Evolution II: Multiprogramming and Spooling}
+  \begin{itemize}
+    \item \key{Multiprogramming}: keep several jobs in memory at once; when the
+      running job waits for I/O, switch to another. The CPU stays busy.
+    \item \key{Spooling} (Simultaneous Peripheral Operation On-Line): buffer
+      input/output on disk so slow devices run in parallel with the CPU --- the
+      printer never stops the computer.
+    \item \key{Time-sharing (multitasking)}: extend multiprogramming so the CPU
+      switches so fast that every user has an \emph{interactive} session,
+      as if the machine were theirs alone.
+  \end{itemize}
+  \vspace{0.2cm}
+  \muted{Multiprogramming maximizes CPU utilization; time-sharing minimizes response time. The two goals can conflict.}
+\end{frame}
+
+\begin{frame}{Evolution III: Interactive and Real-Time Systems}
+  \begin{itemize}
+    \item \key{Interactive / time-sharing} systems (CTSS, Multics, UNIX):
+      the user gets a shell and a prompt; the OS maintains the illusion of
+      private ownership.
+    \item \key{Real-time systems}: correctness depends on \emph{when} the result
+      arrives, not just on the values.
+      \begin{itemize}
+        \item \key{Hard real-time} --- a missed deadline is a failure
+          (fly-by-wire, pacemakers, ABS brakes).
+        \item \key{Soft real-time} --- a missed deadline degrades quality
+          (video streaming, online games).
+      \end{itemize}
+  \end{itemize}
+  \vspace{0.2cm}
+  \begin{alertblock}{Two axes, not one}
+    Design pressure comes from \emph{utilization} (batch), \emph{responsiveness}
+    (time-sharing), and \emph{predictability} (real time). Modern general-purpose
+    OSes (Linux, Windows, macOS) try to satisfy all three at once.
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}{System Protection: Why the Boundary Must Be Enforced}
+  \begin{itemize}
+    \item If a user program could execute privileged instructions, one buggy
+      program could overwrite the OS or another process.
+    \item \key{Dual-mode operation}: a hardware \key{mode bit} selects user
+      ($1$) or kernel ($0$) mode. Privileged instructions are legal only in
+      kernel mode.
+    \item \key{System call}: the \emph{only} legal doorway from user mode to
+      kernel mode --- a controlled trap to the kernel.
+    \item \key{Memory protection}: base/limit registers (or page tables) ensure
+      a process touches only its own memory.
+    \item \key{Timer interrupt}: guarantees the kernel regains control --- a
+      runaway process cannot monopolize the CPU forever.
+  \end{itemize}
+  \vspace{0.2cm}
+  \muted{Protection is not a feature bolted on top; it is a hardware/OS
+  contract that everything else depends on (Stallings, Ch.~3
+  \cite{StallingsOS_internals_design_principles}).}
+\end{frame}
+
+\transitionslide{If the OS is the trusted layer, how do we build such a large, long-lived program without it collapsing under its own complexity?}
+
+% =============================================================================
+% ACT 3 --- OPERATING-SYSTEM STRUCTURE
+% =============================================================================
+\section{Operating-System Structure}
+
+\begin{frame}{Five Ways to Organize a Kernel}
+  \begin{itemize}
+    \item \key{Simple / monolithic} --- one big program, no clean modules
+      (early MS-DOS; UNIX is mostly monolithic).
+    \item \key{Layered} --- the OS is a hierarchy of levels; each level uses
+      only the one below (MULTICS, THE).
+    \item \key{Microkernel} --- a tiny kernel (IPC, scheduling, basic memory)
+      plus user-space servers (Mach, QNX, L4).
+    \item \key{Modular} --- a core kernel with loadable modules
+      (Solaris, Linux, macOS) --- dynamically extensible.
+    \item \key{Virtual machines} --- the OS \emph{itself} treats hardware
+      virtually (VMware, Xen, KVM).
+  \end{itemize}
+  \vspace{0.2cm}
+  \muted{The trade-off across all five: simplicity and safety vs. performance and flexibility.}
+\end{frame}
+
+\begin{frame}{Monolithic vs.\ Layered}
+  \begin{block}{Monolithic}
+    All services in one address space; any part can call any other. \good{Fast}:
+    direct procedure calls. \bad{Fragile}: no protection between subsystems, hard
+    to debug. \emph{MS-DOS} had no separation at all.
+  \end{block}
+  \begin{block}{Layered}
+    Level $N$ may use only level $N-1$. \good{Easier to design and debug},
+    layer by layer. \bad{Hard to \emph{define} the layers}, and each boundary
+    adds call overhead. \emph{THE} OS used six layers.
+  \end{block}
+  \vspace{0.15cm}
+  \muted{The design question: how much structure can you add before the overhead outweighs the benefit?}
+\end{frame}
+
+\begin{frame}{Microkernel vs.\ Modular vs.\ Virtual Machine}
+  \begin{itemize}
+    \item \key{Microkernel}: push everything but the minimum into user space.
+      \good{Small, reliable, secure, portable} --- a crash in a file server does
+      not kill the kernel. \bad{Message-passing overhead}; performance can suffer.
+    \item \key{Modular}: the kernel is a set of \emph{loadable} modules with
+      defined interfaces. \good{Best of both} --- direct calls for the core,
+      dynamic loading for drivers and file systems. This is \emph{Linux} today.
+    \item \key{Virtual machine}: a hypervisor presents many virtual copies of
+      the hardware; each guest runs its own OS. \good{Perfect isolation},
+      consolidation. \bad{Complex, and I/O virtualization is expensive}.
+  \end{itemize}
+  \vspace{0.2cm}
+  \muted{Read the syllabus's Stallings Ch.~1--2 for the historical thread that produced these designs.}
+\end{frame}
+
+\transitionslide{Structure is for the builders. Users and programmers only ever see one thing: the services the OS exposes, and the calls that reach them.}
+
+% =============================================================================
+% ACT 4 --- OS SERVICES, SYSTEM CALLS, SYSTEM PROGRAMS
+% =============================================================================
+\section{OS Services, System Calls, and System Programs}
+
+\begin{frame}{OS Services: Two Audiences}
+  \begin{block}{Services for the user}
+    \begin{itemize}
+      \item \key{Program execution} --- start, run, and stop programs.
+      \item \key{I/O operations} and \key{file-system manipulation}
+        (create, read, write, delete, list).
+      \item \key{Communication} --- between processes on one machine or across
+        a network (shared memory, message passing).
+      \item \key{Error detection} --- catch CPU, memory, I/O, and program errors.
+    \end{itemize}
+  \end{block}
+  \begin{block}{Services for system efficiency}
+    \begin{itemize}
+      \item \key{Resource allocation} among concurrent users.
+      \item \key{Accounting} --- which user used how much.
+      \item \key{Protection and security} --- control who accesses what.
+    \end{itemize}
+  \end{block}
+\end{frame}
+
+\begin{frame}{System Calls: The Program's Doorway to the Kernel}
+  \begin{itemize}
+    \item A \key{system call} is a function the OS provides to programs. It
+      \emph{traps} from user mode into kernel mode --- privileged work happens
+      safely.
+    \item System calls come in families:
+      \begin{itemize}
+        \item \key{Process control} --- \texttt{fork}, \texttt{exec},
+          \texttt{wait}, \texttt{exit}.
+        \item \key{File management} --- \texttt{open}, \texttt{read},
+          \texttt{write}, \texttt{close}, \texttt{unlink}.
+        \item \key{Device management}, \key{information maintenance},
+          \key{communication}, \key{protection}.
+      \end{itemize}
+    \item Most APIs (POSIX, Win32) \emph{wrap} system calls; a single library
+      call may make several.
+  \end{itemize}
+  \vspace{0.2cm}
+  \muted{The API is what the programmer sees; the system call is what the kernel actually executes.}
+\end{frame}
+
+\begin{frame}{Worked Thread: \texttt{cp notes.txt backup.txt}, Front to Back}
+  \begin{enumerate}
+    \item \texttt{cp} calls \texttt{open("notes.txt", O\_RDONLY)} --- a
+      \key{system call}: mode switch, path resolution, permission check.
+    \item A file descriptor returns; the kernel creates a \key{file control
+      block} entry recording the file's location.
+    \item \texttt{read}/\texttt{write} move bytes through a user buffer, each a
+      separate trap; the kernel hands block requests to a \key{device driver}
+      that drives the disk \key{controller}.
+    \item \texttt{close} releases the descriptor; success is silent.
+  \end{enumerate}
+  \vspace{0.1cm}
+  \begin{alertblock}{The point of the thread}
+    Four user-visible system calls, one mode switch each --- but an enormous
+    amount of OS machinery runs \emph{behind} them (generic: Silberschatz et al.,
+    Ch.~2; concrete kernel: Bovet \& Cesati, Ch.~10).
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}{Passing Parameters, and System Programs}
+  \begin{block}{Three ways to pass parameters to a system call}
+    \begin{itemize}
+      \item \key{Registers} --- simplest; limited by register count.
+      \item \key{Block / table} --- the address of a parameter block is passed
+        in a register (Linux, Solaris).
+      \item \key{Stack} --- the program pushes parameters and the OS pops them.
+    \end{itemize}
+  \end{block}
+  \begin{block}{System programs}
+    User-level tools built \emph{on top of} system calls: shells, compilers,
+    file managers, editors, and the utilities in \texttt{/bin}. They are not
+    part of the kernel, but they are part of the ``OS'' a user experiences.
+  \end{block}
+\end{frame}
+
+% =============================================================================
+% ACT 5 --- TAKEAWAYS AND CHECKS
+% =============================================================================
+\section{Takeaways and Checks}
+
+\begin{frame}{Takeaways}
+  \begin{itemize}
+    \item An OS is the \key{resource manager}, the \key{control program}, and
+      the \key{extended machine} --- three views of one layer.
+    \item Its history is a response to \key{utilization} (batch
+      $\to$ multiprogramming), \key{responsiveness} (time-sharing), and
+      \key{predictability} (real time).
+    \item \key{Dual-mode operation} plus a \key{timer} and \key{memory
+      protection} make the boundary enforceable.
+    \item Structure is a spectrum: \key{monolithic} $\to$ \key{layered}
+      $\to$ \key{microkernel} / \key{modular} / \key{virtual machine}.
+    \item Programs reach the OS through \key{system calls}; system programs are
+      convenience layers built on them.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Socratic Check 2}
+  \begin{block}{Think, then answer}
+    A runaway user process enters an infinite loop with no I/O. Why does it not
+    hang the machine forever? Name the exact mechanism.
+  \end{block}
+  \vspace{0.2cm}
+  \begin{itemize}
+    \item The \key{timer interrupt}: the kernel programs a hardware timer to
+      fire after a quantum; on the interrupt, control returns to the kernel,
+      which can preempt the process.
+    \item Without a timer, dual-mode alone would not be enough --- a process
+      could stay in user mode forever and never trap out.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Socratic Check 3}
+  \begin{block}{Think, then answer}
+    Is the shell part of the operating system? Where does the answer change the
+    design?
+  \end{block}
+  \vspace{0.2cm}
+  \begin{itemize}
+    \item The shell is a \key{system program} / command interpreter --- a user
+      program that issues system calls, not kernel code.
+    \item It is anyway the \emph{user-visible} face of the OS; that is why
+      UNIX's structure (kernel + many small user-space tools) is so influential
+      --- and why the interface can change without touching the kernel.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Next: Processes}
+  \begin{itemize}
+    \item Today: what the OS \emph{is} and what it \emph{exposes}.
+    \item Next lecture: what the OS \emph{manages} --- the \key{process}: its
+      states, the \key{process control block}, schedulers, and the context
+      switch.
+  \end{itemize}
+  \vspace{0.3cm}
+  \begin{block}{Reading}
+    Silberschatz et al., \emph{Operating System Concepts}, Ch.~1--2
+    \cite{SilberschatzOSC_operating_system_concepts}; Stallings,
+    \emph{Operating Systems: Internals and Design Principles}, Ch.~1--3
+    \cite{StallingsOS_internals_design_principles}; and, for the concrete kernel
+    view, Bovet \& Cesati, \emph{Understanding the Linux Kernel}, Ch.~1 \& 10
+    \cite{BovetCesati_understanding_linux_kernel}.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Further Reading (Page-Cited)}
+  \footnotesize
+  \begin{itemize}
+    \item A.~Silberschatz, P.~B.~Galvin, G.~Gagne, \emph{Operating System
+      Concepts}, 8e --- Ch.~1 (pp.~3--47), Ch.~2 \S2.1--2.8 (pp.~49--89).
+    \item W.~Stallings, \emph{Operating Systems: Internals and Design
+      Principles}, 6e --- Ch.~1 (\S1.4 interrupts, \S1.7 I/O techniques),
+      Ch.~2 (\S2.2 OS evolution, pp.~55--64), Ch.~3 (pp.~107--152).
+    \item D.~P.~Bovet \& M.~Cesati, \emph{Understanding the Linux Kernel},
+      3e --- Ch.~1 (basic concepts, files/inodes), Ch.~10 (system calls).
+    \item M.~J.~Bach, \emph{The Design of the UNIX Operating System}, 1986 ---
+      the classic UNIX counterpart.
+  \end{itemize}
+  \vspace{0.2cm}
+  \muted{Page-verified via each book's \texttt{index.md} under
+  \texttt{master\_supporting\_docs/CS502/supporting\_books/}.}
+\end{frame}
+
+\begin{frame}[allowframebreaks]{References}
+  \footnotesize
+  \bibliographystyle{plain}
+  \bibliography{../../Bibliography_base}
+\end{frame}
+
+\end{document}
