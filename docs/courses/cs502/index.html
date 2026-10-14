@@ -1,0 +1,873 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Operating Systems (PCC CS-502) — Course Hub</title>
+  <meta name="description" content="Lecture slides, notes, assignments, GATE practice sets, and video explainers for PCC CS-502 Operating Systems — B.Tech CSE, Semester 5.">
+  <meta name="keywords" content="CS-502, operating systems, processes, scheduling, synchronization, deadlocks, memory management, virtual memory, disk scheduling, file systems, GATE CS">
+  <meta name="author" content="Dr. Auqib Hamid Lone">
+  <meta name="theme-color" content="#2c5e2a">
+
+  <!-- Favicon (inline) -->
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232c5e2a'/%3E%3Ctext x='32' y='43' font-family='Georgia,serif' font-size='30' font-weight='700' fill='%23d4a464' text-anchor='middle'%3EAL%3C/text%3E%3C/svg%3E">
+
+  <!-- Open Graph / social sharing -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Operating Systems (CS-502)">
+  <meta property="og:description" content="Course hub for PCC CS-502: 15-lecture slides, notes, assignments, GATE practice sets, and video explainers across 4 units.">
+  <meta property="og:url" content="https://auqib92.github.io/claude-code-my-workflow/courses/cs502/">
+
+  <!-- Structured data for Google rich snippets -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Course",
+    "name": "Operating Systems (PCC CS-502)",
+    "description": "A working model of what an operating system does and how it does it — process management and CPU scheduling, concurrency and deadlock, memory management and virtual memory, and I/O, disk scheduling, and file systems.",
+    "provider": { "@type": "Organization", "name": "B.Tech CSE, Semester 5" },
+    "numberOfCredits": "3",
+    "occupationalCredential": "B.Tech CSE",
+    "teaches": "OS functions and structure, system calls, process management, CPU scheduling, synchronization, deadlocks, memory management, paging, virtual memory, page replacement, I/O management, disk scheduling, file systems"
+  }
+  </script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inria+Serif:ital,wght@0,400;0,700;1,400&family=Inria+Sans:wght@400;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <nav class="navbar" id="topnav">
+    <div class="container navbar-inner">
+      <a class="brand" href="../../index.html"><span class="mark">AL</span>CS-502 &middot; Course Hub</a>
+      <button class="menu-toggle" id="menuToggle" aria-label="Toggle navigation menu" aria-expanded="false">
+        <span class="bar"></span><span class="bar"></span><span class="bar"></span>
+      </button>
+      <div class="nav-links" id="navLinks">
+        <a href="../../index.html">Portfolio</a>
+        <a href="#lectures">Lectures</a>
+        <a href="#videos">Videos</a>
+        <a href="#assignments">Assignments</a>
+        <a href="#submit">Submit</a>
+        <a href="#practice">Practice</a>
+        <a href="#assessment">Assessment</a>
+        <a href="../../slides/CS502/" class="cta">Slide decks</a>
+      </div>
+    </div>
+    <div class="nav-progress" id="navProgress"></div>
+  </nav>
+
+  <!-- ================= HERO ================= -->
+  <header class="hero hero-compact">
+    <div class="hero-frame" aria-hidden="true"></div>
+    <div class="hero-content">
+      <p class="hero-eyebrow">PCC CS-502 &middot; B.Tech CSE, Semester 5</p>
+      <h1>Operating Systems</h1>
+      <p class="hero-tagline">What an operating system does and how it does it — from the system-call boundary through scheduling, synchronization, and deadlock to virtual memory, disk scheduling, and the file system.</p>
+      <div class="hero-chips">
+        <span class="chip-glass">15 lectures &middot; 4 units</span>
+        <span class="chip-glass">3 credits</span>
+        <span class="chip-glass">3-0-0 L-T-P</span>
+        <!-- publish-course-hub:hero-chips:start -->
+        <span class="chip-glass">1 / 40 lectures published</span>
+<!-- publish-course-hub:hero-chips:end -->
+      </div>
+      <div class="hero-cta">
+        <a href="#lectures" class="btn btn-glass">Browse the lectures</a>
+        <a href="#videos" class="btn btn-glass">Watch a video explainer</a>
+      </div>
+    </div>
+  </header>
+
+  <main id="main" class="container" style="padding-top: 2.2rem">
+
+    <!-- ================= PROGRESS ================= -->
+    <!-- publish-course-hub:ribbon:start -->
+    <div class="ribbon">
+      <div class="row">
+        <span><strong>Course progress</strong> &mdash; lecture 1 published; lectures 2&ndash;40 in progress</span>
+        <strong>2%</strong>
+      </div>
+      <div class="track"><div class="fill" data-fill="2"></div></div>
+      <p>Lecture 1 is published in full (slides, notes, assignment, and GATE practice set). The remaining 39 lectures ship one at a time.</p>
+    </div>
+<!-- publish-course-hub:ribbon:end -->
+
+    <div class="alert">
+      <p><strong>Open materials.</strong> Every lecture ships four freely reusable PDFs: the slide deck, the prose lecture notes, the graded assignment, and a GATE practice set with answers. Solution keys to assignments are never published. A video explainer is linked per lecture.</p>
+    </div>
+
+    <!-- ================= PREREQUISITES ================= -->
+    <section class="section">
+      <div class="section-head">
+        <p class="section-eyebrow">&sect; 00 &middot; Before you begin</p>
+        <h2 class="section-title">Prerequisites</h2>
+      </div>
+      <div class="prose">
+        <p>Programming in C (functions, pointers, arrays, structs, basic system calls); a working model of the machine a program runs on (CPU, registers, memory, I/O) &mdash; CS401 Computer Organization &amp; Architecture or equivalent. Algorithms literacy (asymptotic cost, queues, lists) is assumed for the scheduling and page-replacement analysis.</p>
+      </div>
+    </section>
+
+    <!-- ================= LECTURES ================= -->
+    <section id="lectures" class="section">
+      <div class="section-head">
+        <p class="section-eyebrow">&sect; 01 &middot; Session schedule</p>
+        <h2 class="section-title">Lectures</h2>
+      </div>
+
+      <!-- publish-course-hub:rail:start -->
+      <div class="rail">
+
+        <div class="rail-item">
+          <span class="badge">Unit I</span>
+          <span class="badge badge-muted">10 lectures</span>
+          <div class="rail-body"><h3 class="rail-title">Introduction to Operating Systems & Process Management</h3></div>
+        </div>
+
+        <div class="rail-item">
+          <span class="badge">Lecture 01</span>
+          <span class="badge badge-accent">Published</span>
+          <div class="rail-actions">
+            <a class="btn-sm" href="../../slides/CS502/01-intro-os-structure.pdf" target="_blank" rel="noopener">Slides &darr;</a>
+            <a class="btn-sm ghost" href="../../notes/CS502/01-intro-os-structure-notes.pdf" target="_blank" rel="noopener">Notes &darr;</a>
+            <a class="btn-sm ghost" href="../../assignments/CS502/01-intro-os-structure-assignment.pdf" target="_blank" rel="noopener">Assignment &darr;</a>
+            <a class="btn-sm ghost" href="../../competitive-exam/CS502/01-intro-os-structure-questions.pdf" target="_blank" rel="noopener">Practice &darr;</a>
+          </div>
+          <div class="rail-body">
+            <h3 class="rail-title">Introduction to OS: functions, evolution, structure, services, system calls</h3>
+            <div class="rail-readings">
+              <h5>Anchor readings</h5>
+              <ul><li>Silberschatz 8e Ch. 1 &sect;1.1-1.4, Ch. 2 &sect;2.1-2.3</li></ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="rail-item dim">
+          <span class="badge">Lecture 02</span>
+          <span class="badge badge-muted">In progress</span>
+          <div class="rail-body">
+            <h3 class="rail-title">Computer-system organization: interrupts, storage structure, I/O structure, DMA</h3>
+            <div class="rail-readings">
+              <h5>Anchor readings</h5>
+              <ul><li>Silberschatz 8e Ch. 1 &sect;1.2, &sect;1.7-1.8</li></ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="rail-item dim">
+          <span class="badge">Lecture 03</span>
+          <span class="badge badge-muted">In progress</span>
+          <div class="rail-body">
+            <h3 class="rail-title">OS operations and system protection: dual-mode, timer, privileged instructions</h3>
+            <div class="rail-readings">
+              <h5>Anchor readings</h5>
+              <ul><li>Silberschatz 8e Ch. 1 &sect;1.5</li></ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="rail-item dim">
+          <span class="badge">Lecture 04</span>
+          <span class="badge badge-muted">In progress</span>
+          <div class="rail-body">
+            <h3 class="rail-title">System calls: mechanics, parameter passing, types of system calls</h3>
+            <div class="rail-readings">
+              <h5>Anchor readings</h5>
+              <ul><li>Silberschatz 8e Ch. 2 &sect;2.3-2.4</li></ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="rail-item dim">
+          <span class="badge">Lecture 05</span>
+          <span class="badge badge-muted">In progress</span>
+          <div class="rail-body">
+            <h3 class="rail-title">System programs; OS structures: monolithic, layered, microkernel, modular, VMs</h3>
+            <div class="rail-readings">
+              <h5>Anchor readings</h5>
+              <ul><li>Silberschatz 8e Ch. 2 &sect;2.5-2.8</li></ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="rail-item dim">
+          <span class="badge">Lecture 06</span>
+          <span class="badge badge-muted">In progress</span>
+          <div class="rail-body">
+            <h3 class="rail-title">Process concept and the process control block</h3>
+            <div class="rail-readings">
+              <h5>Anchor readings</h5>
+              <ul><li>Silberschatz 8e Ch. 3 &sect;3.1</li></ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="rail-item dim">
+          <span class="badge">Lecture 07</span>
+          <span class="badge badge-muted">In progress</span>
+          <div class="rail-body">
+            <h3 class="rail-title">Process state diagram, scheduling queues, schedulers, context switch</h3>
+            <div class="rail-readings">
+              <h5>Anchor readings</h5>
+              <ul><li>Silberschatz 8e Ch. 3 &sect;3.2</li></ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="rail-item dim">
+          <span class="badge">Lecture 08</span>
+          <span class="badge badge-muted">In progress</span>
+          <div class="rail-body">
+            <h3 class="rail-title">Operations on processes: creation, termination, <code>fork</code>/<code>exec</code>/<code>wait</code></h3>
+            <div class="rail-readings">
+              <h5>Anchor readings</h5>
+              <ul><li>Silberschatz 8e Ch. 3 &sect;3.3</li></ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="rail-item dim">
+          <span class="badge">Lecture 09</span>
+          <span class="badge badge-muted">In progress</span>
+          <div class="rail-body">
+            <h3 class="rail-title">Scheduling concepts and criteria; FCFS and SJF/SRTF</h3>
+            <div class="rail-readings">
+              <h5>Anchor readings</h5>
+              <ul><li>Silberschatz 8e Ch. 5 &sect;5.1-5.3</li></ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="rail-item dim">
+          <span class="badge">Lecture 10</span>
+          <span class="badge badge-muted">In progress</span>
+          <div class="rail-body">
+            <h3 class="rail-title">Priority, Round Robin, multilevel queue/feedback; multiprocessor scheduling</h3>
+            <div class="rail-readings">
+              <h5>Anchor readings</h5>
+              <ul><li>Silberschatz 8e Ch. 5 &sect;5.3-5.5</li></ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="rail-item">
+          <span class="badge">Unit II</span>
+          <span class="badge badge-muted">10 lectures</span>
+          <div class="rail-body"><h3 class="rail-title">Concurrent Processes & Deadlock</h3></div>
+        </div>
+
+        <div class="rail-item dim">
+          <span class="badge">Lecture 11</span>
+          <span class="badge badge-muted">In progress</span>
+          <div class="rail-body">
+            <h3 class="rail-title">Principle of concurrency; race conditions; the critical-section problem</h3>
+            <div class="rail-readings">
+              <h5>Anchor readings</h5>
+              <ul><li>Silberschatz 8e Ch. 6 &sect;6.1-6.2</li></ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="rail-item dim">
+          <span class="badge">Lecture 12</span>
+          <span class="badge badge-muted">In progress</span>
+          <div class="rail-body">
+            <h3 class="rail-title">Mutual-exclusion requirements; Peterson's solution</h3>
+            <div class="rail-readings">
+              <h5>Anchor readings</h5>
+              <ul><li>Silberschatz 8e Ch. 6 &sect;6.3</li></ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="rail-item dim">
+          <span class="badge">Lecture 13</span>
+          <span class="badge badge-muted">In progress</span>
+          <div class="rail-body">
+            <h3 class="rail-title">Synchronization hardware: test-and-set, compare-and-swap, atomic variables</h3>
+            <div class="rail-readings">
+              <h5>Anchor readings</h5>
+              <ul><li>Silberschatz 8e Ch. 6 &sect;6.4</li></ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="rail-item dim">
+          <span class="badge">Lecture 14</span>
+          <span class="badge badge-muted">In progress</span>
+          <div class="rail-body">
+            <h3 class="rail-title">Semaphores: counting vs binary, <code>wait</code>/<code>signal</code></h3>
+            <div class="rail-readings">
+              <h5>Anchor readings</h5>
+              <ul><li>Silberschatz 8e Ch. 6 &sect;6.5</li></ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="rail-item dim">
+          <span class="badge">Lecture 15</span>
+          <span class="badge badge-muted">In progress</span>
+          <div class="rail-body">
+            <h3 class="rail-title">Semaphore usage patterns; IPC fundamentals: shared memory vs message passing</h3>
+            <div class="rail-readings">
+              <h5>Anchor readings</h5>
+              <ul><li>Silberschatz 8e Ch. 3 &sect;3.4</li></ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="rail-item dim">
+          <span class="badge">Lecture 16</span>
+          <span class="badge badge-muted">In progress</span>
+          <div class="rail-body">
+            <h3 class="rail-title">IPC in practice: pipes, message queues, sockets, client&ndash;server</h3>
+            <div class="rail-readings">
+              <h5>Anchor readings</h5>
+              <ul><li>Silberschatz 8e Ch. 3 &sect;3.5-3.6</li></ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="rail-item dim">
+          <span class="badge">Lecture 17</span>
+          <span class="badge badge-muted">In progress</span>
+          <div class="rail-body">
+            <h3 class="rail-title">Classical problem I: bounded-buffer producer&ndash;consumer</h3>
+            <div class="rail-readings">
+              <h5>Anchor readings</h5>
+              <ul><li>Silberschatz 8e Ch. 6 &sect;6.6</li></ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="rail-item dim">
+          <span class="badge">Lecture 18</span>
+          <span class="badge badge-muted">In progress</span>
+          <div class="rail-body">
+            <h3 class="rail-title">Classical problems II: readers&ndash;writers, dining philosophers; monitors</h3>
+            <div class="rail-readings">
+              <h5>Anchor readings</h5>
+              <ul><li>Silberschatz 8e Ch. 6 &sect;6.6-6.7</li></ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="rail-item dim">
+          <span class="badge">Lecture 19</span>
+          <span class="badge badge-muted">In progress</span>
+          <div class="rail-body">
+            <h3 class="rail-title">Deadlock: system model, resource-allocation graph, four necessary conditions</h3>
+            <div class="rail-readings">
+              <h5>Anchor readings</h5>
+              <ul><li>Silberschatz 8e Ch. 7 &sect;7.1-7.3</li></ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="rail-item dim">
+          <span class="badge">Lecture 20</span>
+          <span class="badge badge-muted">In progress</span>
+          <div class="rail-body">
+            <h3 class="rail-title">Deadlock prevention, avoidance (Banker's), detection and recovery</h3>
+            <div class="rail-readings">
+              <h5>Anchor readings</h5>
+              <ul><li>Silberschatz 8e Ch. 7 &sect;7.4-7.7</li></ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="rail-item">
+          <span class="badge">Unit III</span>
+          <span class="badge badge-muted">10 lectures</span>
+          <div class="rail-body"><h3 class="rail-title">Memory Management & Virtual Memory</h3></div>
+        </div>
+
+        <div class="rail-item dim">
+          <span class="badge">Lecture 21</span>
+          <span class="badge badge-muted">In progress</span>
+          <div class="rail-body">
+            <h3 class="rail-title">Memory-management background: resident monitor, address binding, MMU</h3>
+            <div class="rail-readings">
+              <h5>Anchor readings</h5>
+              <ul><li>Silberschatz 8e Ch. 8 &sect;8.1; Ch. 23 &sect;23.2</li></ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="rail-item dim">
+          <span class="badge">Lecture 22</span>
+          <span class="badge badge-muted">In progress</span>
+          <div class="rail-body">
+            <h3 class="rail-title">Contiguous allocation: fixed (MFT) and variable (MVT) partitioning</h3>
+            <div class="rail-readings">
+              <h5>Anchor readings</h5>
+              <ul><li>Silberschatz 8e Ch. 8 &sect;8.1-8.3</li></ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="rail-item dim">
+          <span class="badge">Lecture 23</span>
+          <span class="badge badge-muted">In progress</span>
+          <div class="rail-body">
+            <h3 class="rail-title">Allocation strategies (first/best/worst-fit), fragmentation, compaction</h3>
+            <div class="rail-readings">
+              <h5>Anchor readings</h5>
+              <ul><li>Silberschatz 8e Ch. 8 &sect;8.3</li></ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="rail-item dim">
+          <span class="badge">Lecture 24</span>
+          <span class="badge badge-muted">In progress</span>
+          <div class="rail-body">
+            <h3 class="rail-title">Paging: concept and address translation</h3>
+            <div class="rail-readings">
+              <h5>Anchor readings</h5>
+              <ul><li>Silberschatz 8e Ch. 8 &sect;8.4</li></ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="rail-item dim">
+          <span class="badge">Lecture 25</span>
+          <span class="badge badge-muted">In progress</span>
+          <div class="rail-body">
+            <h3 class="rail-title">TLB, effective access time, and page-table structures</h3>
+            <div class="rail-readings">
+              <h5>Anchor readings</h5>
+              <ul><li>Silberschatz 8e Ch. 8 &sect;8.4-8.5</li></ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="rail-item dim">
+          <span class="badge">Lecture 26</span>
+          <span class="badge badge-muted">In progress</span>
+          <div class="rail-body">
+            <h3 class="rail-title">Segmentation and segmentation with paging; Intel Pentium example</h3>
+            <div class="rail-readings">
+              <h5>Anchor readings</h5>
+              <ul><li>Silberschatz 8e Ch. 8 &sect;8.6-8.7</li></ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="rail-item dim">
+          <span class="badge">Lecture 27</span>
+          <span class="badge badge-muted">In progress</span>
+          <div class="rail-body">
+            <h3 class="rail-title">Virtual memory and demand paging; page-fault handling; copy-on-write</h3>
+            <div class="rail-readings">
+              <h5>Anchor readings</h5>
+              <ul><li>Silberschatz 8e Ch. 9 &sect;9.1-9.3</li></ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="rail-item dim">
+          <span class="badge">Lecture 28</span>
+          <span class="badge badge-muted">In progress</span>
+          <div class="rail-body">
+            <h3 class="rail-title">Page replacement: FIFO, Optimal, LRU; Belady's anomaly</h3>
+            <div class="rail-readings">
+              <h5>Anchor readings</h5>
+              <ul><li>Silberschatz 8e Ch. 9 &sect;9.4</li></ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="rail-item dim">
+          <span class="badge">Lecture 29</span>
+          <span class="badge badge-muted">In progress</span>
+          <div class="rail-body">
+            <h3 class="rail-title">Page replacement: clock/second-chance, enhanced, counting algorithms</h3>
+            <div class="rail-readings">
+              <h5>Anchor readings</h5>
+              <ul><li>Silberschatz 8e Ch. 9 &sect;9.4</li></ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="rail-item dim">
+          <span class="badge">Lecture 30</span>
+          <span class="badge badge-muted">In progress</span>
+          <div class="rail-body">
+            <h3 class="rail-title">Allocation of frames, thrashing, working-set model, page-fault frequency</h3>
+            <div class="rail-readings">
+              <h5>Anchor readings</h5>
+              <ul><li>Silberschatz 8e Ch. 9 &sect;9.5-9.6</li></ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="rail-item">
+          <span class="badge">Unit IV</span>
+          <span class="badge badge-muted">10 lectures</span>
+          <div class="rail-body"><h3 class="rail-title">I/O Management, Disk Scheduling & File Systems</h3></div>
+        </div>
+
+        <div class="rail-item dim">
+          <span class="badge">Lecture 31</span>
+          <span class="badge badge-muted">In progress</span>
+          <div class="rail-body">
+            <h3 class="rail-title">I/O hardware: devices, controllers, drivers, buses</h3>
+            <div class="rail-readings">
+              <h5>Anchor readings</h5>
+              <ul><li>Silberschatz 8e Ch. 13 &sect;13.1-13.2</li></ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="rail-item dim">
+          <span class="badge">Lecture 32</span>
+          <span class="badge badge-muted">In progress</span>
+          <div class="rail-body">
+            <h3 class="rail-title">I/O techniques: polling, interrupts, DMA</h3>
+            <div class="rail-readings">
+              <h5>Anchor readings</h5>
+              <ul><li>Silberschatz 8e Ch. 13 &sect;13.2</li></ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="rail-item dim">
+          <span class="badge">Lecture 33</span>
+          <span class="badge badge-muted">In progress</span>
+          <div class="rail-body">
+            <h3 class="rail-title">Application I/O interface and the kernel I/O subsystem</h3>
+            <div class="rail-readings">
+              <h5>Anchor readings</h5>
+              <ul><li>Silberschatz 8e Ch. 13 &sect;13.3-13.4</li></ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="rail-item dim">
+          <span class="badge">Lecture 34</span>
+          <span class="badge badge-muted">In progress</span>
+          <div class="rail-body">
+            <h3 class="rail-title">I/O buffering, caching, spooling; transforming I/O; performance</h3>
+            <div class="rail-readings">
+              <h5>Anchor readings</h5>
+              <ul><li>Silberschatz 8e Ch. 13 &sect;13.4, &sect;13.7</li></ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="rail-item dim">
+          <span class="badge">Lecture 35</span>
+          <span class="badge badge-muted">In progress</span>
+          <div class="rail-body">
+            <h3 class="rail-title">Disk structure, attachment, and performance (seek/rotational/transfer)</h3>
+            <div class="rail-readings">
+              <h5>Anchor readings</h5>
+              <ul><li>Silberschatz 8e Ch. 12 &sect;12.1-12.3</li></ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="rail-item dim">
+          <span class="badge">Lecture 36</span>
+          <span class="badge badge-muted">In progress</span>
+          <div class="rail-body">
+            <h3 class="rail-title">Disk scheduling: FCFS, SSTF, SCAN</h3>
+            <div class="rail-readings">
+              <h5>Anchor readings</h5>
+              <ul><li>Silberschatz 8e Ch. 12 &sect;12.4</li></ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="rail-item dim">
+          <span class="badge">Lecture 37</span>
+          <span class="badge badge-muted">In progress</span>
+          <div class="rail-body">
+            <h3 class="rail-title">Disk scheduling: C-SCAN, LOOK, C-LOOK; disk management; RAID overview</h3>
+            <div class="rail-readings">
+              <h5>Anchor readings</h5>
+              <ul><li>Silberschatz 8e Ch. 12 &sect;12.4-12.7</li></ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="rail-item dim">
+          <span class="badge">Lecture 38</span>
+          <span class="badge badge-muted">In progress</span>
+          <div class="rail-body">
+            <h3 class="rail-title">File concept, file attributes/operations, access methods</h3>
+            <div class="rail-readings">
+              <h5>Anchor readings</h5>
+              <ul><li>Silberschatz 8e Ch. 10 &sect;10.1-10.2</li></ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="rail-item dim">
+          <span class="badge">Lecture 39</span>
+          <span class="badge badge-muted">In progress</span>
+          <div class="rail-body">
+            <h3 class="rail-title">File directories and disk structure; file-system mounting</h3>
+            <div class="rail-readings">
+              <h5>Anchor readings</h5>
+              <ul><li>Silberschatz 8e Ch. 10 &sect;10.3-10.4</li></ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="rail-item dim">
+          <span class="badge">Lecture 40</span>
+          <span class="badge badge-muted">In progress</span>
+          <div class="rail-body">
+            <h3 class="rail-title">File sharing, protection, and file-system implementation (FCB/inode, allocation, free space)</h3>
+            <div class="rail-readings">
+              <h5>Anchor readings</h5>
+              <ul><li>Silberschatz 8e Ch. 10 &sect;10.5-10.6, Ch. 11 &sect;11.1-11.4</li></ul>
+            </div>
+          </div>
+        </div>
+
+      </div>
+<!-- publish-course-hub:rail:end -->
+    </section>
+
+    <!-- ================= VIDEO EXPLAINERS ================= -->
+    <section id="videos" class="section">
+      <div class="section-head">
+        <p class="section-eyebrow">&sect; 02 &middot; Watch &amp; review</p>
+        <h2 class="section-title">Video explainers</h2>
+      </div>
+      <p class="prose" style="max-width:76ch">Short explainer videos attached to individual lectures, complementing the slides and notes. Recommended channels to draw from are listed below; specific lecture-level links are added to the registry <code>syllabi/CS502.videos.yaml</code> as they are verified.</p>
+      <!-- publish-course-hub:videos:start -->
+      <div class="table-card">
+        <table>
+          <thead>
+            <tr><th>Source</th><th>Best for</th><th>Open</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Neso Academy &mdash; Operating Systems</td>
+              <td>Topic-by-topic series; maps onto the 40 lectures</td>
+              <td><a href="https://www.youtube.com/results?search_query=neso+academy+operating+systems" target="_blank" rel="noopener">Search &rarr;</a></td>
+            </tr>
+            <tr>
+              <td>Gate Smashers &mdash; Operating System</td>
+              <td>GATE-oriented; exam-pattern connects</td>
+              <td><a href="https://www.youtube.com/results?search_query=gate+smashers+operating+system" target="_blank" rel="noopener">Search &rarr;</a></td>
+            </tr>
+            <tr>
+              <td>NPTEL &mdash; Introduction to Operating Systems (IIT Madras)</td>
+              <td>University-grade depth for Units II&ndash;IV</td>
+              <td><a href="https://www.youtube.com/results?search_query=nptel+introduction+to+operating+systems" target="_blank" rel="noopener">Search &rarr;</a></td>
+            </tr>
+            <tr>
+              <td>NPTEL &mdash; Operating System Fundamentals (IIT Kharagpur)</td>
+              <td>Scheduling, synchronization, memory management</td>
+              <td><a href="https://www.youtube.com/results?search_query=nptel+operating+system+fundamentals" target="_blank" rel="noopener">Search &rarr;</a></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+<!-- publish-course-hub:videos:end -->
+    </section>
+
+    <!-- ================= ASSIGNMENTS ================= -->
+    <section id="assignments" class="section">
+      <div class="section-head">
+        <p class="section-eyebrow">&sect; 03 &middot; Problem sets</p>
+        <h2 class="section-title">Assignments</h2>
+      </div>
+      <!-- publish-course-hub:assignments-table:start -->
+      <div class="table-card">
+        <table>
+          <thead>
+            <tr><th>Lecture</th><th>Topic</th><th>Assignment</th><th>Submit</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="badge">1</span></td>
+              <td>Introduction: OS views, user/kernel boundary, protection, structure, system calls</td>
+              <td><a href="../../assignments/CS502/01-intro-os-structure-assignment.pdf" target="_blank" rel="noopener">01-intro-os-structure</a></td>
+              <td><a class="btn-sm ghost" href="#submit">Submit &uarr;</a></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+<!-- publish-course-hub:assignments-table:end -->
+      <p class="text-muted" style="font-size:.9rem">Solution keys are never published &mdash; contact the instructor if you need a worked set.</p>
+    </section>
+
+    <!-- ================= SUBMIT WORK ================= -->
+    <!-- Hand-owned section: NOT regenerated by /publish-course-hub. -->
+    <section id="submit" class="section">
+      <div class="section-head">
+        <p class="section-eyebrow">&sect; 04 &middot; Hand in your work</p>
+        <h2 class="section-title">Submit an assignment</h2>
+      </div>
+      <div class="prose">
+        <p>Assignments are submitted through the course submission form. Type the assignment name exactly as shown in the table above (for example <code>01-intro-os-structure</code>), attach your file, and submit. Your submission is timestamped automatically.</p>
+        <p><strong>Before you submit:</strong> name your file <code>&lt;roll&gt;_CS502_W&lt;NN&gt;.pdf</code> (for example <code>21BCS045_CS502_W01.pdf</code>) so it is identifiable. Written work should be a single PDF.</p>
+        <p class="text-muted" style="font-size:.9rem">There is no automatic late penalty &mdash; if you need more time, ask before the deadline and an extension will be granted. Any AI assistance must be cited, per the course AI-use policy.</p>
+        <p class="text-muted" style="font-size:.9rem"><em>Instructor note:</em> add the course submission-form link here once the form is created.</p>
+      </div>
+    </section>
+
+    <!-- ================= COMPETITIVE EXAM PRACTICE ================= -->
+    <section id="practice" class="section">
+      <div class="section-head">
+        <p class="section-eyebrow">&sect; 05 &middot; GATE &amp; competitive practice</p>
+        <h2 class="section-title">Competitive exam practice</h2>
+      </div>
+      <p class="prose" style="max-width:76ch">Lecture-by-lecture GATE CS practice sets built for this course. Attempt a set <em>after</em> the corresponding lecture, then check the answers.</p>
+      <!-- publish-course-hub:practice-table:start -->
+      <div class="table-card">
+        <table>
+          <thead>
+            <tr><th>Lecture</th><th>Set</th><th>Questions</th><th>Answers</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="badge">1</span></td>
+              <td>Introduction to Operating Systems</td>
+              <td><a href="../../competitive-exam/CS502/01-intro-os-structure-questions.pdf" target="_blank" rel="noopener">01-questions</a></td>
+              <td><a href="../../competitive-exam/CS502/01-intro-os-structure-answers.pdf" target="_blank" rel="noopener">01-answers</a></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+<!-- publish-course-hub:practice-table:end -->
+      <p class="text-muted" style="font-size:.9rem">Sets for lectures 2&ndash;15 will appear here as they are published. All questions are original GATE-pattern items; the repository holds no verified GATE OS past-year source.</p>
+    </section>
+
+    <!-- ================= ASSESSMENT ================= -->
+    <section id="assessment" class="section">
+      <div class="section-head">
+        <p class="section-eyebrow">&sect; 06 &middot; Evaluation</p>
+        <h2 class="section-title">Assessment</h2>
+      </div>
+      <div class="table-card">
+        <table>
+          <thead>
+            <tr><th>Component</th><th class="num">Weight</th><th>Maps to objectives</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Class Tests 1&ndash;3 (internal theory)</td><td class="num">Internal Theory-50</td><td>All Unit I&ndash;III objectives</td></tr>
+            <tr><td>Assignments 1&ndash;4 (internal, continuous)</td><td class="num">included in internal theory</td><td>All objectives, applied practice</td></tr>
+            <tr><td>External (end-semester) exam</td><td class="num">100 marks</td><td>All course objectives, cumulative</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="text-muted" style="font-size:.9rem">Figures mirror the source scheme (PCC CS-502, p. 69 of 142); reconcile the exact internal/external weighting with the department's policy.</p>
+    </section>
+
+    <!-- ================= REPOSITORY ================= -->
+    <section class="section">
+      <div class="section-head">
+        <p class="section-eyebrow">&sect; 07 &middot; Colophon</p>
+        <h2 class="section-title">Repository layout</h2>
+      </div>
+      <div class="card">
+        <p>For each lecture the single source of truth is the Beamer deck (<code>Slides/CS502/&lt;lecture&gt;.tex</code>); derived materials &mdash; prose <em>Notes</em>, graded <em>Assignments</em>, <em>Instructor Handouts</em>, and <em>CompetitiveExam</em> GATE practice sets &mdash; mirror the same numbering. Video explainers are declared in <code>syllabi/CS502.videos.yaml</code>.</p>
+        <p>Source: <a href="https://github.com/AUQIB92/claude-code-my-workflow">github.com/AUQIB92/claude-code-my-workflow</a>.</p>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ================= FOOTER ================= -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <p class="footer-wordmark">CS-502 &middot; Operating Systems</p>
+          <p class="footer-tagline">Open course materials from Dr. Auqib Hamid Lone, GCET Kashmir. Published via GitHub Pages from the <code>docs/</code> folder.</p>
+        </div>
+        <div>
+          <p class="footer-heading">This course</p>
+          <ul class="footer-nav">
+            <li><a href="#lectures">Lectures</a></li>
+            <li><a href="#videos">Video explainers</a></li>
+            <li><a href="#assignments">Assignments</a></li>
+            <li><a href="#submit">Submit an assignment</a></li>
+            <li><a href="#practice">Competitive exam practice</a></li>
+            <li><a href="#assessment">Assessment</a></li>
+            <li><a href="../../slides/CS502/">Slide decks</a></li>
+          </ul>
+        </div>
+        <div>
+          <p class="footer-heading">Elsewhere</p>
+          <ul class="footer-nav">
+            <li><a href="../../index.html">Portfolio</a></li>
+            <li><a href="../../CV/Auqib-Hamid-Lone-CV.pdf" target="_blank" rel="noopener">Curriculum vitae</a></li>
+            <li><a href="https://github.com/AUQIB92/claude-code-my-workflow">Source repository</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>&copy; <span id="year"></span> Dr. Auqib Hamid Lone.</p>
+        <p>Slides compiled from Beamer source with XeLaTeX.</p>
+      </div>
+    </div>
+  </footer>
+
+  <a class="to-top" href="#" aria-label="Back to top">&uarr;</a>
+
+  <script>
+    document.getElementById('year').textContent = new Date().getFullYear();
+
+    // Mobile menu
+    const toggle = document.getElementById('menuToggle');
+    const links = document.getElementById('navLinks');
+    toggle.addEventListener('click', () => {
+      const open = links.classList.toggle('active');
+      toggle.classList.toggle('active', open);
+      toggle.setAttribute('aria-expanded', open);
+      document.body.classList.toggle('menu-open', open);
+    });
+    links.querySelectorAll('a').forEach(a => a.addEventListener('click', () => {
+      links.classList.remove('active');
+      toggle.classList.remove('active');
+      toggle.setAttribute('aria-expanded', 'false');
+      document.body.classList.remove('menu-open');
+    }));
+
+    // Navbar shadow, reading progress, back-to-top
+    const nav = document.getElementById('topnav');
+    const progress = document.getElementById('navProgress');
+    const totop = document.querySelector('.to-top');
+    addEventListener('scroll', () => {
+      nav.classList.toggle('scrolled', scrollY > 8);
+      totop.classList.toggle('visible', scrollY > 520);
+      const max = document.documentElement.scrollHeight - innerHeight;
+      progress.style.transform = 'scaleX(' + (max > 0 ? Math.min(scrollY / max, 1) : 0) + ')';
+    }, { passive: true });
+    totop.addEventListener('click', (e) => { e.preventDefault(); scrollTo({ top: 0, behavior: 'smooth' }); });
+
+    // Animate the progress ribbon when it enters view
+    const fill = document.querySelector('.ribbon .fill');
+    if (fill) {
+      const io = new IntersectionObserver((entries) => {
+        entries.forEach(e => {
+          if (e.isIntersecting) { fill.style.width = fill.dataset.fill + '%'; io.unobserve(e.target); }
+        });
+      }, { threshold: 0.4 });
+      io.observe(fill.closest('.ribbon'));
+    }
+  </script>
+
+  <!-- Cloudflare Web Analytics -->
+  <script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "a1fe2658b43b4757be5204e3c4812746"}'></script>
+  <!-- End Cloudflare Web Analytics -->
+
+  <!-- GoatCounter Analytics -->
+  <script data-goatcounter="https://academic-workflow.goatcounter.com/count"
+          async src="//gc.zgo.at/count.js"></script>
+  <!-- End GoatCounter Analytics -->
+
+</body>
+</html>
