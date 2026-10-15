@@ -1,0 +1,86 @@
+% =============================================================================
+% CompetitiveExam/CS301/08-searching-elementary-sorting-answers.tex
+% Answer key for 08-searching-elementary-sorting-questions.tex.
+%
+% Real GATE PYQs (Q1--Q5) are sourced from the local GATEOverflow Volume 2 PYQ
+% book (CompetitiveExam/Books/index.md, Tier-1): Searching cluster PDF pp.94-96,
+% Selection Sort p.96-97, Sorting pp.99-102, Insertion Sort p.68. The book's Answer
+% Keys section (assumed collapsed by the registry) is in fact recoverable via
+% pdftotext from PDF pp.114-116 and gives:
+%   1.37.2  (1996 Q2.13)   = C   (its own option order)
+%   1.37.4  (2008 Q84)     = C
+%   1.40.12 (2006 Q14)     = C
+%   1.40.16 (2021 Set 1)   = C
+%   1.40.8  (1999 Q1.12)   = B
+% Independent web corroboration obtained this session (inline CoVe; no forked
+% claim-verifier Task tool exists in this environment):
+%   - Q1 GeeksforGeeks GATE-CS-1996 Q38 page: all four options; GATEOverflow
+%        online answer and EduRev confirm the value (n+1)/2.
+%   - Q2 Electrical4u GATE-CS-2008 page: identical code + all four options +
+%        "Answer: (C)"; GeeksforGeeks GATE-CS-2008 and gateoverflow.in/394 agree.
+%   - Q3 GeeksforGeeks "DSA Set 7" (explicit "(GATE CS 2006) ... Answer (C)");
+%        Testbook and Electrical4u agree.
+%   - Q4 GeeksforGeeks GATE-CS-2021-Set-1 page (all four options); the array
+%        [23,32,45,69,72,73,89,97] and the Insertion-sort answer are given by
+%        the GATEOverflow online explanation and a YouTube walkthrough.
+%   - Q5 GeeksforGeeks GATE-CS-1999 Q12 page: all four options verbatim;
+%        solutionsadda agrees.
+% Original questions (Q6--Q10) are the deck's own algorithms; each answer was
+% independently re-derived this session (traces below), none copying the concrete
+% values used by the deck, Notes, or the Week 8 exercises.
+%
+% Re-derivation log (2026-10-15):
+%   Q1  sum_{i=1..n} i / n = n(n+1)/2 / n = (n+1)/2.                              PASS
+%   Q2  all-2 array with x>2: i sticks, k repeats, (Y[k]!=x)&&(i<j) stays true
+%       -> infinite loop; (A),(B),(D) each terminate correctly.                  PASS
+%   Q3  selection sort performs exactly n-1 swaps (minimum among the four).      PASS
+%   Q4  ascending input: insertion = 7 comparisons (best case); merge ~ n log n;
+%       selection n(n-1)/2; last-pivot quicksort Theta(n^2). Min = insertion.    PASS
+%   Q5  stability = equal keys keep their original relative order.               PASS
+%   Q6  isqrt(90): 9^2 = 81 <= 90 < 100 = 10^2 -> 9.                             PASS
+%   Q7  first "book", last "bough": agree on b,o; differ at o vs u -> "bo".      PASS
+%   Q8  pass over [4,1,5,2,8]: swap(4,1)->[1,4,..]; (4,5) ok; swap(5,2)->[1,4,2,5,8];
+%       (5,8) ok. -> [1,4,2,5,8], 2 swaps.                                       PASS
+%   Q9  counting sort: Theta(n+k) time, stable (reverse scatter), Theta(n+k)
+%       auxiliary -> not in-place.                                               PASS
+%   Q10 sorted 6-element input: one false A[j]>key test per outer iteration,
+%       i = 1..5 -> 5 = n-1 comparisons.                                         PASS
+% =============================================================================
+
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\input{../../Preambles/header}
+\coursecode{CS301}
+\renewcommand{\thesection}{8.\arabic{section}}
+
+\title{Competitive Exam Practice 8 --- Answer Key\\\large Searching and the Elementary Sorts}
+\author{Auqib Hamid Lone\\[0.3em]
+  \emph{Department of Computer Science \& Engineering}, \emph{GCET Ganderbal}}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{enumerate}
+\item[\textbf{Q1}] \textbf{(D) $(n+1)/2$.} A successful search is equally likely to find the key in any of the $n$ positions; reaching position $i$ costs $i$ comparisons, so the average is $\frac{1}{n}(1+2+\dots+n) = \frac{n(n+1)/2}{n} = \frac{n+1}{2}$. The local book's answer key lists this as option C under its own option ordering; the value $(n+1)/2$ is the authenticated answer (GATEOverflow; GfG options).
+
+\item[\textbf{Q2}] \textbf{(C)} $Y = [2\ 2\ 2\ 2\ 2\ 2\ 2\ 2\ 2\ 2]$ and $x > 2$. With every $Y[k]=2<x$, the branch \texttt{i = k} keeps \texttt{i} fixed at the same \texttt{k} while \texttt{j} stays $9$; once \texttt{i} reaches $8$, \texttt{k} computes to $8$ again, so \texttt{(Y[k]!=x) \&\& (i<j)} stays true and the loop never terminates --- an infinite loop (the program "fails"). For (A), (B), (D) the search either hits $x$ or drains the range and prints a correct answer; e.g.\ (D) with $x=8$ reaches \texttt{Y[3] = 8} directly. (Local book key 1.37.4 = C; Electrical4u/GfG agree.)
+
+\item[\textbf{Q3}] \textbf{(C) Selection sort.} Selection sort makes exactly $n-1$ swaps in total (one per outer iteration), the minimum of any of the four in-place sorts; quick, insertion, and heap sort can each perform $\Theta(n^2)$ moves/swaps in the worst case. (Local book key 1.40.12 = C; GfG "DSA Set 7" answer (C).)
+
+\item[\textbf{Q4}] \textbf{(C) Insertion sort.} The array $[23,32,45,69,72,73,89,97]$ is already sorted in ascending order, which is insertion sort's best case: it makes one comparison per element for a total of $n-1 = 7$ comparisons and no shifts. Mergesort is $\Theta(n\log n)$ ($\approx 24$ comparisons); selection sort is always $n(n-1)/2 = 28$; quicksort with the last element as pivot degrades to $\Theta(n^2)$ on sorted input. So insertion sort uses the fewest. (Local book key 1.40.16 = C.)
+
+\item[\textbf{Q5}] \textbf{(B) It maintains the relative order of occurrence of non-distinct elements.} A sort is \key{stable} exactly when equal keys retain their original relative order; asymptotic time, use of divide-and-conquer, and space usage are separate properties and do not define stability. (Local book key 1.40.8 = B; GfG options verbatim.)
+
+\item[\textbf{Q6}] \textbf{$9$.} The predicate $P(k) = (k^2 \le 90)$ is true up to $k = 9$ ($9^2 = 81 \le 90$) and false from $k = 10$ ($10^2 = 100 > 90$). Binary search on the answer space $0..90$ returns the largest feasible $k$, i.e.\ $\lfloor\sqrt{90}\rfloor = 9$. (One probe: \texttt{mid}$=45$ false; $22$ false; $10$ false; $4$ true; $7$ true; $8$ true; $9$ true $\to$ answer $9$.) Verified.
+
+\item[\textbf{Q7}] \textbf{(A) ``bo'' (length $2$).} In sorted order the set is ``book'' $<$ ``boot'' $<$ ``bough''. The LCP of the whole set equals the LCP of the first and last strings, ``book'' and ``bough'': they agree on `b' and `o' and first disagree at position $2$ (`o' vs `u'), so the LCP is ``bo'', length $2$. Verified.
+
+\item[\textbf{Q8}] \textbf{(A) $[1,\ 4,\ 2,\ 5,\ 8]$ with $2$ swaps.} One left-to-right pass compares the adjacent pairs $(4,1)$, $(4,5)$, $(5,2)$, $(5,8)$: $(4,1)$ swaps $\to [1,4,5,2,8]$; $(4,5)$ is in order; $(5,2)$ swaps $\to [1,4,2,5,8]$; $(5,8)$ is in order. Result $[1,4,2,5,8]$ after exactly $2$ swaps. Verified.
+
+\item[\textbf{Q9}] \textbf{(B).} Counting sort is \emph{not} a comparison sort; it tallies keys, forms prefix sums, and scatters in $\Theta(n+k)$ time, stable thanks to the reverse scatter, but it needs a $\Theta(k)$ tally plus a $\Theta(n)$ output buffer, so it is \good{stable} yet \bad{not in-place}. (A) contradicts both its non-comparison nature and its linear time; (C) is false on both counts; (D) is false --- a huge key range blows up the tally array. Verified against the deck's Bill table.
+
+\item[\textbf{Q10}] \textbf{$5$.} On an already-ascending array the inner loop test \texttt{A[j] > key} is evaluated once per outer iteration and is immediately false (so $j$ drops below $0$ and the loop stops). The outer loop runs for $i = 1,2,3,4,5$, giving $n-1 = 5$ comparisons in total --- insertion sort's adaptive best case. Verified.
+\end{enumerate}
+
+\end{document}

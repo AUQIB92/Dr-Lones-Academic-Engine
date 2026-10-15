@@ -1,6 +1,6 @@
 course: CS301
 lab_mode: coding-assignment   # P1-P13 C programming practicals map to weeks -> /coding-assignment
-last_updated: 2026-10-03
+last_updated: 2026-10-15
 weeks:
   "00":
     deck: "00-course-motivation-overview"
@@ -77,11 +77,12 @@ weeks:
   "08":
     deck: "08-searching-elementary-sorting"
     stages:
-      slides:     { status: absent, score: null, note: "" }
-      notes:      { status: absent, score: null, note: "" }
-      assignment: { status: absent, score: null, note: "" }
-      lab:        { status: absent, score: null, note: "instructor-supplied (binary search and variants)" }
-      gate:       { status: absent, score: null, note: "" }
+      slides:     { status: deployed, score: 100, note: "52 pp; 3-pass XeLaTeX clean, 0 errors/overfull/undefined; 8 TikZ; quality_score 100/100; published to docs/slides/CS301/" }
+      notes:      { status: deployed, score: null, note: "qa-notes manual-fallback parity PASS (no subagent tool); 15 pp; cites 5/5, TikZ 8/8 verbatim; fixed the deck's Unsorted-Array answer-key erratum in deck+notes and recompiled both; published to docs/notes/CS301/" }
+      assignment: { status: deployed, score: null, note: "6 problems (2C/2N/2D, fresh instances); solutions key present (gitignored); mechanical verification PASS per problem; published to docs/assignments/CS301/ (solutions excluded)" }
+      lab:        { status: deployed, score: null, note: "coding-assignment (binary search + lower/upper-bound + isqrt variants); gcc -Werror clean; visible 34/34, hidden 1374/1374 PASS; verify-algorithm CONFIRMED O(log n)/O(1); deck isqrt (long)->(long long) portability fix applied to deck+notes; write-up published to docs/assignments/CS301/" }
+      gate:       { status: deployed, score: null, note: "10Q (5 CoVe-verified PYQ: GATE 1996/2008/2006/2021-S1/1999 + 5 original); all answers independently re-derived; published to docs/competitive-exam/CS301/" }
+      hub:        { status: deployed, score: null, note: "docs/courses/cs301/index.html regenerated: 8/12 published; tag-balance + link-resolution PASS (0 broken)" }
       quarto:     { status: absent, score: null, note: "" }
   "09":
     deck: "09-efficient-sorting"

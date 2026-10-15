@@ -1,0 +1,106 @@
+% =============================================================================
+% Assignments/CS301/08-searching-elementary-sorting-assignment.tex
+% Assignment 8 (Week 8): Searching & the Elementary Sorts
+%
+% Student set — NO answers. Solution key:
+% 08-searching-elementary-sorting-solutions.tex (gitignored via
+% **/*-solutions.tex, never deployed). Sourced from
+% Slides/CS301/08-searching-elementary-sorting.tex and
+% Notes/CS301/08-searching-elementary-sorting-notes.tex.
+%
+% Fresh instances throughout: no problem re-asks a deck/notes worked example
+% verbatim. Deck/notes instances avoided: linear search of [7,3,9,1,5,8];
+% bsearch on [7,3,9,1,5,8]; isqrt(27) and isqrt(50); LCP{"flight","flow",
+% "flower"}; insertion/selection/bubble trace [5,2,4,6,1,3]; counting sort
+% [4,2,2,5,3,3,1] and notes exercise [2,0,3,2,1,3,0]; stability [(A,2),(B,1),
+% (C,2)] and [3,1,3,2]; notes insertion exercise [4,2,5,1,3].
+% This set instead uses: Q3 linear search [11,4,17,9,2,14,6]; bsearch on
+% [2,5,8,11,14,17,20,23]; isqrt(40). Q4 counting sort [3,0,2,3,1,0,3,2] and
+% insertion sort [6,3,8,2,7,1]. Q5 upperBound on [1,3,3,3,5,7,7,9]. Q6
+% reportRepeats on [2,0,2,1,3,0,2] — all new.
+%
+% Compile with (Windows/MiKTeX, ';'-joined TEXINPUTS): cd Assignments/CS301 &&
+%   $env:TEXINPUTS="../../Preambles;"; xelatex -interaction=nonstopmode 08-searching-elementary-sorting-assignment.tex
+%   $env:BIBINPUTS="../..;"; bibtex 08-searching-elementary-sorting-assignment
+%   $env:TEXINPUTS="../../Preambles;"; xelatex -interaction=nonstopmode 08-searching-elementary-sorting-assignment.tex (x2)
+%   (Windows/MiKTeX uses ; not : as the path separator)
+% =============================================================================
+
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\input{../../Preambles/header}
+\coursecode{CS301}
+\renewcommand{\thesection}{8.\arabic{section}}
+
+% Emergency stretch so long \texttt{} tokens in prose do not spill past the
+% margin (no content change) --- same measure as the Week 8 Notes chapter.
+\setlength{\emergencystretch}{2.5em}
+
+\title{Assignment 8 (Week 8): Searching \& the Elementary Sorts}
+\author{Auqib Hamid Lone\\[0.3em]
+  \emph{Department of Computer Science \& Engineering}, \emph{GCET Ganderbal}}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\noindent\textbf{Due:} two weeks from issue. There is no automatic late penalty --- if you need more time, ask before the deadline and an extension will be granted (see the course policy in the syllabus).
+
+\noindent Answer every question. Show all working for Numerical and Design questions. Each problem states its own assumptions; everything you need is in Week~8's Notes chapter alone. Notation matches the lecture exactly: \texttt{search(A, n, key)} returns an index $i$ with \texttt{A[i] == key}, or $-1$ on a miss; arrays are 0-based and written $A[0..n-1]$; \texttt{lo}, \texttt{hi}, \texttt{mid} are the current search bounds; \key{sorted} means nondecreasing, $A[0] \le A[1] \le \dots \le A[n-1]$; a sort is \key{stable} if equal keys keep their original relative order and \key{in-place} if it uses $O(1)$ auxiliary space; counting sort assumes keys lie in a known range $0..k-1$. For every bound, name the operation, give the bound, and state the case (Week~2 shape).
+
+\section{Conceptual}
+
+\textbf{Q1.} A search is either a walk or a halving, and which one you get was decided the moment the data was ordered (Karumanchi Ch.~11, pp.547--589 PDF; Wirth Sec.~1.9.1, p.~34; Sec.~1.9.2, pp.34--36) \cite{Karumanchi2017_data_structures_algorithms_made_easy,Wirth2004_algorithms_data_structures}.
+\begin{enumerate}
+  \item[(a)] State the contract of \texttt{search(A, n, key)}: what it returns on a hit and on a miss. Then name the one assumption \key{linear search} makes and the precondition \key{binary search} \emph{requires}. In one sentence, say precisely what binary search does when that precondition is \emph{violated} --- does it crash, or return a plausible wrong answer?
+  \item[(b)] Give linear search's best-, worst-, and average-case comparison counts, naming the case each time. Then explain in one sentence why no additional assumption about \emph{order} can lower its worst case.
+  \item[(c)] Write the worst-case recurrence $T(n)$ for binary search on a range of size $n$, stating its base case, and unroll it to show the result is $\Theta(\log n)$. Name the case, and contrast it with linear search's worst case.
+\end{enumerate}
+Why this matters: the precondition is the whole story of this week --- this question makes you state it as a contract, not a hint, so that ``sort first'' becomes a decision and not an afterthought.
+
+\textbf{Q2.} This week's vocabulary decides real choices: two sorts can produce the \emph{same} sorted keys and still be different algorithms (Karumanchi Ch.~10, pp.504--546 PDF; Sedgewick Sec.~2.1, p.~244) \cite{Karumanchi2017_data_structures_algorithms_made_easy,Sedgewick2011_algorithms}.
+\begin{enumerate}
+  \item[(a)] Define \key{stable} and \key{in-place}. For each of insertion, selection, bubble, and counting sort, state whether it is stable and whether it is in-place (a four-row table is fine).
+  \item[(b)] A file holds the records $[(P,4),\ (Q,2),\ (R,4)]$, where the label letter is a tie-breaker and the number is the sort key. Give the output a \emph{stable} sort produces and one output an \emph{unstable} sort may produce, then name which of the four sorts above could produce the unstable order.
+  \item[(c)] For each workload, name the single elementary sort that fits best and justify it in one sentence: (i) an array that is already almost sorted; (ii) $n$ keys drawn from a small fixed range $0..k-1$ with $k \ll n$; (iii) an array whose elements are huge records, where moving one element costs far more than comparing two.
+\end{enumerate}
+Why this matters: ``which sort?'' is a workload question, not a ranking --- this question forces you to read the input's structure and state the choice, which is the skill the week actually tests.
+
+\section{Numerical}
+
+\textbf{Q3.} Trace the two searches on concrete inputs, then use the monotone-predicate pattern the lecture builds for the integer square root (Karumanchi Ch.~11, pp.547--589 PDF; Wirth Sec.~1.9.1, p.~34; Sec.~1.9.2, pp.34--36) \cite{Karumanchi2017_data_structures_algorithms_made_easy,Wirth2004_algorithms_data_structures}.
+\begin{enumerate}
+  \item[(a)] The unsorted array is \texttt{[11, 4, 17, 9, 2, 14, 6]} ($n = 7$). Run \texttt{lsearch} for \texttt{key = 14}: give the comparison count and the returned value. Then run it for \texttt{key = 8}: give the comparison count and the returned value.
+  \item[(b)] The array \texttt{[2, 5, 8, 11, 14, 17, 20, 23]} ($n = 8$) is sorted, so \texttt{bsearch} is admissible. Trace \texttt{bsearch} for \texttt{key = 5}: write \texttt{lo}, \texttt{hi}, and \texttt{mid} at every iteration, give the comparison count, and give the returned value. Then do the same trace for \texttt{key = 13} (absent).
+  \item[(c)] Using the lecture's \texttt{isqrt} (binary search on the predicate $P(k) = (k^2 \le n)$ over the answer space $0..n$), compute $\lfloor \sqrt{40} \rfloor$ with integer arithmetic only. Tabulate $P(k)$ for $k = 0,\dots,7$, give the true$\to$false boundary, and give the returned value.
+\end{enumerate}
+Why this matters: a trace is the proof that you know \emph{which} index each comparison lands on --- the same discipline that catches a precondition violation before it returns a wrong answer.
+
+\textbf{Q4.} Two sorts on inputs the lecture never traced (Karumanchi Ch.~10, pp.504--546 PDF; Wirth Sec.~2.2.1, p.~46) \cite{Karumanchi2017_data_structures_algorithms_made_easy,Wirth2004_algorithms_data_structures}.
+\begin{enumerate}
+  \item[(a)] Counting sort the array $A = [3, 0, 2, 3, 1, 0, 3, 2]$ with keys in $0..3$. Give $k$, the tally row (\texttt{count} after counting), the prefix-sum row, and the final sorted array produced by the reverse scatter. In one sentence, say which property the reverse scatter protects and why it is needed.
+  \item[(b)] Insertion sort the array \texttt{[6, 3, 8, 2, 7, 1]}. After \emph{each} outer iteration $i = 1,\dots,5$, write the array, and give the number of shifts performed in that iteration. Finish with the total number of shifts.
+\end{enumerate}
+Why this matters: counting sort is linear only when you respect its range, and insertion sort is adaptive only when you can see \emph{which} element moved --- both facts surface only in a trace.
+
+\section{Design}
+
+\textbf{Q5.} The lecture's \texttt{lowerBound} finds the first index with $A[i] \ge \texttt{key}$ (the upper bound is the same routine with $>$, Karumanchi Ch.~11, pp.547--589 PDF) \cite{Karumanchi2017_data_structures_algorithms_made_easy}. Design the matching \texttt{upperBound} and use the pair to count duplicates --- a lookup the calculator's symbol table needs when it reports repeated declarations.
+\begin{enumerate}
+  \item[(a)] Write pseudocode for \texttt{upperBound(A, n, key)}: the first index $i$ with $A[i] > \texttt{key}$ (and $n$ if every element is $\le \texttt{key}$). Use the same half-open range $[\texttt{lo}, \texttt{hi})$ and candidate-retention structure as \texttt{lowerBound}; state the one comparison that changes from \texttt{lowerBound}.
+  \item[(b)] Explain why the number of occurrences of \texttt{key} in a sorted array is exactly \texttt{upperBound} $-$ \texttt{lowerBound}, and why both routines run in $O(\log n)$. Reference the symbol-table use: a sorted identifier table can report how many times an identifier was declared without scanning it.
+  \item[(c)] Trace \texttt{lowerBound} and \texttt{upperBound} for \texttt{key = 3} on the sorted array $[1, 3, 3, 3, 5, 7, 7, 9]$ ($n = 8$): give \texttt{lo}, \texttt{hi}, \texttt{mid} at each iteration of each routine, the two returned indices, and the occurrence count.
+\end{enumerate}
+Why this matters: the plain binary search returns \emph{some} match; keeping \texttt{mid} as a candidate is what turns it into a boundary finder --- this question extends that one idea to both boundaries and back into the running calculator.
+
+\textbf{Q6.} Sorting does not only feed search: putting equal keys next to each other is how we find duplicates (Karumanchi Ch.~10, pp.504--546 PDF; Horowitz \& Sahni Ch.~7, standard treatment) \cite{Karumanchi2017_data_structures_algorithms_made_easy,HorowitzSahni2008_fundamentals_data_structures}. The tokenizer wants a report of identifier \emph{lengths} that occur more than once.
+\begin{enumerate}
+  \item[(a)] Design \texttt{reportRepeats(A, n, k)} for keys in $0..k-1$ using counting sort's tally phase: pseudocode, then the worst-case time and space bounds with their variables. In one sentence, explain why it never compares two keys.
+  \item[(b)] Trace \texttt{reportRepeats} on $A = [2, 0, 2, 1, 3, 0, 2]$ (keys in $0..3$): give $k$, the tally row, and the list of values that occur more than once.
+  \item[(c)] The tokenizer also wants those identifiers \emph{sorted by length, keeping their first-appearance order within a length}. Explain why a stable scatter is required, state whether counting sort is in-place, and give its space bound.
+\end{enumerate}
+Why this matters: the same tally that makes counting sort linear also answers the duplicates question for free --- this question designs the reuse and prices the stability it depends on.
+
+\bibliography{../../Bibliography_base}
+\bibliographystyle{plain}
+\end{document}

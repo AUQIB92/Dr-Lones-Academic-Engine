@@ -1,0 +1,106 @@
+% =============================================================================
+% Assignments/CS301/08-searching-elementary-sorting-coding-assignment.tex
+% Coding Assignment 8: Binary Search and Its Variants
+% (Week 8, syllabi/CS301.md Week 8 row "instructor-supplied (binary search
+% and variants)")
+%
+% Student-facing problem statement. Instructor-only files live in
+% Assignments/CS301/08-searching-elementary-sorting-coding/:
+%   reference_solution.c  (NEVER published, gitignored)
+%   test_hidden.c         (NEVER published, gitignored)
+%   autograder.sh         (NEVER published, gitignored)
+%   search.h, starter_search.c, test_visible.c  (provided to students)
+%
+% Fresh instances throughout: the deck's own it examples (isqrt(27); searches
+% on [7,3,9,1,5,8] and [1,3,5,7,8,9]; the LCP of {flight,flow,flower}) and the
+% written Assignment 8's instances (lowerBound/upperBound on [1,3,3,3,5,7,7,9]
+% for key 3; isqrt(40); isqrt(50)) are NOT reused. The visible tests here use
+% [4,9,15,15,22,31,47,58] and isqrt of {0,1,2,3,4,15,16,17,26,48,63}.
+%
+% Compile with (Windows/MiKTeX, ';'-joined TEXINPUTS): cd Assignments/CS301 &&
+%   $env:TEXINPUTS="../../Preambles;"; xelatex -interaction=nonstopmode 08-searching-elementary-sorting-coding-assignment.tex
+%   (run xelatex three times; Windows/MiKTeX uses ; not : as the separator)
+% =============================================================================
+
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\input{../../Preambles/header}
+\coursecode{CS301}
+\renewcommand{\thesection}{8.\arabic{section}}
+
+% Emergency stretch so long \texttt{} tokens in prose do not spill the margin.
+\setlength{\emergencystretch}{3em}
+
+\title{Coding Assignment 8: Binary Search and Its Variants}
+\author{Auqib Hamid Lone\\[0.3em]
+  \emph{Department of Computer Science \& Engineering}, \emph{GCET Ganderbal}}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\noindent\textbf{Due:} two weeks from issue. There is no automatic late penalty --- if you need more time, ask before the deadline and an extension will be granted (see the course policy in the syllabus).
+
+\noindent This assignment autogrades Week 8's institute practical on \key{binary search and its variants}. The contract is given to you in \texttt{search.h} --- \emph{do not modify it}. Copy \texttt{starter\_search.c} to \texttt{search.c} and fill in the five functions. The setting is the running calculator: its symbol table is a sorted array of identifier ids, and this module is how the calculator searches it --- the ordinary lookup, the first/last-declaration boundaries that count duplicate declarations, and the integer square root used to size a bucket.
+
+\section{Why this problem}
+
+Week 8's whole argument is that \emph{order} turns an $O(n)$ scan into an $O(\log n)$ probe --- and that binary search is only correct on data that actually is sorted (the deck's failure trace on unsorted input is the warning). The lecture builds the ordinary search, the \texttt{lowerBound}/\texttt{upperBound} boundary finders, and one application where the value searched for is not stored in any array at all: the integer square root, found by binary search on a monotone predicate. This assignment is that material as running code. The one extension beyond the deck's own listings is \texttt{countOccurrences}, which the lecture only names as the identity \texttt{upperBound} $-$ \texttt{lowerBound} --- you implement it and must keep it $O(\log n)$, not a re-scan.
+
+\section{Your task}
+
+Implement the five functions declared in \texttt{search.h}, all operating on a sorted (nondecreasing) table \texttt{A[0..n-1]}, \texttt{n >= 0}:
+
+\begin{verbatim}
+int binarySearch(const int *A, int n, int key);      /* some index, or -1 */
+int lowerBound(const int *A, int n, int key);        /* first A[i] >= key */
+int upperBound(const int *A, int n, int key);        /* first A[i] >  key */
+int countOccurrences(const int *A, int n, int key);  /* count of A[i]==key */
+int isqrtFloor(int n);                               /* floor(sqrt(n)), n>=0 */
+\end{verbatim}
+
+\textbf{The three search routines.} \texttt{binarySearch} is the deck's iterative search: keep an inclusive range \texttt{[lo, hi]}, probe the middle, keep the half that can still contain \texttt{key}, and return \texttt{-1} when the range empties. Compute the midpoint as \texttt{lo + (hi - lo) / 2}, never \texttt{(lo + hi) / 2} --- the lecture's overflow caution. The result is \emph{some} matching index; any valid one is accepted. \texttt{lowerBound} and \texttt{upperBound} use a \emph{half-open} range \texttt{[lo, hi)} with \texttt{hi = n}: to find the \emph{first} qualifying index, keep \texttt{mid} as a candidate (\texttt{hi = mid}) instead of discarding it, and return \texttt{lo} when the range closes. \texttt{countOccurrences} must be exactly \texttt{upperBound} $-$ \texttt{lowerBound}: calling your own two bounds is the intended route, and it must not scan the table.
+
+\textbf{The application.} \texttt{isqrtFloor} returns $\lfloor\sqrt{n}\rfloor$ --- the largest integer $k \ge 0$ with $k^2 \le n$ --- using \emph{integer arithmetic only} (no \texttt{<math.h>}, no floating point, no library \texttt{sqrt}). Search the answer space $0..n$ on the monotone predicate $P(k) = (k^2 \le n)$: when $P(\text{mid})$ is true, record \texttt{mid} and push right; otherwise push left. \emph{Widen before squaring} --- a signed 64-bit type such as \texttt{(long long)mid * mid <= n}. On Windows \texttt{long} is only 32 bits, so the lecture's \texttt{(long)} cast overflows \texttt{mid * mid} for large $n$; the portable form uses \texttt{long long}.
+
+\section{Constraints}
+
+\begin{itemize}
+  \item The table is sorted and read-only; none of the search functions may modify \texttt{A}. The precondition is a \emph{contract} --- binary search on unsorted data is silently wrong, which is why the tests only ever pass sorted tables.
+  \item \texttt{n == 0} is the empty table: \texttt{binarySearch} returns $-1$; \texttt{lowerBound}, \texttt{upperBound}, and \texttt{countOccurrences} return $0$ (and \texttt{A} may be \texttt{NULL} then).
+  \item \texttt{isqrtFloor} requires \texttt{n >= 0} and must not use floating point or a library square root.
+  \item Complexity: all five functions are $O(\log n)$ worst case --- a single halving loop, or (for \texttt{countOccurrences}) two of them --- with $O(1)$ auxiliary space. The tests include a $100{,}000$-element table and \texttt{isqrtFloor(INT\_MAX)}, so a linear scan or a 32-bit squaring overflow will not pass.
+  \item Your code must compile with \texttt{gcc -std=c11 -Wall -Wextra -Werror} without errors or warnings, and must have no global or static mutable state.
+\end{itemize}
+
+\section{Worked examples (these are the visible tests)}
+
+All on the sorted table \texttt{[4, 9, 15, 15, 22, 31, 47, 58]} (\texttt{n = 8}):
+
+\textbf{Example 1 --- ordinary search.} \texttt{binarySearch} for $22$ returns $4$; for $4$ returns $0$; for $58$ returns $7$; for $16$ (absent) returns $-1$; for $100$ (above all) returns $-1$; and on the empty table returns $-1$.
+
+\textbf{Example 2 --- the two bounds and the count.} \texttt{lowerBound(15) = 2} and \texttt{upperBound(15) = 4}, so \texttt{countOccurrences(15) = 2}. A value that is present once gives a one-wide band: \texttt{lowerBound(16) = 4}, \texttt{upperBound(16) = 4}, count $0$ (it is absent). Below and above the whole table: \texttt{lowerBound(1) = 0}, \texttt{upperBound(1) = 0}; \texttt{lowerBound(99) = 8}, \texttt{upperBound(99) = 8}. At the ends: \texttt{lowerBound(4) = 0}, \texttt{upperBound(4) = 1}; \texttt{lowerBound(58) = 7}, \texttt{upperBound(58) = 8}.
+
+\textbf{Example 3 --- integer square root.} $\lfloor\sqrt{0}\rfloor = 0$, $\lfloor\sqrt{1}\rfloor = 1$, $\lfloor\sqrt{2}\rfloor = 1$, $\lfloor\sqrt{3}\rfloor = 1$, $\lfloor\sqrt{4}\rfloor = 2$; $\lfloor\sqrt{15}\rfloor = 3$ (the last $k$ with $k^2 \le 15$ is $3$, since $9 \le 15 < 16$); $\lfloor\sqrt{16}\rfloor = 4$ and $\lfloor\sqrt{17}\rfloor = 4$; $\lfloor\sqrt{26}\rfloor = 5$; $\lfloor\sqrt{48}\rfloor = 6$; $\lfloor\sqrt{63}\rfloor = 7$.
+
+\section{What to submit}
+
+\begin{enumerate}
+  \item \texttt{search.c} --- your completed implementation (edit \texttt{starter\_search.c}).
+  \item \texttt{search.h} --- unchanged, included so the submission compiles standalone.
+\end{enumerate}
+
+\section{Getting started}
+
+\begin{enumerate}
+  \item Copy \texttt{starter\_search.c} to \texttt{search.c} and fill in the five function bodies.
+  \item Sanity-check locally:
+\begin{verbatim}
+gcc -std=c11 -Wall -Wextra -Werror -o test_visible test_visible.c search.c
+./test_visible
+\end{verbatim}
+    All three worked examples should pass.
+  \item Submit \texttt{search.c} and \texttt{search.h}. The autograder compiles your \texttt{search.c} against a \emph{hidden} test suite and reports pass/fail. The hidden suite covers: \texttt{binarySearch} on empty/single/two/all-duplicate tables; the target at index $0$ and at the last index; targets absent below, between, and above the range; negative values and the \texttt{INT\_MIN}/\texttt{INT\_MAX} endpoints; a $100{,}000$-element table (the index-arithmetic/overflow class); and seeded random tables where the returned index must be a genuine occurrence. \texttt{lowerBound}/\texttt{upperBound}/\texttt{countOccurrences} on empty/single/all-duplicate/no-duplicate tables, keys below all / above all / between values, negative and \texttt{INT} extremes, with seeds checked against linear oracles and the identity \texttt{count == upper - lower}. \texttt{isqrtFloor} over a full $0..5000$ sweep, every perfect square $k^2$ and each of $k^2-1$ and $k^2+k$ up to $k = 46340$, \texttt{INT\_MAX} and its neighbours (the 32-bit squaring-overflow class), and seeded random arguments checked against a brute-force oracle.
+\end{enumerate}
+
+\end{document}
