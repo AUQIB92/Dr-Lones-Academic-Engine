@@ -1,0 +1,183 @@
+% =============================================================================
+% CompetitiveExam/CS301/08-searching-elementary-sorting-questions.tex
+% Competitive Exam Practice 8 — GATE (Computer Science) Pattern
+% Searching (linear vs binary: contract, unsorted-precondition failure, average
+% sequential-search cost) and the elementary sorts (insertion/selection/bubble/
+% counting), their adaptivity, stability, in-place status, and swap counts; plus
+% binary search on a monotone predicate (integer square root, longest common
+% prefix).
+%
+% Student-facing — NO answers. Answer key: 08-searching-elementary-sorting-answers.tex.
+%
+% Provenance (availability-first, Tier 1 = local PYQ book
+% CompetitiveExam/Books/GATE-PYQs/filter1_volume2.pdf, whose Searching /
+% Selection-Sort / Sorting / Insertion-Sort clusters sit at PDF pp.94-102 and
+% whose Answer Keys section is recoverable via pdftotext from PDF p.114-116):
+%   - Q1  [GATE CSE 1996 Q2.13, verified — GATEOverflow V2 p.95] — average
+%     number of key comparisons in a successful sequential (linear) search.
+%     Stem recovered from the local text layer (title 1.37.2); option text is
+%     image-dropped locally, so the four options were recovered from
+%     GeeksforGeeks' GATE-CS-1996 page (log n / (n-1)/2 / n/2 / (n+1)/2) and
+%     the value (n+1)/2 was corroborated by the GATEOverflow online answer and
+%     by EduRev; local book answer key 1.37.2 = C (its own option order).
+%     Answer (D), value (n+1)/2.
+%   - Q2  [GATE CSE 2008 Q84, verified — GATEOverflow V2 p.95] — the erroneous
+%     binary-search C program; "on which contents of Y and x does it fail".
+%     Stem (code) recovered verbatim from the local text layer (title 1.37.4);
+%     all four options and the answer (C) recovered from Electrical4u's
+%     GATE-CS-2008 Q16 page (identical code + options 1-2-3-... / 2 2 2 ... /
+%     even list) and corroborated by GeeksforGeeks' GATE-CS-2008 page and
+%     gateoverflow.in/394; local book answer key 1.37.4 = C. Answer (C).
+%   - Q3  [GATE CSE 2006 Q14, verified — GATEOverflow V2 p.101] — which in-place
+%     sorting algorithm needs the minimum number of swaps. Stem + all four
+%     options recovered from the local text layer (title 1.40.12); answer (C)
+%     (Selection sort) corroborated by GeeksforGeeks' "DSA Set 7" (explicit
+%     "(GATE CS 2006) ... Answer (C)"), Testbook, and Electrical4u; local book
+%     answer key 1.40.12 = C. Answer (C).
+%   - Q4  [GATE CSE 2021 Set 1, verified — GATEOverflow V2 p.102] — array
+%     [23,32,45,69,72,73,89,97], which sort uses the fewest comparisons. Stem
+%     recovered from the local text layer (title 1.40.16); the array (embedded
+%     image locally) recovered from the GATEOverflow online question (answer
+%     explanation) and YouTube walkthrough; all four options recovered from
+%     GeeksforGeeks' GATE-CS-2021-Set-1 page. Answer (C) (Insertion sort);
+%     local book answer key 1.40.16 = C. Answer (C).
+%   - Q5  [GATE CSE 1999 Q1.12, verified — GATEOverflow V2 p.100] — definition
+%     of a stable sorting technique. Stem + all four options recovered from the
+%     local text layer (title 1.40.8); answer (B) corroborated by
+%     GeeksforGeeks' GATE-CS-1999 page (options verbatim) and solutionsadda;
+%     local book answer key 1.40.8 = B. Answer (B).
+%   - Q6-Q10 [Original, GATE-pattern] — fresh instances; none reuses the
+%     concrete values of the deck or the Week 8 Notes exercises (the deck,
+%     Notes, and exercises use 27, 50; flight/flow/flower, 3-1-3-2; 5-2-4-6-1-3;
+%     4-2-2-5-3-3-1 and 2-0-3-2-1-3-0). Every answer was independently
+%     re-derived this session (see the answers file header):
+%       Q6  isqrt(90) by binary search on P(k) = (k^2 <= 90) -> 9. Verified.
+%       Q7  LCP of sorted {"book","boot","bough"} = LCP(first,last) = "bo" (2).
+%       Q8  one bubble pass over [4,1,5,2,8] -> [1,4,2,5,8], 2 swaps.
+%       Q9  counting sort: Theta(n+k) time, stable, not in-place (Theta(n+k)
+%           auxiliary). Verified against the deck's Bill table.
+%       Q10 insertion sort on an already-sorted 6-element array: exactly n-1 = 5
+%           comparisons (the adaptive best case). Verified.
+%
+% Method note (no forked claim-verifier Task tool and no Ghostscript/Tesseract
+% OCR exist in this environment, so the skill's Phase 1b CoVe was executed
+% inline against independent web mirrors): the local Tier-1 book authenticates
+% each real question by year + question number and supplied its own answer key
+% (recovered via pdftotext); every real-PYQ answer was then independently
+% cross-checked against >=1 non-gateoverflow mirror (GeeksforGeeks / Electrical4u
+% / Testbook / EduRev). The 2016-Set-2 sorting candidate in the local Sorting
+% cluster was DROPPED: Electrical4u's GATE-CS-2016-2 page numbering shows Q13 =
+% a vertex-colouring question, so the book's "2016 Set 2 Question 13" labelling
+% could not be reconciled with an independent paper-numbering source, and an
+% unverifiable PYQ is never shipped as authentic.
+%
+% Compile with: cd CompetitiveExam/CS301 &&
+%   TEXINPUTS=../../Preambles;$TEXINPUTS xelatex -interaction=nonstopmode 08-searching-elementary-sorting-questions.tex
+%   (Windows/MiKTeX uses ; not : as the separator)
+% =============================================================================
+
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\input{../../Preambles/header}
+\coursecode{CS301}
+\renewcommand{\thesection}{8.\arabic{section}}
+
+\title{Competitive Exam Practice 8: Searching and the Elementary Sorts\\\large GATE (Computer Science) Pattern}
+\author{Auqib Hamid Lone\\[0.3em]
+  \emph{Department of Computer Science \& Engineering}, \emph{GCET Ganderbal}}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\noindent Each question carries 1--2 marks. MCQ = single correct option; NAT = Numerical Answer Type. Arrays are 0-indexed unless the question states otherwise.
+
+\begin{enumerate}
+\item[\textbf{Q1}] \textit{[GATE CSE 1996 Q2.13, verified --- GATEOverflow V2 p.95]} \textbf{[MCQ, 1 mark]} The average number of key comparisons required for a successful search, for sequential (linear) search on $n$ items, is
+\begin{enumerate}
+  \item[(A)] $\log n$
+  \item[(B)] $(n-1)/2$
+  \item[(C)] $n/2$
+  \item[(D)] $(n+1)/2$
+\end{enumerate}
+
+\item[\textbf{Q2}] \textit{[GATE CSE 2008 Q84, verified --- GATEOverflow V2 p.95]} \textbf{[MCQ, 2 marks]} Consider the following C program that attempts to locate an element $x$ in an array $Y[\;]$ using binary search. The program is erroneous.
+\begin{verbatim}
+f(int Y[10], int x) {
+   int i, j, k;
+   i = 0; j = 9;
+   do {
+      k = (i + j) / 2;
+      if (Y[k] < x) i = k; else j = k;
+   } while ((Y[k] != x) && (i < j));
+   if (Y[k] == x) printf(" x is in the array ");
+   else printf(" x is not in the array ");
+}
+\end{verbatim}
+On which of the following contents of $Y$ and $x$ does the program fail?
+\begin{enumerate}
+  \item[(A)] $Y$ is $[1\ 2\ 3\ 4\ 5\ 6\ 7\ 8\ 9\ 10]$ and $x < 10$
+  \item[(B)] $Y$ is $[1\ 3\ 5\ 7\ 9\ 11\ 13\ 15\ 17\ 19]$ and $x < 1$
+  \item[(C)] $Y$ is $[2\ 2\ 2\ 2\ 2\ 2\ 2\ 2\ 2\ 2]$ and $x > 2$
+  \item[(D)] $Y$ is $[2\ 4\ 6\ 8\ 10\ 12\ 14\ 16\ 18\ 20]$ and $2 < x < 20$ and $x$ is even
+\end{enumerate}
+
+\item[\textbf{Q3}] \textit{[GATE CSE 2006 Q14, verified --- GATEOverflow V2 p.101]} \textbf{[MCQ, 1 mark]} Which one of the following in-place sorting algorithms needs the minimum number of swaps?
+\begin{enumerate}
+  \item[(A)] Quick sort
+  \item[(B)] Insertion sort
+  \item[(C)] Selection sort
+  \item[(D)] Heap sort
+\end{enumerate}
+
+\item[\textbf{Q4}] \textit{[GATE CSE 2021 Set 1, verified --- GATEOverflow V2 p.102]} \textbf{[MCQ, 1 mark]} Consider the following array:
+\[
+[23,\ 32,\ 45,\ 69,\ 72,\ 73,\ 89,\ 97].
+\]
+Which algorithm out of the following options uses the least number of comparisons (among the array elements) to sort the above array in ascending order?
+\begin{enumerate}
+  \item[(A)] Selection sort
+  \item[(B)] Mergesort
+  \item[(C)] Insertion sort
+  \item[(D)] Quicksort using the last element as pivot
+\end{enumerate}
+
+\item[\textbf{Q5}] \textit{[GATE CSE 1999 Q1.12, verified --- GATEOverflow V2 p.100]} \textbf{[MCQ, 1 mark]} A sorting technique is called \key{stable} if
+\begin{enumerate}
+  \item[(A)] it takes $O(n\log n)$ time
+  \item[(B)] it maintains the relative order of occurrence of non-distinct elements
+  \item[(C)] it uses the divide and conquer paradigm
+  \item[(D)] it takes $O(n)$ space
+\end{enumerate}
+
+\item[\textbf{Q6}] \textit{[Original, GATE-pattern]} \textbf{[NAT, 1 mark]} Using the lecture's integer-square-root routine --- binary search on the answer space $0..n$ for the largest $k$ with $k^2 \le n$ --- the value returned for $n = 90$ is \_\_\_\_\_\_\_\_\_. (Answer in integer)
+
+\item[\textbf{Q7}] \textit{[Original, GATE-pattern]} \textbf{[MCQ, 2 marks]} The set of strings $\{\texttt{book},\ \texttt{boot},\ \texttt{bough}\}$ is kept in sorted order. Using the lecture's fact that the longest common prefix (LCP) of a sorted set equals the common prefix of its first and last strings, what is the LCP of the whole set?
+\begin{enumerate}
+  \item[(A)] ``bo'' (length $2$)
+  \item[(B)] ``boo'' (length $3$)
+  \item[(C)] ``b'' (length $1$)
+  \item[(D)] the empty string (length $0$)
+\end{enumerate}
+
+\item[\textbf{Q8}] \textit{[Original, GATE-pattern]} \textbf{[MCQ, 2 marks]} The lecture's bubble sort (left to right, with the \texttt{swapped} early-exit flag) is run on the array $[4,\ 1,\ 5,\ 2,\ 8]$. After the \emph{first} full pass over the array, what is the array, and how many swaps were performed in that pass?
+\begin{enumerate}
+  \item[(A)] $[1,\ 4,\ 2,\ 5,\ 8]$ with $2$ swaps
+  \item[(B)] $[1,\ 2,\ 4,\ 5,\ 8]$ with $3$ swaps
+  \item[(C)] $[1,\ 4,\ 5,\ 2,\ 8]$ with $1$ swap
+  \item[(D)] $[1,\ 4,\ 2,\ 5,\ 8]$ with $3$ swaps
+\end{enumerate}
+
+\item[\textbf{Q9}] \textit{[Original, GATE-pattern]} \textbf{[MCQ, 2 marks]} Consider the lecture's counting sort (tally, prefix sums, then a reverse scatter). Which of the following statements is TRUE?
+\begin{enumerate}
+  \item[(A)] Counting sort is an in-place comparison sort with $\Theta(n^2)$ worst-case time.
+  \item[(B)] Counting sort runs in $\Theta(n+k)$ time and is stable with the reverse scatter, but it uses $\Theta(n+k)$ auxiliary space and is therefore not in-place.
+  \item[(C)] Counting sort is in-place and unstable.
+  \item[(D)] Counting sort sorts keys of any real-valued range in $\Theta(n)$ time.
+\end{enumerate}
+
+\item[\textbf{Q10}] \textit{[Original, GATE-pattern]} \textbf{[NAT, 1 mark]} The lecture's insertion sort is run on the array that is already in ascending order: $[10,\ 20,\ 30,\ 40,\ 50,\ 60]$. Counting every evaluation of the condition \texttt{A[j] > key}, how many comparisons are performed in total? \_\_\_\_\_\_\_\_\_. (Answer in integer)
+
+\end{enumerate}
+
+\end{document}
