@@ -65,6 +65,8 @@ paths:
 | OS | Operating system — the program that manages hardware and provides the environment for programs | **L01** |
 | kernel / user mode | The privileged vs. unprivileged execution modes; a mode bit selects which instructions are legal | **L01 / L03** |
 | trap / interrupt | A software-initiated (system call) vs. hardware-initiated transfer of control to the kernel | **L02** |
+| interrupt vector table | Array of handler addresses indexed by interrupt number; how the CPU dispatches without searching | **L02** |
+| memory hierarchy / cache locality | Registers → cache → RAM → SSD → disk → tape; temporal and spatial locality make caching pay | **L02** |
 | system call | The programmatic request from a user program to a kernel service; the boundary of the OS API | **L04** |
 | mode bit | Hardware bit distinguishing user (`1`) from kernel (`0`) mode | **L03** |
 | PCB | Process Control Block — the kernel's record of a process: state, `PC`, registers, memory limits, open files | **L06** |
@@ -108,8 +110,8 @@ paths:
 | Clock / second-chance / enhanced second-chance / counting | LRU-approximation replacement algorithms | **L29** |
 | working set | The pages a process references in a recent window $\Delta$ | **L30** |
 | thrashing | A process spending more time paging than executing | **L30** |
-| device driver / controller | Kernel module vs. hardware controller that drives a device | **L31** |
-| polling / interrupt-driven I/O / DMA | The three I/O techniques (busy-wait · trap on completion · block transfer without CPU) | **L32** |
+| device driver / controller | Kernel module vs. hardware controller that drives a device | **L02 (controller) / L31 (driver interface)** |
+| polling / interrupt-driven I/O / DMA | The three I/O techniques (busy-wait · trap on completion · block transfer without CPU) | **L02 (concepts) / L32 (in depth)** |
 | buffering / caching / spooling | Kernel I/O-subystem techniques that overlap and smooth I/O | **L34** |
 | seek / rotational latency / transfer time | The three disk-access cost components | **L35** |
 | SSTF / SCAN / C-SCAN | Disk-scheduling algorithms beyond FCFS | **L36 / L37** |

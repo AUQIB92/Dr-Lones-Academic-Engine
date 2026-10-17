@@ -1,6 +1,6 @@
 course: CS502
 lab_mode: none            # source syllabus PCC CS-502 is L-T-P 3-0-0 — no practical component
-last_updated: 2026-10-14
+last_updated: 2026-10-17
 weeks:
   "01":
     deck: "01-intro-os-structure"
@@ -15,13 +15,13 @@ weeks:
   "02":
     deck: "02-computer-system-organization"
     stages:
-      slides:     { status: absent, score: null, note: "" }
-      notes:      { status: absent, score: null, note: "" }
-      assignment: { status: absent, score: null, note: "" }
-      lab:        { status: skipped, score: null, note: "lab_mode: none" }
-      gate:       { status: absent, score: null, note: "" }
-      handout:    { status: absent, score: null, note: "" }
-      hub:        { status: absent, score: null, note: "" }
+      slides:     { status: deployed, score: 100, note: "41 pp incl. 6 transitions; XeLaTeX 3-pass clean; no overfull boxes, no undefined citations; quality score 100/100" }
+      notes:      { status: deployed, score: 100, note: "10 pp; derived from the deck; clean compile; every worked number matches the deck" }
+      assignment: { status: deployed, score: 100, note: "assignment + solutions key present; solutions gitignored and excluded from docs/" }
+      lab:        { status: skipped,  score: null, note: "lab_mode: none (PCC CS-502 is 3-0-0)" }
+      gate:       { status: deployed, score: 100, note: "10 original GATE-pattern questions (5 MCQ, 5 NAT) + worked answers; no unverified PYQ claims" }
+      handout:    { status: built,    score: 100, note: "InstructorHandouts/CS502/02-computer-system-organization-instructor-handout.tex, 14 pp; instructor-only, never deployed to docs/" }
+      hub:        { status: deployed, score: null, note: "docs/courses/cs502/index.html regenerated: 2/40 published; tag-balance + link-resolution PASS" }
   "03":
     deck: "03-os-operations-protection"
     stages:
