@@ -1,0 +1,53 @@
+% =============================================================================
+% CompetitiveExam/CS502/03-system-calls-answers.tex
+% ANSWER KEY — Competitive Exam Practice 3: System Calls
+%
+% Provenance: ALL questions are Original (GATE-pattern); see the questions file.
+% Every answer below has been independently re-derived from
+% Slides/CS502/03-system-calls.tex and Notes/CS502/03-system-calls-notes.tex.
+%
+% Compile with: cd CompetitiveExam/CS502 &&
+%   TEXINPUTS=../../Preambles;$TEXINPUTS xelatex -interaction=nonstopmode 03-system-calls-answers.tex
+% =============================================================================
+
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\input{../../Preambles/header}
+\coursecode{CS502}
+\renewcommand{\thesection}{3.\arabic{section}}
+
+\title{Answer Key --- Competitive Exam Practice 3: System Calls\\\large GATE (Computer Science) Pattern}
+\author{Auqib Hamid Lone\\[0.3em]
+  \emph{Department of Computer Science \& Engineering}, \emph{GCET Ganderbal}}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{enumerate}
+\item[\textbf{Q1}] \textbf{(B).} A library call is a convenience layer, not a trap. \texttt{printf} formats into a user-space buffer and traps only when the buffer is flushed, and a buffered \texttt{fread} may return data without any system call. (A) is false because one library call may issue zero, one, or many system calls; (C) is false because a system call executes in kernel mode; (D) is false because \texttt{printf} is a library function, not a system call.
+
+\item[\textbf{Q2}] \textbf{(B).} The trap carries only a number. The kernel uses it as a direct index into the system-call table, whose entry is a function pointer to the handler --- a lookup, not a name search. The privilege level is changed by the trap before dispatch, not selected by the number, so (D) is false.
+
+\item[\textbf{Q3}] \textbf{(B).} A compiled program contains the system-call \emph{number}, not the service name, so the numbering is part of the application binary interface. Renumbering would make every existing binary request the wrong handler. New calls are therefore appended and old numbers are preserved. The trap number width (C) and the argument convention (D) are unrelated constraints.
+
+\item[\textbf{Q4}] \textbf{(B).} Register passing is bounded by the number of argument registers: six values fit, nine do not, and they cannot be ``packed'' into six registers without losing information. The block method stores all nine arguments contiguously and passes one address; the kernel copies the block and validates every field (including that the whole block lies in user memory). The stack is also viable in principle, but (C) is false because the kernel must still read and copy the arguments from the user stack.
+
+\item[\textbf{Q5}] \textbf{(B).} Every argument is untrusted input. The kernel checks that the range lies in the calling process's address space and, on failure, returns \texttt{EFAULT} through the normal return path; it never dereferences the pointer. Dereferencing (A) or copying the data (D) would let user code read kernel memory, defeating the privilege boundary. An immediate kill (C) is not how a bad user pointer is reported.
+
+\item[\textbf{Q6}] \textbf{40.} The first six arguments travel in registers and are not part of the memory block. The block holds $11 - 6 = 5$ arguments at $8$ bytes each: $5 \times 8 = 40$ bytes. The kernel copies those $40$ bytes into kernel memory and validates the block's address and extent before reading any field.
+
+\item[\textbf{Q7}] \textbf{32.} The file is $96\ \text{KiB}$ and the buffer is $8\ \text{KiB}$, so the number of full buffers is $96/8 = 12$. Thus \texttt{cp} issues $12$ \texttt{read} and $12$ \texttt{write} calls. Adding the remaining named calls:
+\[
+1\ (\texttt{fork}) + 1\ (\texttt{exec}) + 2\ (\texttt{open}) + 12\ (\texttt{read}) + 12\ (\texttt{write}) + 2\ (\texttt{close}) + 1\ (\texttt{exit}) + 1\ (\texttt{wait}) = 32.
+\]
+
+\item[\textbf{Q8}] \textbf{256.} Version~A copies $1\ \text{MiB} = 1024\ \text{KiB}$ in $4\ \text{KiB}$ buffers, so it performs $1024/4 = 256$ iterations. Each iteration issues one \texttt{read} and one \texttt{write}, giving $512$ user-to-kernel transitions. Version~B issues one \texttt{read} and one \texttt{write}, giving $2$ transitions. The factor is $512/2 = 256$. The bytes moved are identical; only the number of boundary crossings changes.
+
+\item[\textbf{Q9}] \textbf{3.} File management covers \texttt{open}, \texttt{lseek}, and \texttt{close}. The other seven are process control (\texttt{fork}, \texttt{wait}); device management (\texttt{ioctl}); information maintenance (\texttt{getpid}); communication (\texttt{socket}, \texttt{send}); and protection (\texttt{chmod}).
+
+\item[\textbf{Q10}] \textbf{351.} Appending twelve calls extends the table from $340$ to $340 + 12 = 352$ entries, numbered $0$ through $351$. Withdrawing five calls from service does not free their numbers, because those numbers remain part of the ABI. Hence the largest valid number is $352 - 1 = 351$.
+
+\end{enumerate}
+
+\end{document}

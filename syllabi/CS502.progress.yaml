@@ -11,27 +11,27 @@ weeks:
       lab:        { status: skipped, score: null, note: "lab_mode: none (PCC CS-502 is 3-0-0)" }
       gate:       { status: deployed, score: null, note: "8 original GATE-pattern questions + answers; no unverified PYQ claims" }
       handout:    { status: deployed, score: null, note: "InstructorHandouts/CS502/01-intro-os-structure-instructor-handout.tex, 5 pp; instructor-only" }
-      hub:        { status: deployed, score: null, note: "docs/courses/cs502/index.html regenerated: 1/39 published" }
+      hub:        { status: deployed, score: null, note: "docs/courses/cs502/index.html regenerated: 3/39 published" }
   "02":
     deck: "02-os-operations-protection"
     stages:
-      slides:     { status: absent, score: null, note: "" }
-      notes:      { status: absent, score: null, note: "" }
-      assignment: { status: absent, score: null, note: "" }
+      slides:     { status: deployed, score: 100, note: "35 pp; XeLaTeX 3-pass clean; no overfull boxes or undefined citations; quality score 100/100" }
+      notes:      { status: deployed, score: null, note: "12 pp; derived from the deck; qa-notes PASS" }
+      assignment: { status: deployed, score: null, note: "assignment + solutions key present; solutions gitignored and excluded from docs/" }
       lab:        { status: skipped, score: null, note: "lab_mode: none" }
-      gate:       { status: absent, score: null, note: "" }
-      handout:    { status: absent, score: null, note: "" }
-      hub:        { status: absent, score: null, note: "" }
+      gate:       { status: deployed, score: null, note: "10 original GATE-pattern questions (5 MCQ, 5 NAT) + worked answers; no unverified PYQ claims" }
+      handout:    { status: built, score: null, note: "InstructorHandouts/CS502/02-os-operations-protection-instructor-handout.tex, 10 pp; instructor-only, never deployed to docs/" }
+      hub:        { status: deployed, score: null, note: "docs/courses/cs502/index.html updated: 3/39 published" }
   "03":
     deck: "03-system-calls"
     stages:
-      slides:     { status: absent, score: null, note: "" }
-      notes:      { status: absent, score: null, note: "" }
-      assignment: { status: absent, score: null, note: "" }
+      slides:     { status: deployed, score: 100, note: "35 pp; XeLaTeX 3-pass clean; no overfull boxes or undefined citations; quality score 100/100" }
+      notes:      { status: deployed, score: null, note: "13 pp; derived from the deck; qa-notes PASS" }
+      assignment: { status: deployed, score: null, note: "assignment + solutions key present; solutions gitignored and excluded from docs/" }
       lab:        { status: skipped, score: null, note: "lab_mode: none" }
-      gate:       { status: absent, score: null, note: "" }
-      handout:    { status: absent, score: null, note: "" }
-      hub:        { status: absent, score: null, note: "" }
+      gate:       { status: deployed, score: null, note: "10 original GATE-pattern questions (5 MCQ, 5 NAT) + worked answers; no unverified PYQ claims" }
+      handout:    { status: built, score: null, note: "InstructorHandouts/CS502/03-system-calls-instructor-handout.tex, 10 pp; instructor-only, never deployed to docs/" }
+      hub:        { status: deployed, score: null, note: "docs/courses/cs502/index.html updated: 3/39 published" }
   "04":
     deck: "04-system-programs-os-structure"
     stages:

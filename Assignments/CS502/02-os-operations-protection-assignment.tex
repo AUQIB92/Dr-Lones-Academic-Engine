@@ -1,0 +1,136 @@
+% =============================================================================
+% Assignments/CS502/02-os-operations-protection-assignment.tex
+% Assignment 2: Operating-System Operations and System Protection
+%
+% Student set — NO answers. Solution key:
+%   02-os-operations-protection-solutions.tex (gitignored, never published).
+% Sourced from Slides/CS502/02-os-operations-protection.tex. Every problem
+% reuses the deck's notation (mode bit: kernel = 0, user = 1; P1, P2; quantum
+% Q; privileged/unprivileged) and extends its worked examples to new systems
+% and calls rather than repeating them verbatim.
+%
+% Compile with: cd Assignments/CS502 &&
+%   $env:TEXINPUTS="../../Preambles;"; xelatex -interaction=nonstopmode 02-os-operations-protection-assignment.tex
+%   $env:BIBINPUTS="../..;"; bibtex 02-os-operations-protection-assignment
+%   $env:TEXINPUTS="../../Preambles;"; xelatex -interaction=nonstopmode 02-os-operations-protection-assignment.tex (x2)
+% =============================================================================
+
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\input{../../Preambles/header}
+\coursecode{CS502}
+\renewcommand{\thesection}{2.\arabic{section}}
+
+\title{Assignment 2: Operating-System Operations and System Protection}
+\author{Auqib Hamid Lone\\[0.3em]
+  \emph{Department of Computer Science \& Engineering}, \emph{GCET Ganderbal}}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\noindent\textbf{Deadline:} \key{two weeks from the date of issue} --- there is no automatic late penalty; if you need more time, ask before the deadline and an extension will be granted (see the course policy in the syllabus).
+
+\noindent Answer every question. Show all working for Numerical and Design questions --- a bare final answer without the derivation earns partial credit only. Marks are allocated as follows:
+
+\begin{center}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{lccc}
+\textbf{Section} & \textbf{Questions} & \textbf{Marks each} & \textbf{Total} \\
+\hline
+Conceptual & Q1--Q2 & 15 & 30 \\
+Numerical  & Q3--Q4 & 15 & 30 \\
+Design     & Q5--Q6 & 20 & 40 \\
+\hline
+           &         &      & \textbf{100} \\
+\end{tabular}
+\end{center}
+
+\section{Conceptual}
+
+\textbf{Q1.} A junior engineer proposes moving the mode bit out of the CPU and into a reserved page of physical memory, arguing that the kernel could then save and restore it more cheaply. The page would be marked ``kernel only'', and user programs would be told never to write there.
+
+\begin{enumerate}
+  \item[(a)] Explain why this design breaks dual-mode operation even if every user program is well behaved on the day it ships. Describe the exact attack that becomes possible.
+  \item[(b)] Classify each operation below as \emph{privileged} or \emph{unprivileged}, and state the single criterion you used:
+    \begin{enumerate}
+      \item[(i)] read the wall clock;
+      \item[(ii)] load the timer with a new value;
+      \item[(iii)] execute the trap instruction;
+      \item[(iv)] clear the interrupt-enable flag;
+      \item[(v)] store to an address inside the process's own address space;
+      \item[(vi)] write the page-table base register;
+      \item[(vii)] add two registers;
+      \item[(viii)] halt the CPU.
+    \end{enumerate}
+  \item[(c)] What does the hardware do when user code executes a privileged instruction: silently ignore it, or something else? Explain why that behaviour is preferable to a silent no-op.
+\end{enumerate}
+
+\textbf{Q2.} The administrator of a multiuser server announces: ``Our protection is perfect --- the CPU has a mode bit, the MMU checks every access, and all I/O instructions are privileged. Therefore the server is secure.''
+
+\begin{enumerate}
+  \item[(a)] Distinguish \emph{protection} from \emph{security} as the lecture does. State which one is a \emph{mechanism} and which one is a \emph{policy}, and give one example of each that the other does not cover.
+  \item[(b)] For each incident below, say whether it is a failure of \emph{protection}, a failure of \emph{security policy}, or \emph{neither} (the mechanism working as intended). Justify each classification in one sentence.
+    \begin{enumerate}
+      \item[(i)] A buggy kernel driver writes past its buffer into another process's page.
+      \item[(ii)] Every user account is in the \texttt{sudo} group, and one account's password is guessed.
+      \item[(iii)] A user program executes a raw disk I/O instruction.
+      \item[(iv)] An attacker exploits an unpatched network service, obtains a shell, and then reads another user's files through ordinary \texttt{read} system calls.
+    \end{enumerate}
+  \item[(c)] Explain the sentence ``A perfect mode bit does not help if the administrator grants every user root access.'' Then explain why I/O protection is still necessary even though the file system already enforces file permissions.
+\end{enumerate}
+
+\section{Numerical}
+
+\textbf{Q3.} A time-sharing kernel arms the timer for a quantum $Q$ and charges $C = 24\ \mu\text{s}$ per preemption: save the context, run the scheduler, restore a context. Use the lecture's convention, in which the overhead is $C/Q$ and the number of switches per second is $1/Q$. The CPU is otherwise fully busy with user work.
+
+\begin{enumerate}
+  \item[(a)] For $Q = 8\ \text{ms}$, compute the number of switches per second, the switching time consumed per second, and the fraction of CPU time spent switching (as a percentage).
+  \item[(b)] Repeat part (a) for $Q = 800\ \mu\text{s}$.
+  \item[(c)] Find the smallest quantum for which switching overhead is at most $1\%$.
+  \item[(d)] A new CPU costs $C = 60\ \mu\text{s}$ per switch because it flushes the cache and TLB. Recompute the smallest quantum for $1\%$ overhead, and compute the overhead at the quantum you found in part (c).
+  \item[(e)] In one sentence, connect your answers to the lecture's claim that a tiny quantum ``wastes CPU time on context switches'' and that real systems choose a quantum in the range $1$--$100\ \text{ms}$.
+\end{enumerate}
+
+\textbf{Q4.} A kernel programs the timer to interrupt $f$ times per second. Each timer interrupt costs $C_t = 30\ \mu\text{s}$ of CPU time. In a $6\ \text{s}$ measurement window the workload also performs $N = 120{,}000$ system calls, and each system call costs $C_s = 5\ \mu\text{s}$ of kernel time (mode switch, dispatch, argument validation, return). Ignore all other kernel work.
+
+\begin{enumerate}
+  \item[(a)] What quantum $Q$ (in milliseconds) does $f = 400\ \text{Hz}$ imply?
+  \item[(b)] What fraction of CPU time goes to timer handling at $f = 400\ \text{Hz}$?
+  \item[(c)] Compute the total kernel time over the $6\ \text{s}$ window, including both timer handling and system calls, and express it as a percentage of the window.
+  \item[(d)] The designer doubles $f$ to $800\ \text{Hz}$ to improve responsiveness. Recompute parts (b) and (c).
+  \item[(e)] The system-call path is then optimized so that $C_s$ falls from $5\ \mu\text{s}$ to $2\ \mu\text{s}$. At $f = 800\ \text{Hz}$, recompute the kernel fraction, and state which term now dominates.
+  \item[(f)] In one sentence, explain why the kernel cannot raise $f$ arbitrarily high to improve response time.
+\end{enumerate}
+
+\section{Design}
+
+\textbf{Q5.} A kernel is to gain the system call
+\begin{quote}
+\texttt{int map\_region(void *addr, size\_t len,}\\
+\texttt{\hspace*{2em}int prot, int fd, off\_t offset)}
+\end{quote}
+It asks the kernel to map \texttt{len} bytes of the open file \texttt{fd}, starting at byte \texttt{offset}, into the calling process's address space at the hint \texttt{addr}, with permissions \texttt{prot} (read, write, and execute bits). It returns $0$ on success and $-1$ on failure.
+
+\begin{enumerate}
+  \item[(a)] Give the complete transition sequence from the user's call to the return, in the style of the lecture's \texttt{write} trace. At each step, state whether hardware or kernel performs the work, and mark exactly where the mode bit changes.
+  \item[(b)] List at least five validations the kernel must perform after entry and before it modifies the page tables. For each, state the failure it prevents.
+  \item[(c)] The kernel is already in kernel mode, so it \emph{can} read any physical address. Why is it still wrong to copy from \texttt{addr} before validating it? Your answer must refer to what \texttt{addr} actually names and to the process's legal address range.
+  \item[(d)] The lecture calls the trap ``the only legal door'' into the kernel. Explain why the kernel cannot instead be called as a normal function from user code, in terms of the mode bit and the return path.
+\end{enumerate}
+
+\textbf{Q6.} A microcontroller in an industrial controller has no programmable interval timer. It does have a watchdog: a hardware counter that resets the board unless the kernel writes a magic value every $W = 50\ \text{ms}$. The magic write is privileged; the reset is not. The board must run a trusted control loop and an untrusted telemetry process, and the kernel must be able to preempt either of them.
+
+\begin{enumerate}
+  \item[(a)] Can the watchdog, used only as a reset device, provide preemption? Design a scheme that does, or explain why none is possible. Your answer must identify the event that returns control to the kernel and state whether user code can mask it.
+  \item[(b)] Suppose the kernel reloads the watchdog only at the end of each system call. The telemetry process then enters \texttt{while(1);} and makes no further system call. Trace what happens at $t = 50\ \text{ms}$, at $t = 100\ \text{ms}$, and after the reset. Does this provide preemption? Justify your answer.
+  \item[(c)] A colleague proposes making the magic-value write unprivileged so that the telemetry process can ``help'' keep the board alive. Explain the attack this enables and why it defeats the purpose of the watchdog.
+  \item[(d)] Recommend a fix: name the hardware feature you would add, and state the two properties it must have for the lecture's definition of preemption to be satisfied. Justify each property in one sentence.
+\end{enumerate}
+
+\noindent\textbf{Reading.} The lecture follows Silberschatz et al. \cite{SilberschatzOSC_operating_system_concepts}, Ch.~1 \S1.5, pp.~20--23 (dual-mode operation, timer, protection), and Stallings \cite{StallingsOS_internals_design_principles}, Ch.~3 \S3.5--3.6, pp.~140--143 (execution of the OS, security issues).
+
+\bibliographystyle{plain}
+\bibliography{../../Bibliography_base}
+
+\end{document}
