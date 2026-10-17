@@ -11,19 +11,19 @@ weeks:
       lab:        { status: skipped, score: null, note: "lab_mode: none (PCC CS-502 is 3-0-0)" }
       gate:       { status: deployed, score: null, note: "8 original GATE-pattern questions + answers; no unverified PYQ claims" }
       handout:    { status: deployed, score: null, note: "InstructorHandouts/CS502/01-intro-os-structure-instructor-handout.tex, 5 pp; instructor-only" }
-      hub:        { status: deployed, score: null, note: "docs/courses/cs502/index.html built" }
+      hub:        { status: deployed, score: null, note: "docs/courses/cs502/index.html regenerated: 1/39 published" }
   "02":
-    deck: "02-computer-system-organization"
+    deck: "02-os-operations-protection"
     stages:
-      slides:     { status: deployed, score: 100, note: "41 pp incl. 6 transitions; XeLaTeX 3-pass clean; no overfull boxes, no undefined citations; quality score 100/100" }
-      notes:      { status: deployed, score: 100, note: "10 pp; derived from the deck; clean compile; every worked number matches the deck" }
-      assignment: { status: deployed, score: 100, note: "assignment + solutions key present; solutions gitignored and excluded from docs/" }
-      lab:        { status: skipped,  score: null, note: "lab_mode: none (PCC CS-502 is 3-0-0)" }
-      gate:       { status: deployed, score: 100, note: "10 original GATE-pattern questions (5 MCQ, 5 NAT) + worked answers; no unverified PYQ claims" }
-      handout:    { status: built,    score: 100, note: "InstructorHandouts/CS502/02-computer-system-organization-instructor-handout.tex, 14 pp; instructor-only, never deployed to docs/" }
-      hub:        { status: deployed, score: null, note: "docs/courses/cs502/index.html regenerated: 2/40 published; tag-balance + link-resolution PASS" }
+      slides:     { status: absent, score: null, note: "" }
+      notes:      { status: absent, score: null, note: "" }
+      assignment: { status: absent, score: null, note: "" }
+      lab:        { status: skipped, score: null, note: "lab_mode: none" }
+      gate:       { status: absent, score: null, note: "" }
+      handout:    { status: absent, score: null, note: "" }
+      hub:        { status: absent, score: null, note: "" }
   "03":
-    deck: "03-os-operations-protection"
+    deck: "03-system-calls"
     stages:
       slides:     { status: absent, score: null, note: "" }
       notes:      { status: absent, score: null, note: "" }
@@ -33,7 +33,7 @@ weeks:
       handout:    { status: absent, score: null, note: "" }
       hub:        { status: absent, score: null, note: "" }
   "04":
-    deck: "04-system-calls"
+    deck: "04-system-programs-os-structure"
     stages:
       slides:     { status: absent, score: null, note: "" }
       notes:      { status: absent, score: null, note: "" }
@@ -43,7 +43,7 @@ weeks:
       handout:    { status: absent, score: null, note: "" }
       hub:        { status: absent, score: null, note: "" }
   "05":
-    deck: "05-system-programs-os-structure"
+    deck: "05-process-concept-pcb"
     stages:
       slides:     { status: absent, score: null, note: "" }
       notes:      { status: absent, score: null, note: "" }
@@ -53,7 +53,7 @@ weeks:
       handout:    { status: absent, score: null, note: "" }
       hub:        { status: absent, score: null, note: "" }
   "06":
-    deck: "06-process-concept-pcb"
+    deck: "06-process-states-schedulers"
     stages:
       slides:     { status: absent, score: null, note: "" }
       notes:      { status: absent, score: null, note: "" }
@@ -63,7 +63,7 @@ weeks:
       handout:    { status: absent, score: null, note: "" }
       hub:        { status: absent, score: null, note: "" }
   "07":
-    deck: "07-process-states-schedulers"
+    deck: "07-process-operations"
     stages:
       slides:     { status: absent, score: null, note: "" }
       notes:      { status: absent, score: null, note: "" }
@@ -73,7 +73,7 @@ weeks:
       handout:    { status: absent, score: null, note: "" }
       hub:        { status: absent, score: null, note: "" }
   "08":
-    deck: "08-process-operations"
+    deck: "08-cpu-scheduling-basics"
     stages:
       slides:     { status: absent, score: null, note: "" }
       notes:      { status: absent, score: null, note: "" }
@@ -83,7 +83,7 @@ weeks:
       handout:    { status: absent, score: null, note: "" }
       hub:        { status: absent, score: null, note: "" }
   "09":
-    deck: "09-cpu-scheduling-basics"
+    deck: "09-cpu-scheduling-advanced"
     stages:
       slides:     { status: absent, score: null, note: "" }
       notes:      { status: absent, score: null, note: "" }
@@ -93,7 +93,7 @@ weeks:
       handout:    { status: absent, score: null, note: "" }
       hub:        { status: absent, score: null, note: "" }
   "10":
-    deck: "10-cpu-scheduling-advanced"
+    deck: "10-concurrency-critical-section"
     stages:
       slides:     { status: absent, score: null, note: "" }
       notes:      { status: absent, score: null, note: "" }
@@ -103,7 +103,7 @@ weeks:
       handout:    { status: absent, score: null, note: "" }
       hub:        { status: absent, score: null, note: "" }
   "11":
-    deck: "11-concurrency-critical-section"
+    deck: "11-mutex-software-solutions"
     stages:
       slides:     { status: absent, score: null, note: "" }
       notes:      { status: absent, score: null, note: "" }
@@ -113,7 +113,7 @@ weeks:
       handout:    { status: absent, score: null, note: "" }
       hub:        { status: absent, score: null, note: "" }
   "12":
-    deck: "12-mutex-software-solutions"
+    deck: "12-synchronization-hardware"
     stages:
       slides:     { status: absent, score: null, note: "" }
       notes:      { status: absent, score: null, note: "" }
@@ -123,7 +123,7 @@ weeks:
       handout:    { status: absent, score: null, note: "" }
       hub:        { status: absent, score: null, note: "" }
   "13":
-    deck: "13-synchronization-hardware"
+    deck: "13-semaphores"
     stages:
       slides:     { status: absent, score: null, note: "" }
       notes:      { status: absent, score: null, note: "" }
@@ -133,7 +133,7 @@ weeks:
       handout:    { status: absent, score: null, note: "" }
       hub:        { status: absent, score: null, note: "" }
   "14":
-    deck: "14-semaphores"
+    deck: "14-semaphore-patterns-ipc"
     stages:
       slides:     { status: absent, score: null, note: "" }
       notes:      { status: absent, score: null, note: "" }
@@ -143,7 +143,7 @@ weeks:
       handout:    { status: absent, score: null, note: "" }
       hub:        { status: absent, score: null, note: "" }
   "15":
-    deck: "15-semaphore-patterns-ipc"
+    deck: "15-ipc-systems"
     stages:
       slides:     { status: absent, score: null, note: "" }
       notes:      { status: absent, score: null, note: "" }
@@ -153,7 +153,7 @@ weeks:
       handout:    { status: absent, score: null, note: "" }
       hub:        { status: absent, score: null, note: "" }
   "16":
-    deck: "16-ipc-systems"
+    deck: "16-classical-producer-consumer"
     stages:
       slides:     { status: absent, score: null, note: "" }
       notes:      { status: absent, score: null, note: "" }
@@ -163,7 +163,7 @@ weeks:
       handout:    { status: absent, score: null, note: "" }
       hub:        { status: absent, score: null, note: "" }
   "17":
-    deck: "17-classical-producer-consumer"
+    deck: "17-classical-readers-writers-monitors"
     stages:
       slides:     { status: absent, score: null, note: "" }
       notes:      { status: absent, score: null, note: "" }
@@ -173,7 +173,7 @@ weeks:
       handout:    { status: absent, score: null, note: "" }
       hub:        { status: absent, score: null, note: "" }
   "18":
-    deck: "18-classical-readers-writers-monitors"
+    deck: "18-deadlock-model-characterization"
     stages:
       slides:     { status: absent, score: null, note: "" }
       notes:      { status: absent, score: null, note: "" }
@@ -183,7 +183,7 @@ weeks:
       handout:    { status: absent, score: null, note: "" }
       hub:        { status: absent, score: null, note: "" }
   "19":
-    deck: "19-deadlock-model-characterization"
+    deck: "19-deadlock-handling"
     stages:
       slides:     { status: absent, score: null, note: "" }
       notes:      { status: absent, score: null, note: "" }
@@ -193,7 +193,7 @@ weeks:
       handout:    { status: absent, score: null, note: "" }
       hub:        { status: absent, score: null, note: "" }
   "20":
-    deck: "20-deadlock-handling"
+    deck: "20-memory-management-background"
     stages:
       slides:     { status: absent, score: null, note: "" }
       notes:      { status: absent, score: null, note: "" }
@@ -203,7 +203,7 @@ weeks:
       handout:    { status: absent, score: null, note: "" }
       hub:        { status: absent, score: null, note: "" }
   "21":
-    deck: "21-memory-management-background"
+    deck: "21-contiguous-allocation"
     stages:
       slides:     { status: absent, score: null, note: "" }
       notes:      { status: absent, score: null, note: "" }
@@ -213,7 +213,7 @@ weeks:
       handout:    { status: absent, score: null, note: "" }
       hub:        { status: absent, score: null, note: "" }
   "22":
-    deck: "22-contiguous-allocation"
+    deck: "22-allocation-strategies-fragmentation"
     stages:
       slides:     { status: absent, score: null, note: "" }
       notes:      { status: absent, score: null, note: "" }
@@ -223,7 +223,7 @@ weeks:
       handout:    { status: absent, score: null, note: "" }
       hub:        { status: absent, score: null, note: "" }
   "23":
-    deck: "23-allocation-strategies-fragmentation"
+    deck: "23-paging"
     stages:
       slides:     { status: absent, score: null, note: "" }
       notes:      { status: absent, score: null, note: "" }
@@ -233,7 +233,7 @@ weeks:
       handout:    { status: absent, score: null, note: "" }
       hub:        { status: absent, score: null, note: "" }
   "24":
-    deck: "24-paging"
+    deck: "24-tlb-page-table-structures"
     stages:
       slides:     { status: absent, score: null, note: "" }
       notes:      { status: absent, score: null, note: "" }
@@ -243,7 +243,7 @@ weeks:
       handout:    { status: absent, score: null, note: "" }
       hub:        { status: absent, score: null, note: "" }
   "25":
-    deck: "25-tlb-page-table-structures"
+    deck: "25-segmentation"
     stages:
       slides:     { status: absent, score: null, note: "" }
       notes:      { status: absent, score: null, note: "" }
@@ -253,7 +253,7 @@ weeks:
       handout:    { status: absent, score: null, note: "" }
       hub:        { status: absent, score: null, note: "" }
   "26":
-    deck: "26-segmentation"
+    deck: "26-virtual-memory-demand-paging"
     stages:
       slides:     { status: absent, score: null, note: "" }
       notes:      { status: absent, score: null, note: "" }
@@ -263,7 +263,7 @@ weeks:
       handout:    { status: absent, score: null, note: "" }
       hub:        { status: absent, score: null, note: "" }
   "27":
-    deck: "27-virtual-memory-demand-paging"
+    deck: "27-page-replacement-basic"
     stages:
       slides:     { status: absent, score: null, note: "" }
       notes:      { status: absent, score: null, note: "" }
@@ -273,7 +273,7 @@ weeks:
       handout:    { status: absent, score: null, note: "" }
       hub:        { status: absent, score: null, note: "" }
   "28":
-    deck: "28-page-replacement-basic"
+    deck: "28-page-replacement-advanced"
     stages:
       slides:     { status: absent, score: null, note: "" }
       notes:      { status: absent, score: null, note: "" }
@@ -283,7 +283,7 @@ weeks:
       handout:    { status: absent, score: null, note: "" }
       hub:        { status: absent, score: null, note: "" }
   "29":
-    deck: "29-page-replacement-advanced"
+    deck: "29-frame-allocation-thrashing"
     stages:
       slides:     { status: absent, score: null, note: "" }
       notes:      { status: absent, score: null, note: "" }
@@ -293,7 +293,7 @@ weeks:
       handout:    { status: absent, score: null, note: "" }
       hub:        { status: absent, score: null, note: "" }
   "30":
-    deck: "30-frame-allocation-thrashing"
+    deck: "30-io-hardware"
     stages:
       slides:     { status: absent, score: null, note: "" }
       notes:      { status: absent, score: null, note: "" }
@@ -303,7 +303,7 @@ weeks:
       handout:    { status: absent, score: null, note: "" }
       hub:        { status: absent, score: null, note: "" }
   "31":
-    deck: "31-io-hardware"
+    deck: "31-io-techniques"
     stages:
       slides:     { status: absent, score: null, note: "" }
       notes:      { status: absent, score: null, note: "" }
@@ -313,7 +313,7 @@ weeks:
       handout:    { status: absent, score: null, note: "" }
       hub:        { status: absent, score: null, note: "" }
   "32":
-    deck: "32-io-techniques"
+    deck: "32-io-interface-kernel"
     stages:
       slides:     { status: absent, score: null, note: "" }
       notes:      { status: absent, score: null, note: "" }
@@ -323,7 +323,7 @@ weeks:
       handout:    { status: absent, score: null, note: "" }
       hub:        { status: absent, score: null, note: "" }
   "33":
-    deck: "33-io-interface-kernel"
+    deck: "33-io-buffering-performance"
     stages:
       slides:     { status: absent, score: null, note: "" }
       notes:      { status: absent, score: null, note: "" }
@@ -333,7 +333,7 @@ weeks:
       handout:    { status: absent, score: null, note: "" }
       hub:        { status: absent, score: null, note: "" }
   "34":
-    deck: "34-io-buffering-performance"
+    deck: "34-disk-structure-performance"
     stages:
       slides:     { status: absent, score: null, note: "" }
       notes:      { status: absent, score: null, note: "" }
@@ -343,7 +343,7 @@ weeks:
       handout:    { status: absent, score: null, note: "" }
       hub:        { status: absent, score: null, note: "" }
   "35":
-    deck: "35-disk-structure-performance"
+    deck: "35-disk-scheduling-basic"
     stages:
       slides:     { status: absent, score: null, note: "" }
       notes:      { status: absent, score: null, note: "" }
@@ -353,7 +353,7 @@ weeks:
       handout:    { status: absent, score: null, note: "" }
       hub:        { status: absent, score: null, note: "" }
   "36":
-    deck: "36-disk-scheduling-basic"
+    deck: "36-disk-scheduling-advanced-raid"
     stages:
       slides:     { status: absent, score: null, note: "" }
       notes:      { status: absent, score: null, note: "" }
@@ -363,7 +363,7 @@ weeks:
       handout:    { status: absent, score: null, note: "" }
       hub:        { status: absent, score: null, note: "" }
   "37":
-    deck: "37-disk-scheduling-advanced-raid"
+    deck: "37-file-concept-access"
     stages:
       slides:     { status: absent, score: null, note: "" }
       notes:      { status: absent, score: null, note: "" }
@@ -373,7 +373,7 @@ weeks:
       handout:    { status: absent, score: null, note: "" }
       hub:        { status: absent, score: null, note: "" }
   "38":
-    deck: "38-file-concept-access"
+    deck: "38-file-directories"
     stages:
       slides:     { status: absent, score: null, note: "" }
       notes:      { status: absent, score: null, note: "" }
@@ -383,17 +383,7 @@ weeks:
       handout:    { status: absent, score: null, note: "" }
       hub:        { status: absent, score: null, note: "" }
   "39":
-    deck: "39-file-directories"
-    stages:
-      slides:     { status: absent, score: null, note: "" }
-      notes:      { status: absent, score: null, note: "" }
-      assignment: { status: absent, score: null, note: "" }
-      lab:        { status: skipped, score: null, note: "lab_mode: none" }
-      gate:       { status: absent, score: null, note: "" }
-      handout:    { status: absent, score: null, note: "" }
-      hub:        { status: absent, score: null, note: "" }
-  "40":
-    deck: "40-file-sharing-implementation"
+    deck: "39-file-sharing-implementation"
     stages:
       slides:     { status: absent, score: null, note: "" }
       notes:      { status: absent, score: null, note: "" }

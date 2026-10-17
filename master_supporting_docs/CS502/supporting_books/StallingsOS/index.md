@@ -38,22 +38,22 @@ Body-page offset is **`printed ≈ PDF − 19`** (verified: §5.1 printed 207 = 
 
 ## Syllabus-coverage check (Step 0.5)
 
-`StallingsOS` is prescribed textbook #3 for CS502 (`syllabi/CS502.md`, Books). It is a **secondary anchor** (Silberschatz is primary). Verified against the 40-lecture syllabus:
+`StallingsOS` is prescribed textbook #3 for CS502 (`syllabi/CS502.md`, Books). It is a **secondary anchor** (Silberschatz is primary). Verified against the 39-lecture syllabus:
 
 ### Confirmed coverage
 
 | CS502 lectures | Stallings coverage |
 |----------------|--------------------|
-| L01–L05 (Intro, OS operations, structures) | Ch 2 (OS Overview), Ch 1 (computer-system overview: interrupts, I/O techniques) |
-| L06–L08 (Process concept, states, PCB, context switch) | Ch 3 §3.1–3.4 (process description, states, PCB, process control/context switch) |
-| L09–L10 (Scheduling) | Ch 9 (uniprocessor scheduling: FCFS, SJF, SRT, RR, priority, multilevel feedback), Ch 10 (multiprocessor, real-time) |
-| L11–L18 (Concurrency, semaphores, monitors, classical problems) | Ch 5 (mutual exclusion, semaphores, monitors, message passing, readers/writers), App. A |
-| L19–L20 (Deadlock) | Ch 6 §6.1–6.5 (principles, prevention, avoidance/Banker's, detection), §6.6 dining philosophers |
-| L21–L26 (Memory mgmt, paging, segmentation) | Ch 7 (partitioning, first/best/worst-fit, fragmentation, compaction, paging, segmentation) |
-| L27–L30 (Virtual memory, replacement, thrashing) | Ch 8 (TLB, demand paging, page replacement, thrashing, working set) |
-| L31–L34 (I/O management, buffering) | Ch 11 §11.1–11.4 (I/O devices, organization of the I/O function, OS design issues, buffering) |
-| L35–L37 (Disk scheduling) | Ch 11 §11.5–11.6 (disk scheduling: FCFS/SSTF/SCAN/C-SCAN; RAID) |
-| L38–L40 (File systems) | Ch 12 (overview, file organization/access, directories, file sharing, secondary-storage mgmt, UNIX/Linux/Windows file systems) |
+| L01–L04 (Intro, OS operations, structures) | Ch 2 (OS Overview); Ch 1 (background: computer-system overview) |
+| L05–L07 (Process concept, states, PCB, context switch) | Ch 3 §3.1–3.4 (process description, states, PCB, process control/context switch) |
+| L08–L09 (Scheduling) | Ch 9 (uniprocessor scheduling: FCFS, SJF, SRT, RR, priority, multilevel feedback), Ch 10 (multiprocessor, real-time) |
+| L10–L17 (Concurrency, semaphores, monitors, classical problems) | Ch 5 (mutual exclusion, semaphores, monitors, message passing, readers/writers), App. A |
+| L18–L19 (Deadlock) | Ch 6 §6.1–6.5 (principles, prevention, avoidance/Banker's, detection), §6.6 dining philosophers |
+| L20–L25 (Memory mgmt, paging, segmentation) | Ch 7 (partitioning, first/best/worst-fit, fragmentation, compaction, paging, segmentation) |
+| L26–L29 (Virtual memory, replacement, thrashing) | Ch 8 (TLB, demand paging, page replacement, thrashing, working set) |
+| L30–L33 (I/O management, buffering) | Ch 11 §11.1–11.4 (I/O devices, organization of the I/O function, OS design issues, buffering) |
+| L34–L36 (Disk scheduling) | Ch 11 §11.5–11.6 (disk scheduling: FCFS/SSTF/SCAN/C-SCAN; RAID) |
+| L37–L39 (File systems) | Ch 12 (overview, file organization/access, directories, file sharing, secondary-storage mgmt, UNIX/Linux/Windows file systems) |
 
 ### Gaps / cautions
 

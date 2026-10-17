@@ -33,26 +33,26 @@ Body-page offset is **`printed ≈ PDF − 18`** (verified: TOC "1. Introduction
 | 16 — Accessing Files | 631–675 | Reading/writing files and mmap | reading and writing a file, **memory mapping (`mmap`)**, direct I/O transfers, asynchronous I/O | page-cache-backed reads; `mmap` |
 | 17 — Page Frame Reclaiming | 676–737 | Reclaiming memory under pressure | **the page frame reclaiming algorithm (PFRA)**, reverse mapping, implementing the PFRA, **swapping** | LRU lists; kswapd; swap area |
 | 18 — The Ext2 and Ext3 Filesystems | 738–774 | A concrete on-disk filesystem | general characteristics of Ext2, **Ext2 disk data structures**, Ext2 memory data structures, creating the filesystem, Ext2 methods, managing disk space, the Ext3 filesystem | inodes, block bitmaps, journaling (Ext3) |
-| 19 — Process Communication | 775–807 | Linux IPC mechanisms | **pipes**, FIFOs, **System V IPC** (semaphores, message queues, shared memory), POSIX message queues | the concrete IPC implementations CS502 L16/L19 gesture at |
+| 19 — Process Communication | 775–807 | Linux IPC mechanisms | **pipes**, FIFOs, **System V IPC** (semaphores, message queues, shared memory), POSIX message queues | the concrete IPC implementations CS502 L15/L18 gesture at |
 | 20 — Program Execution | 808–834 | How Linux runs a program | executable files, executable formats (ELF), execution domains, the `exec` functions | `execve`; `load_elf_binary` |
 | Appendix A — System Startup | 835–841 | Boot sequence | BIOS, boot loader, kernel initialization, `init` | — |
 | Appendix B — Modules | 842–851 | Loadable kernel modules | module data structures, module loading/unloading | — |
 
 ## Syllabus-coverage check (Step 0.5)
 
-This book is **not on the CS502 syllabus**; it is an auxiliary reference. Mapping to the 40 lectures where it can add concrete-Linux depth:
+This book is **not on the CS502 syllabus**; it is an auxiliary reference. Mapping to the 39 lectures where it can add concrete-Linux depth:
 
 | CS502 lectures | LinuxKernel chapter(s) | Use |
 |----------------|------------------------|-----|
-| L01–L04 (Intro, system calls) | Ch 1 (basic OS concepts, file descriptor/inode), Ch 10 (system calls: entering/exiting, parameter passing) | Concrete system-call boundary & parameter passing |
-| L06–L08 (Processes) | Ch 3 (process descriptor, process switch, `fork`/`exec`/`exit`), Ch 20 (program execution) | How `fork`/`exec` are actually implemented |
-| L09–L10 (Scheduling) | Ch 7 (Linux O(1) scheduler, SMP balancing), Ch 6 (timing/jiffies) | A real scheduler (note: implementation, *not* the classical FCFS/SJF theory) |
-| L11–L18 (Concurrency, IPC) | Ch 5 (spin locks, semaphores, RCU, completions), Ch 4 (softirqs/tasklets), Ch 19 (pipes, System V IPC, shared memory) | Real synchronization primitives & IPC |
-| L19–L20 (Deadlock) | Ch 5 (spin-lock deadlock avoidance), Ch 1 (avoiding deadlocks) | Practical deadlock avoidance in a kernel |
-| L21–L26 (Memory, paging, segmentation) | Ch 2 (segmentation + paging hardware/Linux), Ch 8 (buddy/slab allocators), Ch 9 (address space, page faults, COW) | Concrete address translation and page-fault handling |
-| L27–L30 (Virtual memory, reclaim, thrashing) | Ch 9 (page-fault handler), Ch 15 (page cache), Ch 17 (PFRA, LRU lists, swapping) | How demand paging and reclaim work in production |
-| L38–L40 (File systems) | Ch 12 (VFS: inode/dentry/file objects, pathname lookup), Ch 15 (page cache), Ch 18 (Ext2/Ext3 on-disk structures) | The concrete filesystem behind the abstract model |
-| L16, L31–L37 (I/O, disk scheduling) | Ch 13 (I/O architecture, drivers), Ch 14 (block layer + **elevator I/O schedulers**) | Concrete disk-I/O scheduling in Linux |
+| L01–L03 (Intro, system calls) | Ch 1 (basic OS concepts, file descriptor/inode), Ch 10 (system calls: entering/exiting, parameter passing) | Concrete system-call boundary & parameter passing |
+| L05–L07 (Processes) | Ch 3 (process descriptor, process switch, `fork`/`exec`/`exit`), Ch 20 (program execution) | How `fork`/`exec` are actually implemented |
+| L08–L09 (Scheduling) | Ch 7 (Linux O(1) scheduler, SMP balancing), Ch 6 (timing/jiffies) | A real scheduler (note: implementation, *not* the classical FCFS/SJF theory) |
+| L10–L17 (Concurrency, IPC) | Ch 5 (spin locks, semaphores, RCU, completions), Ch 4 (softirqs/tasklets), Ch 19 (pipes, System V IPC, shared memory) | Real synchronization primitives & IPC |
+| L18–L19 (Deadlock) | Ch 5 (spin-lock deadlock avoidance), Ch 1 (avoiding deadlocks) | Practical deadlock avoidance in a kernel |
+| L20–L25 (Memory, paging, segmentation) | Ch 2 (segmentation + paging hardware/Linux), Ch 8 (buddy/slab allocators), Ch 9 (address space, page faults, COW) | Concrete address translation and page-fault handling |
+| L26–L29 (Virtual memory, reclaim, thrashing) | Ch 9 (page-fault handler), Ch 15 (page cache), Ch 17 (PFRA, LRU lists, swapping) | How demand paging and reclaim work in production |
+| L37–L39 (File systems) | Ch 12 (VFS: inode/dentry/file objects, pathname lookup), Ch 15 (page cache), Ch 18 (Ext2/Ext3 on-disk structures) | The concrete filesystem behind the abstract model |
+| L15, L30–L36 (I/O, disk scheduling) | Ch 13 (I/O architecture, drivers), Ch 14 (block layer + **elevator I/O schedulers**) | Concrete disk-I/O scheduling in Linux |
 
 ### Gaps / cautions
 
