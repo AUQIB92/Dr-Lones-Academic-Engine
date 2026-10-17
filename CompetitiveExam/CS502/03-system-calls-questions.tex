@@ -1,0 +1,98 @@
+% =============================================================================
+% CompetitiveExam/CS502/03-system-calls-questions.tex
+% Competitive Exam Practice 3 — GATE (Computer Science) Pattern
+% System Calls: Mechanics, Parameter Passing, and Types
+%
+% Student-facing — NO answers. Answer key: 03-system-calls-answers.tex.
+% Provenance: ALL questions are Original (GATE-pattern). No item in this set is
+% attributed to a past GATE paper, and no year/question number is claimed.
+% This follows the course's provenance policy for OS practice sets: a question
+% ships with a past-year tag only after independent verification, which no item
+% here asserts. See .claude/skills/competitive-exam-questions/SKILL.md.
+%
+% Source of truth: Slides/CS502/03-system-calls.tex (35 slides) and
+% Notes/CS502/03-system-calls-notes.tex.
+%
+% Compile with: cd CompetitiveExam/CS502 &&
+%   TEXINPUTS=../../Preambles;$TEXINPUTS xelatex -interaction=nonstopmode 03-system-calls-questions.tex
+% =============================================================================
+
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\input{../../Preambles/header}
+\coursecode{CS502}
+\renewcommand{\thesection}{3.\arabic{section}}
+
+\title{Competitive Exam Practice 3: System Calls\\\large GATE (Computer Science) Pattern}
+\author{Auqib Hamid Lone\\[0.3em]
+  \emph{Department of Computer Science \& Engineering}, \emph{GCET Ganderbal}}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\noindent Each question carries 1--2 marks. MCQ = single correct option; NAT = Numerical Answer Type. \emph{All questions in this set are original, written in the GATE pattern; none is claimed to be a past-year question.}
+
+\begin{enumerate}
+\item[\textbf{Q1}] \textit{[Original, GATE-pattern]} \textbf{[MCQ, 1 mark]} Which of the following statements about the relationship between a library function and a system call is \textbf{TRUE}?
+
+\begin{enumerate}
+  \item[(A)] Every library function that performs I/O executes exactly one system call
+  \item[(B)] A library function may complete entirely in user mode and issue no system call at all
+  \item[(C)] A system call executes in user mode but is allowed to read kernel data
+  \item[(D)] \texttt{printf} is a system call because it eventually produces output
+\end{enumerate}
+
+\item[\textbf{Q2}] \textit{[Original, GATE-pattern]} \textbf{[MCQ, 1 mark]} After the trap instruction transfers control to the kernel, the system-call number supplied by the library stub is used to:
+
+\begin{enumerate}
+  \item[(A)] search the table by comparing the name of the requested service
+  \item[(B)] index the system-call table, whose entry is a pointer to the handler
+  \item[(C)] place the address of the handler in the calling process's page table
+  \item[(D)] select the privilege level at which the handler will execute
+\end{enumerate}
+
+\item[\textbf{Q3}] \textit{[Original, GATE-pattern]} \textbf{[MCQ, 1 mark]} A kernel cannot renumber its existing system calls without breaking already-compiled programs. The most direct reason is that:
+
+\begin{enumerate}
+  \item[(A)] the numbers are stored in the CPU's control registers at boot time
+  \item[(B)] the numbers are part of the ABI and are embedded in compiled binaries
+  \item[(C)] the trap instruction can carry only an 8-bit number
+  \item[(D)] renumbering would change the calling convention used for arguments
+\end{enumerate}
+
+\item[\textbf{Q4}] \textit{[Original, GATE-pattern]} \textbf{[MCQ, 2 marks]} A system-call ABI reserves six registers for arguments and uses a separate register for the system-call number. A new service needs nine scalar arguments. Which mechanism is most appropriate, and why?
+
+\begin{enumerate}
+  \item[(A)] Registers: the nine arguments can be packed into the six reserved registers
+  \item[(B)] A block or table in memory: the nine arguments are stored contiguously and the block's address is passed in one register
+  \item[(C)] The stack: it is always faster than a memory block because the kernel never copies anything
+  \item[(D)] None: a service with more arguments than argument registers cannot be implemented on this ABI
+\end{enumerate}
+
+\item[\textbf{Q5}] \textit{[Original, GATE-pattern]} \textbf{[MCQ, 2 marks]} A user process passes to \texttt{read} a pointer whose value lies in the kernel's address range. What does a correctly designed kernel do?
+
+\begin{enumerate}
+  \item[(A)] Dereference it, because the kernel is permitted to access all physical memory
+  \item[(B)] Validate the range against the process's address space and fail the call with \texttt{EFAULT}
+  \item[(C)] Kill the process immediately with \texttt{SIGSEGV}, without returning to user mode
+  \item[(D)] Copy the kernel data into the user buffer, since \texttt{read} does not modify the source
+\end{enumerate}
+
+\item[\textbf{Q6}] \textit{[Original, GATE-pattern]} \textbf{[NAT, 2 marks]} A system-call ABI reserves six registers for integer arguments and places the system-call number in a separate register. A service takes eleven integer arguments, each 8 bytes. The first six travel in registers; the remaining five are stored contiguously in a memory block whose address is passed in one register. The number of bytes of argument data that the kernel must copy from the user's block is \rule{1.5cm}{0.4pt}.
+
+\item[\textbf{Q7}] \textit{[Original, GATE-pattern]} \textbf{[NAT, 2 marks]} A shell runs \texttt{cp} on a file of $96\ \text{KiB}$; \texttt{cp} uses an $8\ \text{KiB}$ buffer and the file size is an exact multiple of the buffer size. The shell issues one \texttt{fork}, the child issues one \texttt{exec}, and the parent issues one \texttt{wait}. After \texttt{exec}, \texttt{cp} issues two \texttt{open} calls, one \texttt{read} and one \texttt{write} for every full buffer, two \texttt{close} calls, and one \texttt{exit}. Counting only the calls named here, the total number of system calls issued by the shell and its child for this command is \rule{1.5cm}{0.4pt}.
+
+\item[\textbf{Q8}] \textit{[Original, GATE-pattern]} \textbf{[NAT, 2 marks]} A program copies a file of $1\ \text{MiB}$. Version~A uses a $4\ \text{KiB}$ buffer and issues one \texttt{read} and one \texttt{write} per buffer; Version~B issues a single \texttt{read} and a single \texttt{write} for the entire file. Both versions move the same number of bytes. The factor by which Version~A increases the number of user-to-kernel transitions relative to Version~B is \rule{1.5cm}{0.4pt}.
+
+\item[\textbf{Q9}] \textit{[Original, GATE-pattern]} \textbf{[NAT, 2 marks]} Consider the following system calls:
+\[
+\texttt{fork},\ \texttt{open},\ \texttt{ioctl},\ \texttt{getpid},\ \texttt{socket},\ \texttt{chmod},\ \texttt{lseek},\ \texttt{wait},\ \texttt{close},\ \texttt{send}.
+\]
+The number of these calls that belong to the \emph{file-management} category is \rule{1.5cm}{0.4pt}.
+
+\item[\textbf{Q10}] \textit{[Original, GATE-pattern]} \textbf{[NAT, 2 marks]} A kernel's system-call table has $340$ entries, numbered $0$ through $339$. Twelve new calls are appended to the table. Five obsolete calls are withdrawn from service, but their table entries and numbers are retained for compatibility. The largest valid system-call number after these changes is \rule{1.5cm}{0.4pt}.
+
+\end{enumerate}
+
+\end{document}
