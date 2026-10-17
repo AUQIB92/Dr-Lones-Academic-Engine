@@ -83,6 +83,7 @@ weeks:
       lab:        { status: deployed, score: null, note: "coding-assignment (binary search + lower/upper-bound + isqrt variants); gcc -Werror clean; visible 34/34, hidden 1374/1374 PASS; verify-algorithm CONFIRMED O(log n)/O(1); deck isqrt (long)->(long long) portability fix applied to deck+notes; write-up published to docs/assignments/CS301/" }
       gate:       { status: deployed, score: null, note: "10Q (5 CoVe-verified PYQ: GATE 1996/2008/2006/2021-S1/1999 + 5 original); all answers independently re-derived; published to docs/competitive-exam/CS301/" }
       hub:        { status: deployed, score: null, note: "docs/courses/cs301/index.html regenerated: 8/12 published; tag-balance + link-resolution PASS (0 broken)" }
+      handout:    { status: built,    score: null, note: "InstructorHandouts/CS301/08-searching-elementary-sorting-instructor-handout.tex, 18 pp; 7 topics, 8 TikZ verbatim, 36 board-examples, 19 hooks; 0 overfull; instructor-only, never deployed to docs/" }
       quarto:     { status: absent, score: null, note: "" }
   "09":
     deck: "09-efficient-sorting"
