@@ -1,0 +1,52 @@
+% =============================================================================
+% CompetitiveExam/CS502/02-os-operations-protection-answers.tex
+% ANSWER KEY — Competitive Exam Practice 2:
+% Operating-System Operations and System Protection
+%
+% Provenance: ALL questions are Original (GATE-pattern); see the questions file.
+% Every answer below has been independently re-derived from the lecture's own
+% definitions and arithmetic; no past-year claim is made.
+%
+% Compile with: cd CompetitiveExam/CS502 &&
+%   TEXINPUTS=../../Preambles;$TEXINPUTS xelatex -interaction=nonstopmode 02-os-operations-protection-answers.tex
+% =============================================================================
+
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\input{../../Preambles/header}
+\coursecode{CS502}
+\renewcommand{\thesection}{2.\arabic{section}}
+
+\title{Answer Key --- Competitive Exam Practice 2: Operating-System Operations and System Protection\\\large GATE (Computer Science) Pattern}
+\author{Auqib Hamid Lone\\[0.3em]
+  \emph{Department of Computer Science \& Engineering}, \emph{GCET Ganderbal}}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{enumerate}
+
+\item[\textbf{Q1}] \textbf{(C).} The mode bit is hardware state checked on every privileged instruction; only traps, interrupts, and exceptions switch modes. (A) is false: if the bit were ordinary memory, a store could promote a user process. (B) reverses the convention --- kernel mode is $0$ and user mode is $1$. (D) is false: disabling interrupts is itself privileged.
+
+\item[\textbf{Q2}] \textbf{(B).} Loading the timer and changing the page-table base are both privileged: either one would let a process defeat preemption or redirect address translation. Reading the clock and executing a trap are unprivileged (A); arithmetic is unprivileged (C); a subroutine branch is unprivileged (D).
+
+\item[\textbf{Q3}] \textbf{(B).} The trap is an \emph{unprivileged} instruction, which is exactly why user code can use it as the legal door into the kernel. The hardware selects the entry point from the trap vector, so (A) and the program-chosen address in (C) are false. The kernel validates arguments \emph{before} acting, in kernel mode, so (D) is false.
+
+\item[\textbf{Q4}] \textbf{(D).} The hardware compares each address with the base/limit pair and traps on a violation, and raw I/O is privileged, forcing device access through validated system calls. (A) is false because the check is in hardware, not kernel software. (B) is false: a writable page-table base lets user code point translation at any frames. (C) is false: memory-mapped device registers are still protected by page permissions, and raw I/O instructions remain privileged.
+
+\item[\textbf{Q5}] \textbf{(B).} A base-and-limit check is an internal, hardware-enforced isolation mechanism --- protection. Passwords (A), firewall rules (C), and backup encryption (D) are security policies and practices aimed at external threats; they are not mechanisms that isolate one process from another.
+
+\item[\textbf{Q6}] \textbf{4.8.} There are $10^6/250 = 4000$ quanta (and therefore $4000$ switches) per second. Switching time is $4000 \times 12\ \mu\text{s} = 48{,}000\ \mu\text{s}$, which is $48{,}000/1{,}000{,}000 = 0.048 = 4.8\%$ of one second.
+
+\item[\textbf{Q7}] \textbf{2.8.} In one second there are $1000$ timer interrupts at $25\ \mu\text{s}$ each, costing $25{,}000\ \mu\text{s}$. A $5\ \text{ms}$ quantum gives $200$ context switches per second at $15\ \mu\text{s}$ each, costing $3000\ \mu\text{s}$. Total $= 25{,}000 + 3000 = 28{,}000\ \mu\text{s}$, so the fraction is $28{,}000/1{,}000{,}000 = 0.028 = 2.8\%$.
+
+\item[\textbf{Q8}] \textbf{5.} Kernel time $= 2000 \times 25\ \mu\text{s} = 50{,}000\ \mu\text{s} = 50\ \text{ms}$. Total CPU time $= 950 + 50 = 1000\ \text{ms}$. Kernel fraction $= 50/1000 = 0.05 = 5\%$.
+
+\item[\textbf{Q9}] \textbf{4.} In $2\ \text{s} = 2000\ \text{ms}$ there are $2000/8 = 250$ quanta, hence $250$ timer-forced switches. At $16\ \mu\text{s}$ each, the switching time is $250 \times 16 = 4000\ \mu\text{s} = 4\ \text{ms}$.
+
+\item[\textbf{Q10}] \textbf{3500.} System calls contribute $2 \times 1500 = 3000$ mode switches. Timer preemptions contribute $2 \times 250 = 500$ mode switches (one into the kernel, one on return). Total $= 3000 + 500 = 3500$.
+
+\end{enumerate}
+
+\end{document}
