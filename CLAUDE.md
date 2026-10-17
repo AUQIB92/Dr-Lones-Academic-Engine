@@ -143,7 +143,7 @@ Stata (`/stata-replication`), R packages (`/r-package-check`), TikZ (`/extract-t
 | --- | --- | --- | --- |
 | `CS401` — Computer Organization and Architecture (PCC CS-401) | [`syllabi/CS401.md`](syllabi/CS401.md) | 01 (Intro/Performance), 02 (Number Systems/Arithmetic), 03 (IEEE 754), 04 (Registers/Instructions), 05 (Addressing/CPU/Bus), 06 (Hardwired Control), 07 (Microprogrammed Control), 08 (I/O Techniques) | 09–12 per the syllabus work-list |
 | `CS301` — Data Structures (PCC CS-301) | [`syllabi/CS301.md`](syllabi/CS301.md) | 01 (Foundations/Pointers/ADTs) | 02–12 per the syllabus work-list |
-| `CS502` — Operating Systems (PCC CS-502) | [`syllabi/CS502.md`](syllabi/CS502.md) | 01 (Intro/OS structure: functions, evolution, structure, services, system calls) | 02–40 per the syllabus work-list |
+| `CS502` — Operating Systems (PCC CS-502) | [`syllabi/CS502.md`](syllabi/CS502.md) | 01 (Intro/OS structure: functions, evolution, structure, services, system calls) | 02–39 per the syllabus work-list |
 
 ### Non-course demos
 
