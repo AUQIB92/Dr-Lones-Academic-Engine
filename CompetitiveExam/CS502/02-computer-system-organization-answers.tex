@@ -1,0 +1,83 @@
+% =============================================================================
+% CompetitiveExam/CS502/02-computer-system-organization-answers.tex
+% ANSWER KEY — Competitive Exam Practice 2: Computer-System Organization and Architecture
+%
+% Provenance: ALL questions are Original (GATE-pattern); see the questions file.
+% Every answer below has been independently re-derived.
+%
+% Compile with: cd CompetitiveExam/CS502 &&
+%   TEXINPUTS=../../Preambles;$TEXINPUTS xelatex -interaction=nonstopmode 02-computer-system-organization-answers.tex
+% =============================================================================
+
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\input{../../Preambles/header}
+\coursecode{CS502}
+\renewcommand{\thesection}{2.\arabic{section}}
+
+\title{Answer Key --- Competitive Exam Practice 2: Computer-System Organization and Architecture\\\large GATE (Computer Science) Pattern}
+\author{Auqib Hamid Lone\\[0.3em]
+  \emph{Department of Computer Science \& Engineering}, \emph{GCET Ganderbal}}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{enumerate}
+\item[\textbf{Q1}] \textbf{(C).} A system call is a deliberate, synchronous request and enters through a trap; a disk completion is asynchronous and enters through an interrupt.
+
+\begin{enumerate}
+  \item[(A)] False --- the two are reversed: interrupts are asynchronous and traps synchronous.
+  \item[(B)] False --- divide-by-zero is a synchronous exception (trap) caused by the instruction, not a hardware interrupt.
+  \item[(C)] True --- trap for the system call, interrupt for the device signal.
+  \item[(D)] False --- only traps are tied to a specific instruction; an interrupt can arrive between any two instructions, at a point the process does not choose.
+\end{enumerate}
+
+\item[\textbf{Q2}] \textbf{4416.} Entry $i$ begins at $4096 + 8i$, so for $i = 40$ the address is $4096 + 8 \times 40 = 4096 + 320 = 4416$.
+
+\item[\textbf{Q3}] \textbf{5.} Cost per interrupt $= 4.5 + 8 = 12.5\ \mu\text{s}$. In one second, $4{,}000 \times 12.5\ \mu\text{s} = 50{,}000\ \mu\text{s} = 0.05\ \text{s}$. Fraction of CPU time $= 0.05/1 = 0.05 = 5\%$.
+
+\item[\textbf{Q4}] \textbf{(C).} A lower-priority request remains pending while it is masked and is normally serviced once the higher-priority handler completes and unmasks it.
+
+\begin{enumerate}
+  \item[(A)] False --- the interrupt-enable flag masks maskable interrupts only; non-maskable interrupts bypass it.
+  \item[(B)] False --- masking defers delivery; the request stays pending (level-triggered) or latched (edge-triggered) and can be serviced later.
+  \item[(C)] True --- deferral, then normal service at the request's own priority level.
+  \item[(D)] False --- priorities are assigned by the interrupt-controller hardware (and can be programmed), not by software installation order.
+\end{enumerate}
+
+\item[\textbf{Q5}] \textbf{10.20.} Rotation period $= 60/7{,}200\ \text{s} = 8.333\ \text{ms}$, so average rotational latency $= 8.333/2 = 4.167\ \text{ms}$. Transfer time $= 4096\ \text{B} / 128 \times 10^{6}\ \text{B/s} = 32\ \mu\text{s} = 0.032\ \text{ms}$. Total $= 6 + 4.167 + 0.032 = 10.199 \approx 10.20\ \text{ms}$.
+
+\item[\textbf{Q6}] \textbf{(C).} Registers and DRAM are volatile; magnetic disk and NAND flash are non-volatile and retain their contents without power.
+
+\begin{enumerate}
+  \item[(A)] False --- DRAM is volatile, so variables in memory do not survive a power failure.
+  \item[(B)] False --- SRAM is also volatile; both SRAM and DRAM lose their contents without power.
+  \item[(C)] True --- the correct split between volatile and non-volatile levels.
+  \item[(D)] False --- NAND flash is non-volatile (its cost-per-byte claim is irrelevant to the error).
+\end{enumerate}
+
+\item[\textbf{Q7}] \textbf{3.} AMAT $= \text{L1 hit time} + (\text{L1 miss rate}) \times [\text{L2 hit time} + (\text{L2 miss rate}) \times \text{memory time}]$. L1 miss rate is $0.10$; L2 miss rate is $0.20$. So AMAT $= 1 + 0.10 \times (8 + 0.20 \times 60) = 1 + 0.10 \times 20 = 1 + 2 = 3\ \text{ns}$. The high hit rates are the payoff of temporal and spatial locality.
+
+\item[\textbf{Q8}] \textbf{(B).} The device raises an interrupt when it needs attention, so the CPU pays for events rather than spinning on a status register.
+
+\begin{enumerate}
+  \item[(A)] False --- polling repeatedly reads the status register; it can detect readiness, it merely wastes cycles while waiting.
+  \item[(B)] True --- event-driven notification, with CPU cost per event.
+  \item[(C)] False --- DMA writes memory behind the CPU's caches, so stale cache lines must be invalidated or flushed; the OS and hardware must maintain coherence.
+  \item[(D)] False --- DMA setup is far costlier than one interrupt, so it wins on large block transfers, not on a single byte.
+\end{enumerate}
+
+\item[\textbf{Q9}] \textbf{0.03.} CPU cost $= 2{,}000 + 1{,}000 = 3{,}000$ cycles $= 3{,}000 / (2 \times 10^{9})\ \text{s} = 1.5\ \mu\text{s}$. Transfer time $= 5\ \text{ms} = 5{,}000\ \mu\text{s}$. Percentage $= (1.5/5{,}000) \times 100 = 0.03\%$.
+
+\item[\textbf{Q10}] \textbf{(C).} A cluster is a set of complete, networked machines that share storage and can fail over from one machine to another.
+
+\begin{enumerate}
+  \item[(A)] False --- each core has its own architectural registers; cores share caches and memory, not registers.
+  \item[(B)] False --- SMP is defined by processors sharing one main memory and one OS image.
+  \item[(C)] True --- network-connected independent machines, with whole-machine failure tolerance.
+  \item[(D)] False --- that describes a multicore chip, not a cluster.
+\end{enumerate}
+\end{enumerate}
+
+\end{document}

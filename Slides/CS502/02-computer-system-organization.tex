@@ -1,0 +1,815 @@
+% =============================================================================
+% 02-computer-system-organization.tex — Week 2:
+% Computer-System Organization and Architecture
+%
+% Course: Operating Systems (PCC CS-502)
+% Anchor reading: Silberschatz, Galvin & Gagne, Operating System Concepts,
+%                 8th ed. — Ch. 1 §1.2 (computer-system organization,
+%                 interrupts, storage, I/O, DMA, pp. 6-18), §1.3
+%                 (computer-system architecture, pp. 15-20), §1.7-1.8
+%                 (memory and storage management, pp. 24-26); page-verified
+%                 via .../SilberschatzOSC/index.md.
+%                 Stallings, Operating Systems: Internals and Design
+%                 Principles, 6th ed. — Ch. 1 §1.4 (interrupts, p. 15),
+%                 §1.5 (memory hierarchy, p. 26), §1.6 (cache, p. 29),
+%                 §1.7 (I/O techniques and DMA, p. 33); page-verified via
+%                 .../StallingsOS/index.md.
+%                 Bovet & Cesati, Understanding the Linux Kernel, 3rd ed. —
+%                 Ch. 4 (interrupts and exceptions, pp. 131-188), optional
+%                 concrete-kernel depth; page-verified via .../LinuxKernel/index.md.
+%
+% Compile with: /compile-latex CS502/02-computer-system-organization
+% =============================================================================
+
+\documentclass[aspectratio=169]{beamer}
+\input{header}   % resolves via TEXINPUTS=../../Preambles;$TEXINPUTS — compile
+                  % from cwd Slides/CS502/ (TeX writes output next to cwd)
+\usepackage{array}
+\coursecode{CS502}
+
+\title{Computer-System Organization and Architecture}
+\subtitle{Week 2 --- Interrupts, Storage Structure, I/O Structure, and DMA}
+\author[Dr. Auqib Hamid Lone]{%
+  \textbf{Dr. Auqib Hamid Lone}\\
+  \small Assistant Professor in Computer Science \& Engineering
+}
+\institute[GCET Ganderbal]{%
+  \small\textbf{PCC CS-502: Operating Systems}\\[0.3em]
+  Department of Computer Science \& Engineering\\
+  Government College of Engineering \& Technology (GCET), Ganderbal
+}
+\date[\today]{\small\today}
+
+\begin{document}
+
+\frame{\titlepage}
+
+% =============================================================================
+% ACT 0 --- THE MACHINE THE OS MUST MANAGE
+% =============================================================================
+\section{The Machine the OS Must Manage}
+
+\begin{frame}{Welcome: Five Events Before One Character Appears}
+  \begin{block}{The big question}
+    You press \texttt{Enter} to run \texttt{cat bigfile.txt}. Before a single
+    byte reaches the screen, the keyboard controller, the CPU, the memory, the
+    disk controller, and the bus must all cooperate. Which of them can signal
+    the CPU --- and how?
+  \end{block}
+  \begin{itemize}
+    \item The OS does not run ``on its own''. It is \emph{event-driven}: it
+      reacts to hardware events it did not initiate.
+    \item Last week: what the OS \emph{is}. This week: the machine it stands on,
+      and the two mechanisms --- \key{interrupts} and \key{DMA} --- that make it
+      possible to stand there.
+  \end{itemize}
+  \vspace{0.15cm}
+  \begin{alertblock}{Running thread for today}
+    We follow the command \texttt{cat bigfile.txt} from the Enter key to the
+    disk platter and back: an interrupt starts it, a storage hierarchy feeds it,
+    and DMA moves the bytes.
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}{Roadmap: Five Questions About the Machine}
+  \begin{enumerate}
+    \item \key{What is the machine made of?} --- CPU, memory, controllers, bus.
+    \item \key{How does hardware get the CPU's attention?} --- interrupts,
+      traps, and the interrupt vector.
+    \item \key{Where do data live?} --- main memory, disks, SSDs, and the
+      memory hierarchy.
+    \item \key{How do bytes move?} --- polling, interrupt-driven I/O, and DMA.
+    \item \key{How does the machine scale?} --- multiprocessors, multicore, and
+      clusters.
+  \end{enumerate}
+  \vspace{0.2cm}
+  \muted{Every answer is an OS-visible fact: each mechanism in this lecture
+  reappears later as a scheduling, memory, or I/O policy.}
+\end{frame}
+
+\transitionslide{A computer is not a CPU that does everything. It is a set of independent devices that run concurrently and communicate over a shared bus.}
+
+% =============================================================================
+% ACT 1 --- COMPUTER-SYSTEM ORGANIZATION
+% =============================================================================
+\section{Computer-System Organization}
+
+\begin{frame}{Anatomy of a Computer System}
+  \centering
+  \begin{tikzpicture}[every node/.style={font=\small}]
+    \node[draw=primary-blue, fill=light-bg, minimum width=3.0cm,
+          minimum height=1.0cm] (cpu) at (-4.2,1.55) {CPU};
+    \node[draw=primary-blue, fill=light-bg, minimum width=3.0cm,
+          minimum height=1.0cm] (mem) at (0,1.55) {Main memory};
+    \node[draw=primary-blue, fill=light-bg, minimum width=3.0cm,
+          minimum height=1.0cm] (disk) at (4.2,1.55) {Disk controller};
+    \node[draw=primary-gold, fill=white, minimum width=12.6cm,
+          minimum height=0.55cm] (bus) at (0,0) {System bus (address, data, control)};
+    \node[draw=primary-blue, fill=light-bg, minimum width=3.0cm,
+          minimum height=1.0cm] (usb) at (-4.2,-1.55) {USB controller};
+    \node[draw=primary-blue, fill=light-bg, minimum width=3.0cm,
+          minimum height=1.0cm] (gpu) at (0,-1.55) {Graphics adapter};
+    \node[draw=primary-blue, fill=light-bg, minimum width=3.0cm,
+          minimum height=1.0cm] (net) at (4.2,-1.55) {Network controller};
+    \draw[observed-edge] (cpu) -- (bus);
+    \draw[observed-edge] (mem) -- (bus);
+    \draw[observed-edge] (disk) -- (bus);
+    \draw[observed-edge] (usb) -- (bus);
+    \draw[observed-edge] (gpu) -- (bus);
+    \draw[observed-edge] (net) -- (bus);
+  \end{tikzpicture}
+  \vspace{0.15cm}
+  \begin{itemize}
+    \item Each device has a \key{controller} --- hardware that speaks the bus
+      protocol and operates the device.
+    \item The CPU and controllers run \key{concurrently}; the bus is the shared
+      resource they contend for.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Bootstrap: How the Machine Starts}
+  \begin{enumerate}
+    \item \key{Firmware} (BIOS/UEFI) runs from ROM/flash when power is applied.
+      It tests the hardware (POST) and finds a boot device.
+    \item The \key{bootstrap program} loads the OS kernel from disk into memory
+      and jumps to its entry point.
+    \item The kernel initializes its data structures, starts the first process
+      (\texttt{init} / \texttt{systemd}), and from then on is \key{event-driven}.
+  \end{enumerate}
+  \vspace{0.2cm}
+  \begin{alertblock}{Why the OS cannot assume it is running}
+    Until the kernel is loaded, no OS exists. After it is loaded, the kernel
+    only runs when a \emph{trap}, an \emph{interrupt}, or an explicit call gives
+    it the CPU. The next section is about that handoff.
+  \end{alertblock}
+  \vspace{0.1cm}
+  \muted{Bootstrap sequence: Silberschatz et al., Ch.~1 (pp.~6--8); Stallings,
+  Ch.~1 \cite{StallingsOS_internals_design_principles}.}
+\end{frame}
+
+\begin{frame}{The CPU's View: Fetch, Decode, Execute --- and Wait}
+  \begin{itemize}
+    \item The CPU repeats one cycle: \key{fetch} an instruction at the program
+      counter, \key{decode} it, \key{execute} it, update the PC.
+    \item Registers hold the working set: general-purpose registers, the
+      \key{program counter (PC)}, the stack pointer, and the status word.
+    \item I/O is orders of magnitude slower than the CPU. A 3~GHz core executes
+      roughly 3 instructions per nanosecond; a disk access takes milliseconds.
+  \end{itemize}
+  \vspace{0.2cm}
+  \begin{block}{The utilization problem}
+    If the CPU waited for every device, it would idle almost all the time.
+    The OS needs a way to \emph{start} an I/O operation and be told later that it
+    finished --- without watching it.
+  \end{block}
+  \vspace{0.1cm}
+  \muted{Instruction cycle and registers: Stallings, Ch.~1 \S1.2--1.3
+  (pp.~7--15) \cite{StallingsOS_internals_design_principles}.}
+\end{frame}
+
+\begin{frame}{Controllers and Drivers: Hardware and Its Software Twin}
+  \begin{block}{Device controller (hardware)}
+    A chip or board with registers the CPU can read and write: \key{status}
+    (busy, ready, error), \key{control} (start, reset, mode), and
+    \key{data-in}/\key{data-out} buffers. It operates the physical device.
+  \end{block}
+  \begin{block}{Device driver (software)}
+    Kernel code that knows the controller's register layout and protocol. The
+    OS calls the driver; the driver programs the controller; the controller
+    moves the data.
+  \end{block}
+  \vspace{0.15cm}
+  \begin{itemize}
+    \item One driver per controller family; the rest of the kernel sees a
+      uniform interface (read, write, ioctl).
+    \item The kernel keeps a \key{device-status table} listing each device, its
+      type, address, and state.
+  \end{itemize}
+  \vspace{0.1cm}
+  \muted{Controllers, drivers, and the device-status table: Silberschatz et al.,
+  Ch.~1 (pp.~6--18).}
+\end{frame}
+
+\begin{frame}{Worked Thread: The Enter Key, Step by Step}
+  \begin{enumerate}
+    \item You press \texttt{Enter}. The keyboard controller scans the key matrix
+      and places a scan code in its data register.
+    \item The controller asserts an \key{interrupt request (IRQ)} line on the bus.
+    \item The CPU finishes the current instruction, saves its state, and jumps
+      to the keyboard \key{interrupt service routine (ISR)}.
+    \item The ISR reads the scan code, maps it to a character, and queues it for
+      the terminal process.
+    \item The scheduler eventually runs the shell, which reads the character and
+      starts \texttt{cat bigfile.txt} --- which now needs the disk.
+  \end{enumerate}
+  \vspace{0.15cm}
+  \begin{alertblock}{The pattern to remember}
+    Device $\to$ controller $\to$ IRQ $\to$ CPU saves state $\to$ ISR $\to$
+    kernel decides what happens next. Every device in the machine uses a variant
+    of this path.
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}{Socratic Check 1}
+  \begin{block}{Think, then answer}
+    Why can the OS not simply poll every device in a loop, checking whether each
+    one is ready? Name two distinct costs of that design.
+  \end{block}
+  \vspace{0.2cm}
+  \begin{itemize}
+    \item \key{CPU cost}: polling consumes cycles that could run user code ---
+      and most polls find nothing ready.
+    \item \key{Latency cost}: a slow or sporadic device (a keyboard, a network
+      packet) may wait an entire polling period before being noticed.
+    \item Interrupts invert the arrangement: the device tells the CPU when it
+      needs attention, instead of the CPU asking.
+  \end{itemize}
+\end{frame}
+
+\transitionslide{The CPU is fast and the devices are slow and independent. The only workable contract is: finish your instruction, then let the device interrupt you.}
+
+% =============================================================================
+% ACT 2 --- INTERRUPTS
+% =============================================================================
+\section{Interrupts and Traps}
+
+\begin{frame}{Interrupts vs.\ Traps: Two Kinds of Transfer}
+  \begin{block}{Interrupt (asynchronous)}
+    Raised by \emph{hardware} at an unpredictable time: a key press, a packet
+    arrival, a disk completing a transfer. It is unrelated to the instruction
+    the CPU is currently executing.
+  \end{block}
+  \begin{block}{Trap or exception (synchronous)}
+    Raised by the     \emph{CPU} because of the instruction just executed: a system
+    call, a divide by zero, or an illegal opcode. It is caused by the program
+    itself.
+  \end{block}
+  \vspace{0.15cm}
+  \begin{itemize}
+    \item Both transfer control to a kernel handler and both save the CPU state.
+    \item The distinction matters: an interrupt can arrive \emph{between} any two
+      instructions; a trap is tied to a specific instruction.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{The Interrupt Path}
+  \centering
+  \begin{tikzpicture}[every node/.style={font=\small}]
+    \node[draw=primary-blue, fill=light-bg, minimum width=2.5cm,
+          minimum height=0.9cm] (dev) at (-4.8,1.0) {Device};
+    \node[draw=primary-blue, fill=light-bg, minimum width=2.5cm,
+          minimum height=0.9cm] (pic) at (-1.6,1.0) {Interrupt controller};
+    \node[draw=primary-blue, fill=light-bg, minimum width=2.5cm,
+          minimum height=0.9cm] (cpu) at (1.6,1.0) {CPU};
+    \node[draw=primary-blue, fill=light-bg, minimum width=2.5cm,
+          minimum height=0.9cm] (isr) at (4.8,1.0) {ISR};
+    \node[draw=primary-gold, fill=white, minimum width=11.2cm,
+          minimum height=0.75cm] (vec) at (0,-0.6)
+      {Interrupt vector table: IRQ number $\to$ handler address};
+    \draw[observed-edge] (dev) -- (pic);
+    \draw[observed-edge] (pic) -- (cpu);
+    \draw[observed-edge] (cpu) -- (isr);
+    \draw[observed-edge] (cpu.south) -- (cpu.south |- vec.north);
+  \end{tikzpicture}
+  \vspace{0.2cm}
+  \begin{enumerate}
+    \item Device asserts IRQ; the interrupt controller prioritizes and forwards it.
+    \item CPU finishes the current instruction (not the whole program), saves
+      the PC and status word, and switches to kernel mode.
+    \item CPU indexes the \key{interrupt vector table} by IRQ number and jumps
+      to the handler.
+    \item The ISR services the device; on return, the saved state is restored.
+  \end{enumerate}
+\end{frame}
+
+\begin{frame}{The Interrupt Vector Table, Masking, and Priority}
+  \begin{itemize}
+    \item The \key{interrupt vector table} is an array of handler addresses,
+      indexed by interrupt number. It lets the CPU dispatch without searching.
+    \item \key{Maskable} interrupts can be temporarily disabled by the kernel
+      (when updating shared structures). \key{Non-maskable} interrupts
+      (power failure, fatal hardware error) cannot.
+    \item \key{Priority levels} decide which interrupt wins when several arrive
+      at once; a low-priority handler can itself be interrupted by a
+      high-priority one.
+  \end{itemize}
+  \vspace{0.2cm}
+  \begin{alertblock}{The design tension}
+    Handlers must be short, or they block other interrupts and add latency. So
+    real kernels split work: a minimal \key{top half} acknowledges the device and
+    a deferred \key{bottom half} does the rest (Linux softirqs, tasklets, work
+    queues).
+  \end{alertblock}
+  \vspace{0.1cm}
+  \muted{Linux top-half/bottom-half handling: Bovet \& Cesati, Ch.~4
+  (pp.~131--188) \cite{BovetCesati_understanding_linux_kernel}.}
+\end{frame}
+
+\begin{frame}{Worked Example: What Does Interrupt Handling Cost?}
+  \begin{block}{Setup}
+    Saving the context and entering the handler costs $2\ \mu\text{s}$; the
+    handler itself runs for $8\ \mu\text{s}$. Each interrupt therefore costs
+    $10\ \mu\text{s}$ of CPU time.
+  \end{block}
+  \begin{itemize}
+    \item At \key{1{,}000 interrupts/s}: $1{,}000 \times 10\ \mu\text{s} =
+      10\ \text{ms/s} = \good{1\%}$ CPU overhead.
+    \item At \key{10{,}000 interrupts/s}: $10{,}000 \times 10\ \mu\text{s} =
+      100\ \text{ms/s} = \bad{10\%}$ CPU overhead.
+    \item At \key{100{,}000 interrupts/s}: the machine spends
+      $\bad{100\%}$ of its time handling interrupts and does no useful work.
+  \end{itemize}
+  \vspace{0.2cm}
+  \begin{alertblock}{The lesson}
+    Interrupts are cheap per event but not free. When a device produces a
+    \emph{stream} of events, per-event interrupts stop scaling --- which is
+    exactly the problem DMA solves for block transfers.
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}{Socratic Check 2}
+  \begin{block}{Think, then answer}
+    An interrupt handler runs with interrupts temporarily disabled. The handler
+    is long. What can go wrong, and what does this imply about handler design?
+  \end{block}
+  \vspace{0.2cm}
+  \begin{itemize}
+    \item Other devices cannot deliver their interrupts, so their data can be
+      overwritten or lost --- a \key{missed interrupt}.
+    \item The system's \key{interrupt latency} grows; a real-time device may miss
+      its deadline.
+    \item Hence the top-half/bottom-half split: acknowledge quickly, defer the
+      heavy work to a context where interrupts are enabled.
+  \end{itemize}
+\end{frame}
+
+\transitionslide{Interrupts tell the CPU that data has arrived. But where does the data live, and why can a program believe it has more memory than the machine owns?}
+
+% =============================================================================
+% ACT 3 --- STORAGE STRUCTURE AND THE MEMORY HIERARCHY
+% =============================================================================
+\section{Storage Structure and the Memory Hierarchy}
+
+\begin{frame}{Main Memory and Secondary Storage}
+  \begin{block}{Main memory (RAM)}
+    A large array of bytes, each with an address, implemented in DRAM.
+    \good{Fast} (tens of nanoseconds) and directly addressable by the CPU;
+    \bad{volatile} --- its contents vanish when power is lost.
+  \end{block}
+  \begin{block}{Secondary storage}
+    \key{Hard disks} (magnetic platters) and \key{solid-state drives}
+    (NAND flash). \good{Non-volatile} and far larger than RAM, but
+    \bad{orders of magnitude slower} --- microseconds for an SSD, milliseconds
+    for a spinning disk.
+  \end{block}
+  \vspace{0.15cm}
+  \begin{itemize}
+    \item Programs live in memory only while they run; files persist on
+      secondary storage.
+    \item The OS moves data between the two in units of \key{blocks} (disk) or
+      \key{cache lines} (memory).
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Hard-Disk Geometry: Where Access Time Comes From}
+  \centering
+  \begin{tikzpicture}[every node/.style={font=\small}]
+    \node[draw=primary-blue, fill=light-bg, minimum width=3.4cm,
+          minimum height=1.0cm] (seek) at (-4.4,0.8) {Seek};
+    \node[draw=primary-blue, fill=light-bg, minimum width=3.4cm,
+          minimum height=1.0cm] (rot) at (0,0.8) {Rotational latency};
+    \node[draw=primary-blue, fill=light-bg, minimum width=3.4cm,
+          minimum height=1.0cm] (xfer) at (4.4,0.8) {Transfer};
+    \node[draw=primary-gold, fill=white, minimum width=12.4cm,
+          minimum height=0.8cm] (tot) at (0,-0.8)
+      {Total access time $=$ seek $+$ rotational latency $+$ transfer};
+    \draw[observed-edge] (seek) -- (tot.north -| seek.south);
+    \draw[observed-edge] (rot) -- (tot.north -| rot.south);
+    \draw[observed-edge] (xfer) -- (tot.north -| xfer.south);
+  \end{tikzpicture}
+  \vspace{0.15cm}
+  \begin{itemize}
+    \item \key{Platters} rotate; each surface has concentric \key{tracks} split
+      into \key{sectors}; the same track across platters is a \key{cylinder}.
+    \item \key{Seek}: move the arm to the track (mechanical, milliseconds).
+    \item \key{Rotational latency}: wait for the sector to pass under the head
+      (milliseconds).
+    \item \key{Transfer}: stream the requested sectors (microseconds per block).
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Worked Example: A 4 KB Disk Read at 7200 RPM}
+  \begin{block}{Parameters}
+    Seek time $= 8\ \text{ms}$; rotation speed $= 7{,}200\ \text{RPM}$;
+    transfer rate $= 150\ \text{MB/s}$; block size $= 4\ \text{KB}$.
+  \end{block}
+  \begin{itemize}
+    \item One rotation: $60/7{,}200 = \bad{8.33\ \text{ms}}$; average rotational
+      latency $= 8.33/2 = \bad{4.17\ \text{ms}}$.
+    \item Transfer time: $4\ \text{KB} / 150\ \text{MB/s} \approx
+      \good{27\ \mu\text{s}}$.
+    \item Total: $8 + 4.17 + 0.027 \approx \bad{12.2\ \text{ms}}$, of which
+      \emph{99.8\%} is mechanical waiting.
+  \end{itemize}
+  \vspace{0.15cm}
+  \begin{alertblock}{The consequence for the OS}
+    Disk performance is dominated by \key{where the head is}, not by how fast
+    bytes stream. This is why scheduling the \emph{order} of requests (later,
+    disk scheduling) matters so much.
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}{The Memory Hierarchy}
+  \centering
+  \begin{tikzpicture}[every node/.style={font=\small}]
+    \node[draw=primary-blue, fill=light-bg, minimum width=5.2cm,
+          minimum height=0.65cm] (r) at (0,3.0) {Registers};
+    \node[draw=primary-blue, fill=light-bg, minimum width=6.4cm,
+          minimum height=0.65cm] (l1) at (0,2.25) {Cache (L1/L2/L3)};
+    \node[draw=primary-blue, fill=light-bg, minimum width=7.6cm,
+          minimum height=0.65cm] (m) at (0,1.5) {Main memory (DRAM)};
+    \node[draw=primary-blue, fill=light-bg, minimum width=8.8cm,
+          minimum height=0.65cm] (ssd) at (0,0.75) {Solid-state drive};
+    \node[draw=primary-blue, fill=light-bg, minimum width=10.0cm,
+          minimum height=0.65cm] (hdd) at (0,0) {Magnetic disk};
+    \node[draw=primary-blue, fill=light-bg, minimum width=11.2cm,
+          minimum height=0.65cm] (tape) at (0,-0.75) {Tape / optical archive};
+  \end{tikzpicture}
+  \vspace{0.15cm}
+  \begin{itemize}
+    \item Moving down: capacity grows, cost per byte falls, access time grows by
+      orders of magnitude.
+    \item Moving up: data is \key{cached} --- a copy is kept in the faster level
+      on the bet that it will be used again.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Locality, Caching, and Why the Hierarchy Works}
+  \begin{block}{The locality principle}
+    Programs do not access memory uniformly. \key{Temporal locality}: an item
+    used once is likely to be used again soon. \key{Spatial locality}: an item
+    near one just used is likely to be used soon.
+  \end{block}
+  \begin{itemize}
+    \item A \key{cache} is a small, fast store holding copies of recently used
+      data. A \key{hit} is served from the cache; a \key{miss} goes to the next
+      level and installs a copy.
+    \item The OS manages caches at every level: CPU caches (hardware), the
+      \key{buffer cache} for disk blocks, and memory itself as a cache for
+      disk.
+  \end{itemize}
+  \vspace{0.1cm}
+  \muted{Caching and the memory hierarchy: Stallings, Ch.~1 \S1.5--1.6
+  (pp.~26--32) \cite{StallingsOS_internals_design_principles}; Silberschatz
+  et al., Ch.~1 (pp.~9--14).}
+\end{frame}
+
+\begin{frame}{Socratic Check 3}
+  \begin{block}{Think, then answer}
+    Main memory is volatile, yet a file you saved last week still exists after
+    a power cut. Where is the file, and what role did RAM play in saving it?
+  \end{block}
+  \vspace{0.2cm}
+  \begin{itemize}
+    \item The file lives on \key{secondary storage} (disk or SSD), which is
+      non-volatile.
+    \item RAM held the program's buffer and the kernel's \key{cache} while the
+      write was in progress; the OS copied the dirty blocks to storage.
+    \item \muted{This is why ``save'' is an I/O operation, not a memory
+      operation --- and why a crash before the write-back can lose data.}
+  \end{itemize}
+\end{frame}
+
+\transitionslide{Data must come from a device into memory. The question is who moves it: the CPU, one byte at a time, or a controller acting on its own.}
+
+% =============================================================================
+% ACT 4 --- I/O STRUCTURE: POLLING, INTERRUPTS, AND DMA
+% =============================================================================
+\section{I/O Structure: Polling, Interrupts, and DMA}
+
+\begin{frame}{Three Ways to Move Data}
+  \centering
+  \small
+  \setlength{\tabcolsep}{4pt}
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{2.2cm}
+      >{\raggedright\arraybackslash}p{3.7cm}
+      >{\raggedright\arraybackslash}p{3.7cm}
+      >{\raggedright\arraybackslash}p{3.2cm}@{}}
+    \toprule
+    & \textbf{Polling} & \textbf{Interrupt-driven} & \textbf{DMA} \\
+    \midrule
+    Data mover & CPU & CPU & Controller \\
+    CPU cost & Wasted while waiting & One handler per event & Setup $+$ one completion \\
+    Best for & Fast, dedicated devices & Slow, sporadic devices & Block transfers \\
+    Weakness & Busy-wait; latency & Overhead per event & Setup cost; bus contention \\
+    \bottomrule
+  \end{tabular}
+  \vspace{0.35cm}
+  \begin{itemize}
+    \item The three techniques are a progression: the CPU does \emph{more}
+      waiting, then \emph{less} work, then \emph{no} per-byte work.
+    \item \texttt{cat bigfile.txt} uses a \key{block device}: DMA is the natural
+      choice; a keyboard uses \key{interrupt-driven} I/O.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Polling: Simple but Wasteful}
+  \begin{block}{Programmed I/O (polling)}
+    The CPU repeatedly reads the controller's \key{status register} until the
+    device is ready, then moves the data word by word.
+  \end{block}
+  \begin{itemize}
+    \item \good{Simple}: no interrupt machinery, no concurrency.
+    \item \bad{Wasteful}: every poll is a bus transaction and a wasted
+      instruction slot; a slow device wastes almost all of them.
+    \item \good{Still right} for very fast devices (a GPU register) or when the
+      wait is predictably short --- polling a device that is always ready beats
+      paying interrupt overhead.
+  \end{itemize}
+  \vspace{0.15cm}
+  \muted{Programmed I/O: Silberschatz et al., Ch.~1 \S1.2.3 (pp.~12--18);
+  Stallings, Ch.~1 \S1.7 (p.~33) \cite{StallingsOS_internals_design_principles}.}
+\end{frame}
+
+\begin{frame}{Interrupt-Driven I/O: The CPU Is Notified}
+  \begin{enumerate}
+    \item The driver starts the device by writing its control register.
+    \item The CPU returns to other work; the scheduler runs another process.
+    \item When the device finishes, it raises an interrupt.
+    \item The ISR reads the data (or a status), acknowledges the device, and
+      wakes the waiting process.
+  \end{enumerate}
+  \vspace{0.2cm}
+  \begin{alertblock}{The cost model}
+    CPU cost scales with the \emph{number of events}, not the number of bytes.
+    Small blocks therefore mean many interrupts; large blocks mean few. This is
+    the lever DMA pulls.
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}{Direct Memory Access (DMA)}
+  \centering
+  \begin{tikzpicture}[every node/.style={font=\small}]
+    \node[draw=primary-blue, fill=light-bg, minimum width=2.6cm,
+          minimum height=0.95cm] (cpu) at (-4.6,1.4) {CPU};
+    \node[draw=primary-blue, fill=light-bg, minimum width=2.6cm,
+          minimum height=0.95cm] (mem) at (0,1.4) {Main memory};
+    \node[draw=primary-blue, fill=light-bg, minimum width=2.6cm,
+          minimum height=0.95cm] (dma) at (0,-0.2) {DMA controller};
+    \node[draw=primary-blue, fill=light-bg, minimum width=2.6cm,
+          minimum height=0.95cm] (dc) at (4.6,1.4) {Disk controller};
+    \draw[<->, thick, draw=jet] (cpu) -- (mem);
+    \draw[<->, thick, draw=jet] (mem) -- (dc);
+    \draw[<->, thick, draw=jet] (dma) -- (mem);
+    \draw[<->, thick, draw=jet] (dma) -- (dc);
+    \draw[observed-edge, dashed] (cpu) -- node[below, font=\scriptsize] {setup} (dma);
+  \end{tikzpicture}
+  \vspace{0.2cm}
+  \begin{enumerate}
+    \item The CPU programs the DMA controller with the memory address, the byte
+      count, and the device.
+    \item The controller transfers the whole block directly to or from memory,
+      stealing bus cycles but no CPU instructions.
+    \item The controller raises \emph{one} interrupt when the block is complete.
+  \end{enumerate}
+  \vspace{0.1cm}
+  \muted{DMA: Silberschatz et al., Ch.~1 \S1.2.3; Stallings, Ch.~1 \S1.7
+  (p.~33) \cite{StallingsOS_internals_design_principles}.}
+\end{frame}
+
+\begin{frame}{Worked Example: Moving 1 MB Three Ways}
+  \begin{block}{Parameters}
+    Disk transfer rate $= 200\ \text{MB/s}$; interrupt cost $= 10\ \mu\text{s}$;
+    DMA setup $+$ completion interrupt $\approx 20\ \mu\text{s}$; transfer time
+    for 1~MB $= 5\ \text{ms}$.
+  \end{block}
+  \begin{itemize}
+    \item \key{Interrupt-driven, 4 KB blocks}: $256$ interrupts $\times
+      10\ \mu\text{s} = \bad{2.56\ \text{ms}}$ --- about 51\% of the transfer.
+    \item \key{Interrupt-driven, 64 KB blocks}: $16$ interrupts $\times
+      10\ \mu\text{s} = \good{160\ \mu\text{s}}$ --- about 3.2\%.
+    \item \key{DMA}: one setup plus one completion interrupt $\approx
+      \good{20\ \mu\text{s}}$ --- about 0.4\%, while the CPU runs other work.
+  \end{itemize}
+  \vspace{0.15cm}
+  \begin{alertblock}{The trade-off, stated precisely}
+    Larger blocks amortize interrupt overhead but increase latency and buffer
+    memory. DMA removes per-byte CPU work but adds setup cost --- so it wins on
+    large transfers, not on a single byte.
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}{Device Types and the Device-Status Table}
+  \begin{itemize}
+    \item \key{Block devices}: addressable in fixed-size blocks, seekable ---
+      disks, SSDs, USB drives. They support file systems and DMA.
+    \item \key{Character devices}: a stream of bytes, not seekable ---
+      keyboards, serial ports, mice. They are naturally interrupt-driven.
+    \item The kernel maintains a \key{device-status table}: for each device, its
+      type, address, and current state (idle, busy, error).
+    \item When an interrupt arrives, the kernel looks up the device in the table,
+      updates its state, and wakes any process waiting on it.
+  \end{itemize}
+  \vspace{0.2cm}
+  \muted{Device types and the device-status table: Silberschatz et al., Ch.~1
+  (pp.~12--18).}
+\end{frame}
+
+\begin{frame}{Socratic Check 4}
+  \begin{block}{Think, then answer}
+    DMA removes the CPU from the data path. Does that mean a DMA transfer uses
+    no CPU time at all? Name the hidden costs.
+  \end{block}
+  \vspace{0.2cm}
+  \begin{itemize}
+    \item \key{Setup}: the CPU programs address, count, and direction for every
+      transfer.
+    \item \key{Bus contention}: the DMA controller steals memory cycles, slowing
+      the CPU's own memory accesses (cycle stealing).
+    \item \key{Cache coherence}: the CPU may hold stale copies of memory the DMA
+      wrote; the OS and hardware must invalidate or flush.
+    \item Conclusion: DMA is a \emph{trade} of per-byte CPU work for per-block
+      setup and bus pressure --- not a free lunch.
+  \end{itemize}
+\end{frame}
+
+\transitionslide{One CPU, one memory, one disk is the simple case. Real machines replicate processors and whole systems --- and the OS must keep them coherent.}
+
+% =============================================================================
+% ACT 5 --- COMPUTER-SYSTEM ARCHITECTURE
+% =============================================================================
+\section{Computer-System Architecture}
+
+\begin{frame}{From One Processor to Many}
+  \begin{block}{Single-processor systems}
+    One general-purpose CPU. Most personal computers and phones have several
+    cores per chip, but the OS still sees a set of processors to schedule.
+  \end{block}
+  \begin{itemize}
+    \item \key{Multiprocessor} systems: two or more processors share the bus,
+      clock, and memory.
+      \begin{itemize}
+        \item \key{SMP (symmetric multiprocessing)}: every processor is equal
+          and runs the same OS; the scheduler can place any task on any CPU.
+        \item \key{Asymmetric}: one master processor assigns work to slaves ---
+          simpler, but the master is a bottleneck.
+      \end{itemize}
+    \item \key{Multicore}: several independent cores on one chip, each with its
+      own registers and usually its own L1/L2 cache, sharing a last-level cache
+      and memory.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Clusters, NUMA, and Why the OS Cares}
+  \begin{itemize}
+    \item \key{Cluster}: two or more complete systems connected by a network,
+      sharing storage, presenting as one service. Used for \key{high
+      availability} (failover) and \key{high-performance computing} (parallel
+      work).
+    \item \key{NUMA (non-uniform memory access)}: in large multiprocessors,
+      memory is attached to nodes; a core accesses local memory faster than a
+      remote node's memory. The scheduler and allocator should keep a task near
+      its data.
+    \item \key{Why it matters}: the OS must decide \emph{where} to run a task
+      and \emph{where} to place its memory --- decisions that do not exist on a
+      single-processor machine.
+  \end{itemize}
+  \vspace{0.2cm}
+  \begin{alertblock}{The recurring theme}
+    Every layer of hardware organization --- cache, memory, bus, processor ---
+    becomes a policy question for the OS: which copy, which CPU, which node,
+    which order.
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}{Comparison: SMP, Multicore, and Clusters}
+  \centering
+  \small
+  \setlength{\tabcolsep}{4pt}
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{2.2cm}
+      >{\raggedright\arraybackslash}p{3.1cm}
+      >{\raggedright\arraybackslash}p{3.3cm}
+      >{\raggedright\arraybackslash}p{3.9cm}@{}}
+    \toprule
+    & \textbf{SMP} & \textbf{Multicore} & \textbf{Cluster} \\
+    \midrule
+    What is shared? & Bus, clock, memory & Last-level cache, memory & Network, storage \\
+    Failure unit & One processor & One core & One whole machine \\
+    Main benefit & Throughput, scaling & Throughput, lower latency & Availability, scale-out \\
+    OS challenge & Scheduling, locking & Cache affinity, locking & Distributed coordination \\
+    \bottomrule
+  \end{tabular}
+  \vspace{0.35cm}
+  \begin{itemize}
+    \item All three give \key{parallelism}; only clusters survive the failure of
+      an entire machine.
+    \item All three make \key{concurrency} real for the OS --- the subject of
+      Unit II.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Socratic Check 5}
+  \begin{block}{Think, then answer}
+    A machine has four cores but a single memory bus. Two programs each read a
+    1~GB array. What limits the speedup, and what would you change first?
+  \end{block}
+  \vspace{0.2cm}
+  \begin{itemize}
+    \item The \key{memory bus} is the shared bottleneck: more cores do not add
+      memory bandwidth. The workload is \key{memory-bound}, not CPU-bound.
+    \item First fixes: improve \key{locality} (block the loops so each cache
+      line is reused), then add cache or bandwidth --- not more cores.
+    \item This is why the OS and compiler care about caches and NUMA placement,
+      not just the number of processors.
+  \end{itemize}
+\end{frame}
+
+% =============================================================================
+% ACT 6 --- TAKEAWAYS AND CHECKS
+% =============================================================================
+\section{Takeaways and Checks}
+
+\begin{frame}{Takeaways}
+  \begin{itemize}
+    \item A computer system is a \key{CPU, memory, controllers, and a bus} ---
+      independent devices that run concurrently.
+    \item Hardware gets the CPU's attention with an \key{interrupt}
+      (asynchronous); the CPU gets the kernel's attention with a \key{trap}
+      (synchronous).
+    \item The \key{interrupt vector} dispatches to a handler; handlers must be
+      short, hence top-half/bottom-half designs.
+    \item Storage is a \key{hierarchy}: registers, cache, RAM, SSD, disk, tape
+      --- faster and costlier per byte as you move up, kept coherent by
+      \key{caching} and locality.
+    \item I/O moves data by \key{polling}, \key{interrupts}, or \key{DMA}; the
+      choice trades CPU work against latency, overhead, and bus pressure.
+    \item \key{SMP, multicore, and clusters} replicate processors or machines;
+      the OS must schedule and place work across them.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{The Thread in One Picture}
+  \begin{enumerate}
+    \item \key{Keyboard interrupt}: the controller signals, the ISR queues a
+      character, the shell runs.
+    \item \key{Storage hierarchy}: \texttt{cat} asks for file blocks; the
+      buffer cache checks RAM before touching the SSD or disk.
+    \item \key{DMA}: the disk controller moves the block into memory; the CPU is
+      interrupted once when it finishes.
+    \item \key{Architecture}: the scheduler may run \texttt{cat} on another core
+      while the DMA transfer proceeds --- and must keep the caches coherent.
+  \end{enumerate}
+  \vspace{0.2cm}
+  \begin{block}{One sentence}
+    The OS is an event-driven manager of a hierarchy of asynchronous devices ---
+    interrupts tell it \emph{when}, storage tells it \emph{where}, and DMA tells
+    it \emph{how} to move data without doing the moving itself.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Next: OS Operations and System Protection}
+  \begin{itemize}
+    \item Today: the hardware the OS manages and the signals it responds to.
+    \item Next lecture: how the OS \emph{stays in control} --- dual-mode
+      operation, the timer, privileged instructions, and the protection
+      boundary that makes every mechanism in this lecture safe to share.
+  \end{itemize}
+  \vspace{0.3cm}
+  \begin{block}{Reading}
+    Silberschatz et al., \emph{Operating System Concepts}, Ch.~1 \S1.5
+    (pp.~20--23) and Ch.~1 \S1.2 (pp.~6--18)
+    \cite{SilberschatzOSC_operating_system_concepts}; Stallings,
+    \emph{Operating Systems: Internals and Design Principles}, Ch.~1
+    \S1.4--1.7 (pp.~15--38) \cite{StallingsOS_internals_design_principles}.
+    Optional concrete depth: Bovet \& Cesati, \emph{Understanding the Linux
+    Kernel}, Ch.~4 (pp.~131--188)
+    \cite{BovetCesati_understanding_linux_kernel}.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Further Reading (Page-Cited)}
+  \footnotesize
+  \begin{itemize}
+    \item A.~Silberschatz, P.~B.~Galvin, G.~Gagne, \emph{Operating System
+      Concepts}, 8e --- Ch.~1 \S1.2 (computer-system organization, interrupts,
+      storage, I/O, DMA, pp.~6--18), \S1.3 (architecture, pp.~15--20),
+      \S1.7--1.8 (memory and storage management, pp.~24--26).
+    \item W.~Stallings, \emph{Operating Systems: Internals and Design
+      Principles}, 6e --- Ch.~1 \S1.4 (interrupts, p.~15), \S1.5 (memory
+      hierarchy, p.~26), \S1.6 (cache, p.~29), \S1.7 (I/O techniques and DMA,
+      p.~33).
+    \item D.~P.~Bovet \& M.~Cesati, \emph{Understanding the Linux Kernel},
+      3e --- Ch.~4 (interrupts and exceptions, pp.~131--188), optional.
+  \end{itemize}
+  \vspace{0.2cm}
+  \muted{Page-verified via each book's \texttt{index.md} under
+  \texttt{master\_supporting\_docs/CS502/supporting\_books/}.}
+\end{frame}
+
+\begin{frame}[allowframebreaks]{References}
+  \footnotesize
+  \bibliographystyle{plain}
+  \bibliography{../../Bibliography_base}
+\end{frame}
+
+\end{document}
