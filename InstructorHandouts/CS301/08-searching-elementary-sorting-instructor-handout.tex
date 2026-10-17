@@ -1,0 +1,870 @@
+% =============================================================================
+% InstructorHandouts/CS301/08-searching-elementary-sorting-instructor-handout.tex
+% Instructor Handout 8: Order Is a Superpower
+% (Searching & the Elementary Sorts, Week 8)
+%
+% INSTRUCTOR-ONLY. Complete, self-contained teaching guide -- explanation,
+% embedded diagrams, presentation guidance, and delivery commentary are woven
+% together per topic (not split into separate documents/sections), so an
+% instructor can teach directly from this file with no slides or Notes open.
+%
+% Explanations/diagrams/examples trace to Slides/CS301/08-searching-elementary-
+% sorting.tex (single source of truth) and Notes/CS301/08-searching-elementary-
+% sorting-notes.tex. All eight TikZ diagrams are ported VERBATIM from the
+% Beamer source. The P7 clearance audit (tikz-prevention.md) was run on every
+% embedded diagram: no path crosses a box except at a connection point (P7a),
+% no label sits on a line (P7b), every label clears its box edge by >=0.15 cm
+% (P7c), and no curve visibly crosses its own dashed reference (P7d) -- no
+% defects found, so no deck/Notes correction was required. "Teaching note"
+% asides are instructor judgment, visually distinguished but not a separate
+% section.
+%
+% Board-Drawable Example standard (see .claude/skills/instructor-handout/
+% SKILL.md): every topic with worked content carries >=2 distinct board-drawable
+% examples, each with an explicit board build order; each is marked "Board:"
+% plus a live-interaction hook.
+%
+% Page-grounding (inherited 1:1 from the deck header; no upgrades):
+%   Karumanchi2017 Ch.11 pp.547-589 PDF (search contract, variants, i-sqrt),
+%   Ch.10 pp.504-546 PDF (insertion/selection/bubble/counting), Ch.15
+%   pp.640-684 PDF (string search: LCP) -- page-cited as "p. N (PDF)".
+%   Wirth2004 Sec.1.9.1 p.34, Sec.1.9.2 pp.34-36, Sec.2.2.1/2.2.2/2.2.3
+%   pp.46/48/50 -- page-cited. Sedgewick2011 p.187 (order-of-growth table),
+%   Sec.1.4 p.172, Sec.2.1 p.244 -- page-cited. Horowitz & Sahni Ch.7,
+%   Aho-Hopcroft-Ullman Ch.8, Neapolitan Ch.2, and Knuth Vol.3 are cited at
+%   chapter level only (not page-indexed) -- no page number is asserted.
+%
+% Compile (Windows/MiKTeX, ';'-joined TEXINPUTS): cd InstructorHandouts/CS301 &&
+%   $env:TEXINPUTS="../../Preambles;"; xelatex -interaction=nonstopmode 08-searching-elementary-sorting-instructor-handout.tex  (x3)
+% =============================================================================
+
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{array}
+\input{../../Preambles/header}
+\coursecode{CS301}
+\renewcommand{\thesection}{8.\arabic{section}}
+\renewcommand{\thefigure}{8.\arabic{figure}}
+\newtheorem{example}{Example}[section]
+\newenvironment{definitionbox}[1]{%
+  \par\noindent\textbf{Definition (#1).}\ \itshape
+}{\par\vspace{0.3em}}
+% A visually distinct "teaching aside" for delivery commentary, inline with
+% the topic it belongs to rather than batched into a separate section.
+\newenvironment{teachingaside}{\begin{quote}\small\color{primary-gold}\textbf{Teaching note:}\ }{\end{quote}}
+
+% A little emergency stretch so narrow table cells and long \texttt{} tokens
+% do not produce underfull/loose lines (no content change).
+\setlength{\emergencystretch}{2.5em}
+
+\title{Instructor Handout 8: Order Is a Superpower\\\large Searching \& the Elementary Sorts --- Week 8}
+\author{Dr.\ Auqib Hamid Lone\\[0.3em]
+  \emph{Department of Computer Science \& Engineering}, \emph{GCET Ganderbal}}
+\date{\today}
+
+\begin{document}
+\maketitle
+{\centering\large\color{negative}\textbf{Instructor Copy --- Not for Student Distribution}\par}
+\vspace{0.5cm}
+
+\section{Before You Teach This Lecture}
+
+\begingroup\sloppy
+\begin{itemize}
+  \item \textbf{Karumanchi, \textit{Data Structures And Algorithms Made Easy}, Ch.~11, pp.547--589 (PDF)} --- the search operation, linear search, binary search, and the lower/upper-bound variants; \textbf{Ch.~10, pp.504--546 (PDF)} --- insertion, selection, bubble, and counting sort, plus the comparison-of-sorts table; \textbf{Ch.~15, pp.640--684 (PDF)} --- string search, the anchor for the longest-common-prefix application. \emph{Page-cited} (this edition has no printed folios --- cite as ``p.~N (PDF)''); index built 2026-08-11. Language-neutral C-style pseudocode, so syntax transfers directly to CS301's C.
+  \item \textbf{Wirth, \textit{Algorithms and Data Structures}, \S1.9.1, p.34} --- linear search; \textbf{\S1.9.2, pp.34--36} --- binary search; \textbf{\S2.2.1, p.46} --- straight insertion; \textbf{\S2.2.2, p.48} --- straight selection; \textbf{\S2.2.3, p.50} --- straight exchange (the deck's bubble sort). \emph{Page-cited}; index built 2026-08-11. All code is Oberon --- cite for concepts and analysis, never for syntax; translate to C per the notation registry.
+  \item \textbf{Sedgewick \& Wayne, \textit{Algorithms}, \S1.4, p.172} --- the ``how long will my program take?'' cost model reused from Weeks 1--2; \textbf{p.187, the order-of-growth table} --- binary search is the canonical \emph{logarithmic} row; \textbf{\S2.1, p.244} --- elementary sorts. \emph{Page-cited}. Java code --- cite for definitions and analysis only.
+  \item \textbf{Horowitz \& Sahni, \textit{Fundamentals of Data Structures}, Ch.~7} (sorting) and \textbf{Knuth, \textit{TAOCP} Vol.~3} (sorting and searching) --- \emph{not page-indexed}; cite at chapter level only. Note the KB's explicit warning: Knuth's sorting/searching material is in \emph{Vol.~3}, not Vol.~1 (the syllabus lists Vol.~1 only) --- always name Vol.~3 here.
+  \item \textbf{Aho--Hopcroft--Ullman, \textit{Data Structures and Algorithms}, Ch.~8} and \textbf{Neapolitan, \textit{Foundations of Algorithms}, Ch.~2} --- \emph{not page-indexed}; chapter-level attribution only. Neapolitan is the strongest listed book on complexity analysis; use it for depth on the recurrences, not for a page.
+  \item \textbf{Handoff from Week 7.} Week 7 closed the chain family (doubly linked lists, circular rings, list-backed stack/queue, polynomials) and promised ``Searching --- linear versus binary, and the elementary sorts that put data in the order binary search needs.'' This week pays that off. It does \emph{not} re-teach list surgery, and it reuses Week 2's $O/\Theta/\Omega$ and best/worst/average toolkit rather than re-deriving it. If students look lost at the opening, run the Week 7 summary frame first.
+  \item \textbf{Deck corrections to trust.} Two items in this deck were fixed recently and the handout reflects the corrected versions: (1) the integer-square-root code casts \texttt{(long long) mid * mid} \emph{before} the multiply --- the widening is the point, not a stylistic flourish; (2) the ``Check Your Prediction: the unsorted array'' frame now searches the key $3$ (for which \texttt{bsearch} genuinely returns $-1$), not the key $7$ (which the old frame mis-stated --- \texttt{bsearch} would have returned index $0$).
+  \item \textbf{Plan the board examples in advance.} Every section below carries two \textbf{Board:} examples plus a live-interaction hook. Rehearse silently the counting-sort scatter (the prefix-sum positions are easy to fumble live) and the two binary-search overflow instances --- the numbers on the board must be right the first time.
+\end{itemize}
+\endgroup
+
+\section{Motivation and the Handoff}
+
+This Act is motivational and orienting --- nothing in it is examined directly --- but it sets the frame the technical sections lean on. Every lookup in the course so far has been a \emph{walk}: the calculator's symbol table, a linked list since Week 6, answers a lookup by scanning from \texttt{head} until it matches or hits \texttt{NULL}, $O(n)$ worst case. Week 8's whole job is to show that \emph{order} turns that $O(n)$ scan into an $O(\log n)$ probe --- then to learn the cheapest ways to create the order.
+
+\textbf{Open with the four questions, on the board, before any answer.} Write them in order and leave them up all lecture: (1) unordered or sorted --- how much does order actually buy a search; (2) what precondition does binary search silently assume, and what happens when it is violated; (3) can we search for a value we never stored --- the integer square root of $n$; (4) insertion, selection, bubble, counting --- which sort does each input reward, and at what cost. Compress the plan into one line beneath them, which is also the order of every section: \emph{write the search contract; price linear versus binary; search a value that is not in any array; then sort --- four algorithms, their traces, and their honest bills.}
+
+\textbf{Board: three labelled boxes for the plan.} Draw three boxes labelled ``price it,'' ``search the un-stored,'' ``sort it'' (questions 1--2 collapse into the first). Invite one-word guesses from the class before revealing anything, and leave them unfilled for the Summary. This costs two minutes and gives the lecture a spine students can feel closing.
+
+\textbf{The running thread: the calculator looks up an identifier.} The tokenizer has just produced the identifier \texttt{x}; the symbol table must answer \emph{is \texttt{x} declared, and where?} As a linked list each lookup scans from \texttt{head} --- up to $2{,}000$ comparisons per token for a $2{,}000$-identifier program. Keep the same entries \emph{sorted by name}, and a binary search answers in about $\log_2 2{,}000 \approx 11$ comparisons --- roughly $180\times$ fewer.
+
+\textbf{Board: the lookup arithmetic (distinct instance 1).} Write ``$2{,}000$ identifiers'' and, beneath it, the two costs side by side: a linear walk $\approx 2{,}000$ comparisons/token; a binary probe $\approx \log_2 2{,}000 \approx 11$; annotate the arrow between them ``same correctness, $\sim\!180\times$ less work.'' Then ask the class to \emph{tell you} the two numbers for a larger program instead of you writing them.
+
+\textbf{Board: distinct instance 2 --- a bigger table, and the live hook.} Pose it as a prediction \emph{before} revealing: ``a program with $1{,}000{,}000$ identifiers --- how many probes does a sorted binary search need, and how many does the list walk need?'' Let guesses land, then write: $\log_2 1{,}000{,}000 \approx 20$ versus up to $1{,}000{,}000$ --- a factor of roughly $50{,}000$. Land the general lesson, which is the sentence that motivates the four questions: \emph{doubling the table adds just one comparison to the binary search, but doubles the walk.} Two questions then follow for the rest of the lecture: how much does sorted order speed up search, and how do we get data sorted without paying more than we save?
+
+\begin{teachingaside}
+The trap on this opening is treating it as a warm-up to skip. The ``every lookup so far has been a walk'' line is the \emph{entire} motivation for the week, and it echoes Week 1's ``the answer stays right; the arrangement of the data is the difference.'' Say the $\log_2$ and the $180\times$ number out loud, twice --- students remember one concrete speedup far better than the promise of ``logarithmic time.'' Do not derive $\log$ here; the recurrence derivation comes in its proper place in Section~\ref{sec:search}.
+\end{teachingaside}
+
+\section{The Search Contract: Linear versus Binary}
+\label{sec:search}
+
+Finding a name in an \emph{unordered} pile means checking one item at a time. Finding an entry in a \emph{sorted} directory lets you jump to the middle and discard half at a glance. The difference is not cleverness --- it is a precondition, and the precondition is the whole story of this Act.
+
+\begin{definitionbox}{The search operation (Karumanchi Ch.~11, pp.547--589 (PDF); Wirth \S1.9.1, p.34)}
+\texttt{search(A, n, key)} returns an index $i$ with \texttt{A[i] == key}, or $-1$ if \texttt{key} does not occur. \key{Linear search} makes no assumption about the array. \key{Binary search} \emph{requires} the array to be sorted in nondecreasing order --- this precondition is part of the contract, not an optional extra.
+\end{definitionbox}
+
+\textbf{Board: the contract, then the two arrays (instance 1).} Write the signature \texttt{search(A, n, key) -> i or -1} first, alone. Only then write the unordered \texttt{[7, 3, 9, 1, 5, 8]} and the sorted \texttt{[1, 3, 5, 7, 8, 9]} side by side, and search for the value $9$ in each: in the first, scan left to right ($7$ no, $3$ no, $9$ hit at index $2$); in the second, probe the middle ($5$), see $9 > 5$, keep \texttt{[7, 8, 9]}, probe its middle ($8$), keep \texttt{[9]}, found. Build order: contract, then arrays, then the two searches --- never the searches before the precondition is named. \textbf{Live question:} ``the values in the two arrays are the same --- what is the only difference that admits the shortcut of the second search?'' (The order.)
+
+\subsection{Linear search: scan until you find it}
+
+Linear search tests every element at most once, touching \texttt{A[0]}, then \texttt{A[1]}, and so on in index order --- no assumption about the values is ever used, which is exactly why it works on any input. The deck's code:
+
+{\footnotesize
+\begin{verbatim}
+int lsearch(int A[], int n, int key) {
+  for (int i = 0; i < n; i++)
+    if (A[i] == key) return i;   // hit: return the index
+  return -1;                     // scanned the whole array: miss
+}
+\end{verbatim}
+}
+
+\begin{center}
+{\footnotesize
+\begin{tabular}{lll}
+  \toprule
+  \textbf{case} & \textbf{comparisons} & \textbf{example input} \\
+  \midrule
+  \good{best} & $1$ & the first element matches \\
+  \bad{worst} & $n$ & absent, or the last element \\
+  average (uniform random hit) & $(n+1)/2$ & the key is equally likely anywhere \\
+  \bottomrule
+\end{tabular}}
+\end{center}
+
+All three are $\Theta(n)$: linear search is a linear scan, and no ordering can change that. It is the honest baseline --- and the price we pay for not owning sorted data.
+
+\begin{figure}[h]
+  \centering
+  % Diagram: linear search of A = [7,3,9,1,5,8] for key = 1; three misses
+  % then a hit at index 3. Coordinates: cells at x = 0,1.3,2.6,3.9,5.2,6.5
+  % (y=0); index labels at y=-0.55; comparison marks at y=0.62.
+  \begin{tikzpicture}[every node/.style={font=\scriptsize}]
+    \node[draw, fill=white, minimum width=1.0cm, minimum height=0.7cm,
+      align=center] (a0) at (0, 0) {7};
+    \node[draw, fill=white, minimum width=1.0cm, minimum height=0.7cm,
+      align=center] (a1) at (1.3, 0) {3};
+    \node[draw, fill=white, minimum width=1.0cm, minimum height=0.7cm,
+      align=center] (a2) at (2.6, 0) {9};
+    \node[draw, fill=primary-gold!25, minimum width=1.0cm,
+      minimum height=0.7cm, align=center] (a3) at (3.9, 0) {1};
+    \node[draw, fill=white, minimum width=1.0cm, minimum height=0.7cm,
+      align=center] (a4) at (5.2, 0) {5};
+    \node[draw, fill=white, minimum width=1.0cm, minimum height=0.7cm,
+      align=center] (a5) at (6.5, 0) {8};
+    \node[text=negative] at (0, 0.62) {\tiny $\ne$ key};
+    \node[text=negative] at (1.3, 0.62) {\tiny $\ne$ key};
+    \node[text=negative] at (2.6, 0.62) {\tiny $\ne$ key};
+    \node[text=positive] at (3.9, 0.62) {\tiny $=$ key};
+    \node[text=neutral] at (0, -0.55) {\tiny 0};
+    \node[text=neutral] at (1.3, -0.55) {\tiny 1};
+    \node[text=neutral] at (2.6, -0.55) {\tiny 2};
+    \node[text=neutral] at (3.9, -0.55) {\tiny 3};
+    \node[text=neutral] at (5.2, -0.55) {\tiny 4};
+    \node[text=neutral] at (6.5, -0.55) {\tiny 5};
+    \draw[->, thick, color=primary-blue] (-1.3, 0) -- (-0.55, 0);
+    \node[text=primary-blue] at (3.9, -1.2)
+      {4 comparisons, then return $3$};
+  \end{tikzpicture}
+  \caption{Linear search of \texttt{[7, 3, 9, 1, 5, 8]} for \texttt{key = 1}: three misses, then the hit at index $3$ --- four comparisons (cf.\ Karumanchi, Ch.~11, pp.547--589 (PDF)).}
+  \label{fig:linear}
+\end{figure}
+
+\textbf{Board: walk the diagram (instance 1).} Draw the six empty cells first and label the indices $0..5$ beneath them; write the values in a second pass, left to right. Then walk the search pointer cell by cell, writing the ``$\ne$ key'' mark above each miss and only the ``$=$ key'' mark above the hit --- narrate every comparison out loud (``$7 \ne 1$; $3 \ne 1$; $9 \ne 1$; $1 = 1$ --- return $3$''). Build order: cells, indices, values, then the walk with its marks. The point to underline: nothing in the array told us that $1$ could not have been anywhere ahead, so \emph{every} earlier cell had to be checked.
+
+\textbf{Board: distinct instance 2 --- a worst-case-and-miss pair.} On the same six-cell array, send two students to the board: one searches for the key $8$, the other for a key that is \emph{absent}, say $4$. The first walks $7,3,9,1,5,8$ --- six comparisons, return index $5$. The second walks all six --- six comparisons, return $-1$. Ask the class, before either writes: \emph{``which of the two costs more?''} (Neither --- both are the worst case, $n$ comparisons; a miss and a hit-at-the-end are the same cost. This is the point of the worst-case column, and it prepares the ``binary search is better \emph{once you own sorted data}'' payoff.)
+
+\begin{teachingaside}
+Students routinely say linear search is ``the slow one'' and want to move on. The honest framing is that linear search is not slow --- it is \emph{unconditioned}: it is the best you can do when you refuse to pay for order, and for a short array, or an array that is searched once, it beats sorting-then-searching outright. Keep the judgment conditional: the question is never ``which is faster'' but ``do you already own sorted data.'' This is the same discipline Week 1 taught for structures, applied to algorithms.
+\end{teachingaside}
+
+\subsection{The sorted precondition --- and what its absence costs}
+
+Binary search compares the target with the \emph{middle} element, then keeps only the half that could contain it. That logic is sound \emph{only if} everything left of the middle is smaller than it and everything right is larger --- exactly the sorted invariant.
+
+\begin{definitionbox}{Binary-search precondition (Karumanchi Ch.~11, pp.547--589 (PDF))}
+Binary search on $A[0..n-1]$ requires $A[0] \le A[1] \le \dots \le A[n-1]$. Applied to unsorted data it does not error --- it returns a \emph{plausible wrong answer}, silently discarding the half that really held the key. The precondition is a \emph{contract}, not a hint: binary search is only as correct as the order it is handed.
+\end{definitionbox}
+
+\textbf{Board: the failure trace with key $1$ (instance 1).} Write \texttt{lo = 0, hi = 5}. Iteration 1: \texttt{mid = 0 + (5-0)/2 = 2}, \texttt{A[2] = 9}; since $1 < 9$, set \texttt{hi = 1} --- and cross out indices $3..5$ on the board, explicitly crossing through the $1$ at index $3$. Iteration 2: \texttt{lo = 0, hi = 1, mid = 0}, \texttt{A[0] = 7 > 1}, so \texttt{hi = -1}; now \texttt{lo > hi}, the range is empty, return $-1$. Build order: write the two bounds, then each iteration's \texttt{mid} and the half discarded, crossing out the discarded cells as you go. Land the punch: the search returns a miss even though $1$ sits at index $3$ --- a wrong answer, not an error.
+
+\textbf{Board: distinct instance 2 --- the key-$3$ prediction.} This is the deck's corrected ``Check Your Prediction'' instance and it makes a good live hook. Pose the multiple choice \emph{before} revealing anything: the array \texttt{[7, 3, 9, 1, 5, 8]} is unsorted; you run binary search for the key $3$ --- does it return (A) index $1$, (B) a wrong index or $-1$, or (C) a runtime error? Let the room vote. Then trace: \texttt{mid = 2} (value $9$); $3 < 9$, so it discards $3..5$ and continues left; the range collapses to $\{0\}$, the value $7$ there is $> 3$, and the search returns $-1$ --- silently losing the $3$ at index $1$. Answer: \textbf{B}. \textbf{The live hook:} ``why is it not C --- why does nothing catch this?'' (Because the code contains no check of whether the input is sorted; it simply trusts the contract, and a wrong ``greater-than'' comparison discards the half that held the key.)
+
+\begin{teachingaside}
+This pair of traces is the single most important board work of the Act: unsorted input does not crash, it produces a \emph{plausible} answer, which is far worse than a crash. Students who only ever see binary search succeed on sorted data never build the reflex to check the precondition --- and this is exactly the anti-pattern the course KB flags (``teaching binary search before establishing the sorted precondition as an invariant''). Do the two failure traces \emph{before} showing the working code, so correctness is never taken for granted.
+\end{teachingaside}
+
+\subsection{Binary search: halve the range}
+
+The deck's binary search, written in C (Wirth \S1.9.2, pp.34--36; Karumanchi Ch.~11, pp.547--589 (PDF)):
+
+{\footnotesize
+\begin{verbatim}
+int bsearch(int A[], int n, int key) {
+  int lo = 0, hi = n - 1;               // current [lo, hi], inclusive
+  while (lo <= hi) {
+    int mid = lo + (hi - lo) / 2;       // avoids lo+hi overflow
+    if (A[mid] == key) return mid;      // hit
+    else if (A[mid] < key) lo = mid + 1; // key is in the right half
+    else hi = mid - 1;                  // key is in the left half
+  }
+  return -1;                            // range empty: miss
+}
+\end{verbatim}
+}
+
+Each iteration either stops or halves the live range $[\texttt{lo},\texttt{hi}]$. Writing \texttt{lo + (hi - lo)/2} rather than \texttt{(lo + hi)/2} is not cosmetic: for large indices the sum can overflow \texttt{int} --- Week 1's caution about C arithmetic in disguise.
+
+\begin{figure}[h]
+  \centering
+  % Diagram: binary search for a key; the 8-slot range [0,8) is halved
+  % each row. Coordinates: slot i spans [i, i+1] on x; row y-values
+  % 2.4, 1.6, 0.8, 0.0; mid marked by a vertical rule.
+  \begin{tikzpicture}[every node/.style={font=\scriptsize}]
+    \foreach \i in {0,...,7}
+      \node[text=neutral] at (\i + 0.5, 3.15) {\tiny \i};
+    \draw[neutral, dashed] (0, 2.75) -- (8, 2.75);
+    % row 1: full range [0,8), mid 4
+    \draw[fill=primary-gold!20, draw=primary-gold]
+      (0, 2.15) rectangle (8, 2.65);
+    \draw[primary-blue, thick] (4, 2.15) -- (4, 2.65);
+    \node[text=neutral, anchor=east] at (-0.15, 2.4) {$0..7$: mid $3$};
+    % row 2: [0,4), mid 2
+    \draw[fill=primary-gold!20, draw=primary-gold]
+      (0, 1.35) rectangle (4, 1.85);
+    \draw[primary-blue, thick] (2, 1.35) -- (2, 1.85);
+    \node[text=neutral, anchor=east] at (-0.15, 1.6) {$0..3$: mid $1$};
+    % row 3: [2,4), mid 3
+    \draw[fill=primary-gold!20, draw=primary-gold]
+      (2, 0.55) rectangle (4, 1.05);
+    \draw[primary-blue, thick] (3, 0.55) -- (3, 1.05);
+    \node[text=neutral, anchor=east] at (-0.15, 0.8) {$2..3$: mid $2$};
+    % row 4: [3,4) found
+    \draw[fill=positive!25, draw=positive]
+      (3, -0.25) rectangle (4, 0.25);
+    \node[text=positive, anchor=east] at (-0.15, 0.0) {found at $3$};
+    \node[text=primary-blue, align=center] at (4, -0.85)
+      {each step halves the range: blue rule $=$ \texttt{mid}};
+  \end{tikzpicture}
+  \caption{Binary search: each row halves the surviving range; the blue rule marks \texttt{mid} (cf.\ Wirth \S1.9.2, pp.34--36).}
+  \label{fig:bsearch}
+\end{figure}
+
+\textbf{Board: draw the shrinking range (instance 1).} Draw the eight index ticks along the top (a ruler), then row 1 as the full range $0..7$ with the blue rule at the middle. Narrate each successive row as a redraw \emph{beneath} the previous one, halving the gold band and moving the rule: row 2 is the left half $0..3$ (because the key is smaller than the middle), row 3 the right half of that, row 4 the single found slot. Build order: ruler, then top-to-bottom one row per iteration, halving each time. The line to say at each step: ``one comparison, and roughly half the candidates are gone.'' \textbf{Live hook:} after row 1, cover rows 2--4 and ask the class \emph{which} half survives --- ``the key is bigger than the middle, so we keep \dots?'' (the right half).
+
+\textbf{Board: distinct instance 2 --- a concrete sorted array trace.} The range diagram is abstract; back it with a real array. On sorted \texttt{[1, 3, 5, 7, 8, 9]}, trace \texttt{bsearch} for the key $8$: \texttt{lo = 0, hi = 5}; iteration 1 \texttt{mid = 2}, \texttt{A[2] = 5 < 8} so \texttt{lo = 3}; iteration 2 \texttt{lo = 3, hi = 5, mid = 4}, \texttt{A[4] = 8 == key}, return $4$. Two comparisons. Then ask a student to run the same array for the absent key $6$: \texttt{mid = 2} ($5 < 6 \to \texttt{lo}=3$); \texttt{lo=3,hi=5,mid=4} ($8 > 6 \to \texttt{hi}=3$); \texttt{lo=3,hi=3,mid=3} ($7 > 6 \to \texttt{hi}=2$); \texttt{lo>hi}, return $-1$. Three comparisons for a miss. This is a genuinely different instance from the deck's eight-slot picture and exercises the exact code above.
+
+\textbf{Board: the overflow trap, two instances.} Write the two candidate mid-computations side by side: \texttt{(lo + hi) / 2} and \texttt{lo + (hi - lo) / 2}. Instance 1: \texttt{lo = 1{,}500{,}000{,}000, hi = 2{,}000{,}000{,}000} --- the sum $3{,}500{,}000{,}000$ exceeds the $31$-bit \texttt{int} maximum ($2{,}147{,}483{,}647$) and wraps negative; the safe form computes $1{,}500{,}000{,}000 + 250{,}000{,}000$ with no overflow. Instance 2: \texttt{lo = 1{,}800{,}000{,}000, hi = 2{,}000{,}000{,}000} --- sum wraps again, safe form gives $1{,}900{,}000{,}000$. \textbf{Prediction hook:} pose instance 2 and have students say whether the \emph{naive} form is safe before you reveal. Land the reuse: the same trap reappears as \texttt{mid * mid} in \texttt{isqrt} (Section~\ref{sec:apps}) --- it is Week 1's arithmetic caution, not a binary-search quirk.
+
+\subsection{Why binary search is $O(\log n)$}
+
+Let $T(n)$ be the worst-case number of comparisons for a range of size $n$. One comparison is spent, and a range of size at most $\lceil n/2 \rceil$ remains, so the cost obeys
+\[ T(n) = T(\lceil n/2 \rceil) + 1, \qquad T(1) = 1. \]
+Unrolling the recurrence: after $k$ halvings the range has size $n/2^{k}$, which reaches $1$ when $k = \log_2 n$. Hence $T(n) = \Theta(\log n)$ in the worst and average cases, and $O(1)$ in the best case (the target happens to be the middle element at once). The growth is unusually gentle:
+
+\begin{center}
+{\footnotesize
+\begin{tabular}{lrrrr}
+  \toprule
+  $n$ & $10$ & $100$ & $1{,}000$ & $1{,}000{,}000$ \\
+  \midrule
+  comparisons $\approx \log_2 n$ & $4$ & $7$ & $10$ & $20$ \\
+  \bottomrule
+\end{tabular}}
+\end{center}
+
+\muted{Sedgewick classifies binary search as the canonical \emph{logarithmic} order of growth (order-of-growth table, p.187; cost model, \S1.4, p.172). Doubling $n$ adds just one comparison.}
+
+\textbf{Board: unroll the recurrence by hand.} Do not just state $\Theta(\log n)$ --- write the halvings out: $n \to n/2 \to n/4 \to \dots \to 1$, count the arrows ($k$), and set $n/2^{k} = 1$ so $k = \log_2 n$. Then fill the table row live: for $n = 1{,}000$, $\log_2 1000 \approx 10$; for $n = 1{,}000{,}000$, $\approx 20$. \textbf{Board: the doubling hook.} Ask the class to predict the comparison count at $n = 2{,}000{,}000$ before you write it --- the whole point is that the answer is $21$, not $40$. Say the takeaway aloud: \emph{doubling the input adds one comparison}, which is precisely the ``gentle growth'' the table shows.
+
+\subsection{Binary-search variants: first and last occurrence}
+
+The plain search returns \emph{some} matching index. To find the \emph{first} occurrence --- useful for counting duplicates --- keep the matching slot as a candidate instead of returning it, and continue into the left half (Karumanchi Ch.~11, pp.547--589 (PDF)):
+
+{\footnotesize
+\begin{verbatim}
+int lowerBound(int A[], int n, int key) {   // first i with A[i] >= key
+  int lo = 0, hi = n;                        // half-open [lo, hi)
+  while (lo < hi) {
+    int mid = lo + (hi - lo) / 2;
+    if (A[mid] < key) lo = mid + 1;          // discard [lo, mid]
+    else hi = mid;                           // keep mid as a candidate
+  }
+  return lo;                                 // n if every element < key
+}
+\end{verbatim}
+}
+
+The occurrence count of \texttt{key} in a sorted array is then \texttt{upperBound} $-$ \texttt{lowerBound}, computed in $O(\log n)$ --- no scan (the upper bound is the same routine with $>$ in place of $\ge$). The one line that matters is \texttt{hi = mid} rather than \texttt{hi = mid - 1}: keeping \texttt{mid} as a candidate is precisely what pinpoints the \emph{first} match instead of discarding it.
+
+\textbf{Board: trace \texttt{lowerBound} (instance 1).} On the sorted array \texttt{[1, 3, 3, 3, 5, 7]}, find the first index with \texttt{A[i] >= 3}. Write \texttt{lo = 0, hi = 6}. Iteration 1: \texttt{mid = 3}, \texttt{A[3] = 3} which is \emph{not} $< 3$, so \texttt{hi = mid = 3}. Iteration 2: \texttt{lo = 0, hi = 3, mid = 1}, \texttt{A[1] = 3} not $< 3$, so \texttt{hi = 1}. Iteration 3: \texttt{lo = 0, hi = 1, mid = 0}, \texttt{A[0] = 1 < 3}, so \texttt{lo = 1}. Now \texttt{lo == hi == 1}; return $1$ --- the first $3$. Build order: bounds, then each iteration's \texttt{mid} and the surviving half-open range, underlining the \texttt{hi = mid} line each time it fires. \textbf{Live question:} ``when \texttt{A[mid]} \emph{equals} the key, why do we not return mid?'' (Because an earlier equal key may exist to the left; keeping \texttt{mid} as a candidate and continuing left finds the first one.)
+
+\textbf{Board: distinct instance 2 --- count the duplicates.} Use the sorted \texttt{[1, 2, 2, 2, 2, 3]}. Send one student to trace \texttt{lowerBound(A, 6, 2)} and another to trace the upper bound ($>$ variant). Lower bound lands on index $1$ (first $2$); upper bound lands on index $5$ (one past the last $2$). The occurrence count is $5 - 1 = 4$. \textbf{Prediction hook before the second trace:} ``how many $2$s are there, and can we get that without ever scanning the array?'' (Four, and yes --- two $O(\log n)$ searches, no scan.)
+
+\begin{teachingaside}
+The frequent slip is writing \texttt{hi = mid - 1} out of habit and then hunting for the bug when duplicates are miscounted. Anchor it by contrast, on the board: in the plain search, an equal element at \texttt{mid} is a reason to \emph{stop}; in the lower-bound search, it is a reason to keep \texttt{mid} as the best-so-far \emph{and keep looking left}. The two routines look nearly identical and mean opposite things at exactly this line. Also note the loop guard differs --- \texttt{while (lo < hi)} here, \texttt{while (lo <= hi)} in the plain search --- because the ranges are half-open versus inclusive; mixing them up is the second-most-common bug in this section.
+\end{teachingaside}
+
+\begin{center}
+{\footnotesize
+\begin{tabular}{lllll}
+  \toprule
+  \textbf{algorithm} & \textbf{precondition} & \textbf{best} &
+    \textbf{worst} & \textbf{space} \\
+  \midrule
+  linear search & none & $O(1)$ & $\Theta(n)$ & $O(1)$ \\
+  binary search (iterative) & sorted & $O(1)$ & $\Theta(\log n)$ & $O(1)$ \\
+  \bottomrule
+\end{tabular}}
+\end{center}
+
+Binary search's $\Theta(\log n)$ worst case looks strictly better --- and it is, \emph{once you own sorted data}. The catch is the precondition: it costs something to establish, and it must be maintained after every insertion. The rest of the lecture is about that cost --- and before we leave search, two problems where binary search finds an answer that is \emph{not} stored in any array at all.
+
+\section{Two Applications of Binary Search}
+\label{sec:apps}
+
+Binary search is not only for arrays of stored data. Whenever a yes/no question about a value has a single true$\to$false flip point (a \key{monotone predicate}), binary search finds that point in $O(\log(\text{range}))$ probes --- even when no element of an array is involved. Two applications make the pattern concrete.
+
+\subsection{Application 1: the integer square root of $n$}
+
+Suppose we want $\lfloor \sqrt{n} \rfloor$ --- the largest integer $k$ with $k^2 \le n$ --- using only integer arithmetic, no floating point. The answer $k$ is not stored in any array. The trick is to search the \emph{answer space} $0..n$ instead of an array: define the predicate $P(k) = (k^2 \le n)$. As $k$ grows, $P$ is \emph{true} up to a point and \emph{false} after it --- a single true$\to$false boundary. A monotone predicate is exactly what binary search needs: find the largest $k$ with $P(k)$ true, and that $k$ is $\lfloor \sqrt{n} \rfloor$.
+
+The deck's code (standard treatment; Karumanchi Ch.~11, pp.547--589 (PDF)):
+
+{\footnotesize
+\begin{verbatim}
+int isqrt(int n) {                       // floor(sqrt(n)), n >= 0
+  int lo = 0, hi = n, ans = 0;
+  while (lo <= hi) {
+    int mid = lo + (hi - lo) / 2;
+    if ((long long) mid * mid <= n) {     // P(mid) true
+      ans = mid; lo = mid + 1;            // mid is feasible; push right
+    } else hi = mid - 1;                  // P(mid) false; push left
+  }
+  return ans;                             // largest feasible k
+}
+\end{verbatim}
+}
+
+The \texttt{(long long)} cast widens \emph{before} the multiply: \texttt{mid} can reach $n$, and $n^2$ overflows \texttt{int} --- and even a $32$-bit \texttt{long} on Windows (LLP64). The cost is $O(\log n)$ probes and $O(1)$ space: the range $0..n$ halves each step, no array, no floating point.
+
+\begin{figure}[h]
+  \centering
+  % Diagram: predicate P(k) = (k*k <= 27) over k in 0..27; true for k<=5,
+  % false for k>=6; answer floor(sqrt(27)) = 5. x-axis is scaled 0.2 cm per
+  % unit: green [0,1.0], red (1.0,5.4]; boundary rule at x=1.0.
+  \begin{tikzpicture}[every node/.style={font=\scriptsize}]
+    \draw[positive, fill=positive!20] (0, 0) rectangle (1.0, 0.6);
+    \draw[negative, fill=negative!15] (1.0, 0) rectangle (5.4, 0.6);
+    \draw[jet, thick] (1.0, -0.15) -- (1.0, 0.75);
+    \foreach \x/\lab in {0/0,1.0/5,2.0/10,3.0/15,4.0/20,5.0/25,5.4/27}
+      \node[text=neutral] at (\x, -0.42) {\tiny \lab};
+    \node[text=positive, anchor=east] at (-0.15, 0.3) {\tiny true};
+    \node[text=negative, anchor=west] at (5.55, 0.3) {\tiny false};
+    \node[text=primary-gold] at (1.0, 1.0) {$\lfloor\sqrt{27}\rfloor$};
+    \node[text=primary-blue, align=center] at (2.7, 1.5)
+      {one true$\to$false boundary; binary search finds it in
+      $O(\log 27)$ probes};
+  \end{tikzpicture}
+  \caption{The square-root search space: $P(k) = (k^2 \le 27)$ is true for $k \le 5$ and false after, and binary search finds the single boundary (cf.\ Karumanchi, Ch.~11, pp.547--589 (PDF)).}
+  \label{fig:isqrt}
+\end{figure}
+
+\textbf{Board: the predicate table and boundary (instance 1).} Draw the little table of $k$, $k^2$, and $P(k)$ for $k = 0..7$ first, then draw the two-colour band underneath with the boundary rule at $k = 5$. Build order: table first (so students see $k^2$ cross $27$ between $5$ and $6$), then the band, then the rule. \textbf{Live question:} ``we never stored the number $5$ anywhere --- where did the answer come from?'' (From the boundary of a predicate: $P(5)$ is the last true value, $P(6)$ the first false, so $\lfloor\sqrt{27}\rfloor = 5$, found in $O(\log 27)$ probes.)
+
+\textbf{Board: distinct instance 2 --- $\lfloor\sqrt{50}\rfloor$, and the overflow.} A genuinely different instance: compute $\lfloor\sqrt{50}\rfloor$ by the same algorithm. Boundary reasoning first: $7^2 = 49 \le 50$, $8^2 = 64 > 50$, so the answer is $7$. Then trace the actual probes: \texttt{lo=0, hi=50, ans=0, mid=25} ($625 > 50 \to \texttt{hi}=24$); \texttt{mid=12} ($144 > 50 \to \texttt{hi}=11$); \texttt{mid=5} ($25 \le 50 \to \texttt{ans}=5, \texttt{lo}=6$); \texttt{mid=8} ($64 > 50 \to \texttt{hi}=7$); \texttt{mid=6} ($36 \le 50 \to \texttt{ans}=6, \texttt{lo}=7$); \texttt{mid=7} ($49 \le 50 \to \texttt{ans}=7, \texttt{lo}=8$); \texttt{lo>hi}, return $7$. Now the overflow demonstration: write \texttt{mid = 1{,}000{,}000} and compute \texttt{mid * mid = 1{,}000{,}000{,}000{,}000} --- far past \texttt{int}'s range; the \texttt{(long long)} cast is what keeps the product correct. \textbf{The live hook:} pose the range-of-probes question before tracing --- ``about how many probes for $n = 50$?'' ($\lceil\log_2 51\rceil \approx 6$ --- the trace confirms it.)
+
+\begin{teachingaside}
+The conceptual leap is ``binary search over a space where nothing is stored.'' Students who have only seen binary search in arrays have trouble finding the ``middle'' of an answer space. Give them the sentence explicitly: the array's indices $0..n-1$ have become the candidate answers $0..n$, and the ``sorted order'' that was assumed of the data is now a property of the \emph{predicate} --- it goes true, true, \dots, true, false, false, \dots once and never flips back. Also state plainly that the \texttt{(long long)} is not decoration: without it the widening does not happen before the multiply and a large \texttt{n} silently overflows.
+\end{teachingaside}
+
+\subsection{Application 2: the longest common prefix}
+
+The calculator's autocomplete must find the longest prefix shared by all identifiers starting with a typed stem. For ``flower'', ``flow'', ``flight'' the shared prefix is ``fl''. Two facts make this a binary-search problem:
+
+\begin{enumerate}
+  \item If the strings are \emph{sorted}, the longest common prefix of the whole set equals the common prefix of the first and the last string --- so only two strings need comparing.
+  \item The length $L$ of the common prefix of two strings is itself found by binary search: the predicate ``the first $L$ characters are equal'' is true for small $L$ and false beyond the answer --- again a single true$\to$false boundary.
+\end{enumerate}
+
+So: sort the set once ($O(n \log n \cdot m)$ for strings of length up to $m$), then answer each prefix query in $O(m)$ using the first and last strings --- no scan over all $n$ strings. The deck's code (standard treatment; Karumanchi Ch.~15, pp.640--684 (PDF), string search):
+
+{\footnotesize
+\begin{verbatim}
+int lcp2(const char *s, const char *t) {   // common prefix of s, t
+  int lo = 0, hi = min(strlen(s), strlen(t)), ans = 0;
+  while (lo <= hi) {
+    int L = lo + (hi - lo) / 2;
+    if (prefixEq(s, t, L)) { ans = L; lo = L + 1; }  // P(L) true
+    else hi = L - 1;                                  // P(L) false
+  }
+  return ans;
+}
+// For a SORTED set: LCP of all = lcp2(first, last).
+\end{verbatim}
+}
+
+\texttt{prefixEq(s, t, L)} costs $O(L)$; trying $O(\log m)$ candidate lengths makes the query $O(m \log m)$ --- or $O(m)$ if each check is made incremental.
+
+\begin{figure}[h]
+  \centering
+  % Diagram: sorted set {"flight","flow","flower"}; shared prefix "fl"
+  % highlighted gold; LCP = LCP(first, last). Coordinates: letter cells of
+  % width 0.55 starting at x=0; rows at y = 1.0, 0.25, -0.5.
+  \begin{tikzpicture}[every node/.style={font=\scriptsize}]
+    \foreach \i/\ch in {0/f,1/l,2/i,3/g,4/h,5/t}
+      \node[draw, fill=primary-gold!25, minimum width=0.55cm,
+        minimum height=0.55cm, inner sep=0] at (0.3+\i*0.58, 1.0)
+        {\ch};
+    \node[anchor=west, text=neutral] at (3.9, 1.0) {flight};
+    \foreach \i/\ch in {0/f,1/l,2/o,3/w}
+      \node[draw, fill=primary-gold!25, minimum width=0.55cm,
+        minimum height=0.55cm, inner sep=0] at (0.3+\i*0.58, 0.25)
+        {\ch};
+    \node[anchor=west, text=neutral] at (2.7, 0.25) {flow};
+    \foreach \i/\ch in {0/f,1/l,2/o,3/w,4/e,5/r}
+      \node[draw, fill=primary-gold!25, minimum width=0.55cm,
+        minimum height=0.55cm, inner sep=0] at (0.3+\i*0.58, -0.5)
+        {\ch};
+    \node[anchor=west, text=neutral] at (3.9, -0.5) {flower};
+    \draw[positive, thick, decorate,
+      decoration={brace, amplitude=4pt, mirror}]
+      (0.02, -0.92) -- (1.2, -0.92);
+    \node[text=positive] at (0.7, -1.4) {\tiny ``fl''};
+    \node[text=primary-blue, align=center] at (5.6, 0.1)
+      {sorted: LCP of all $=$\\ LCP(first, last)};
+  \end{tikzpicture}
+  \caption{The longest common prefix of a sorted set equals the LCP of its first and last strings: ``fl'' here (cf.\ Karumanchi, Ch.~15, pp.640--684 (PDF)).}
+  \label{fig:lcp}
+\end{figure}
+
+\textbf{Board: draw the sorted strings and the shared prefix (instance 1).} Draw the three rows as letter cells in sorted order (\texttt{flight}, \texttt{flow}, \texttt{flower}), top to bottom. Then compare column by column, colouring each column that agrees across the first and last rows: column $0$ (``f'') agrees, column $1$ (``l'') agrees, column $2$ (``i'' vs ``o'') is the first disagreement --- stop and draw the brace around the first two columns, labelled ``fl''. Build order: three sorted rows, then the column-by-column comparison of first vs.\ last, then the brace. Say the key fact as you stop: you never compared the middle row at all.
+
+\textbf{Board: distinct instance 2 --- a different set, and the prediction.} Give a fresh set \texttt{["apple", "apply", "apt"]} (already sorted). Compare the first and last strings \texttt{"apple"} and \texttt{"apt"}: position $0$ is ``a'' in both, position $1$ is ``p'' in both, position $2$ is ``p'' vs ``t'' --- the first disagreement. The shared prefix is ``ap'', length $2$. \textbf{The live hook is the deck's prediction:} for the original set \texttt{["flight", "flow", "flower"]}, ``all share a prefix of length $L$'' --- for which $L$ is it first \emph{false}? (A) $L=1$, (B) $L=2$, (C) $L=3$. Let the class vote, then resolve: $L=1$ (``f'') is true; $L=2$ (``fl'') is still true, so the boundary lies \emph{after} this; $L=3$ would require ``fli'' and ``flo'' to agree, and ``flight'' has an ``i'' where ``flow'' has an ``o'' --- first false at $L=3$. Answer \textbf{C}; the longest common length is $2$, the largest $L$ still true.
+
+\begin{teachingaside}
+Students resist the sorted-set fact: ``surely the middle string could break the consensus?'' It cannot, and the reason is the whole value of sorting --- once sorted, the first and last strings are the two extremes, and every string between them shares at least their common prefix. Make the class \emph{try} to construct a counterexample (a middle string that shares less than ``fl'') and watch them fail; that failure is the proof, delivered by the class, which is worth more than a sentence from you. Note also the honest scope: this query is $O(m)$ or $O(m \log m)$ in the string length, not $O(\log n)$ in the set size --- sorting the set is what removed the $O(n)$ scan, and binary search on the \emph{length} is a separate, inner use of the same idea.
+\end{teachingaside}
+
+\section{Creating Order: The Four Elementary Sorts}
+\label{sec:sorts}
+
+Binary search is the reward; sorting is the price we pay for it. If the identifier table is sorted once and read many times, that price is amortized away. But sorting is not only for search: it puts ``equal'' things next to each other, which is how we deduplicate, find duplicate entries, group records, and compute medians. The calculator's symbol table, its autocomplete set, and its report of repeated declarations all begin with a sort.
+
+Four algorithms are introduced here --- not as a list to memorize but as four answers to the question ``what is the cheapest way, given \emph{this} input?'':
+
+\begin{center}
+{\footnotesize
+\begin{tabular}{>{\raggedright\arraybackslash}p{2.2cm}
+                >{\raggedright\arraybackslash}p{5.6cm}
+                >{\raggedright\arraybackslash}p{4.6cm}}
+  \toprule
+  \textbf{sort} & \textbf{idea} & \textbf{signature} \\
+  \midrule
+  insertion & keep $A[0..i-1]$ sorted; insert $A[i]$ into place &
+    adaptive: near-sorted input is fast \\
+  selection & find the minimum of the unsorted part; swap it forward &
+    exactly $n-1$ swaps, always $\Theta(n^2)$ comparisons \\
+  bubble & swap adjacent inversions; the largest ``bubbles'' to the end &
+    can stop early when a pass makes no swap \\
+  \bottomrule
+\end{tabular}}
+\end{center}
+
+All three sorts above sort \emph{by comparing pairs} of elements, so they work on any comparable type. Counting sort, introduced later in this section, breaks that property and gets linear time --- but only for keys drawn from a small integer range. Two pieces of vocabulary decide many real choices:
+
+\begin{definitionbox}{Stable sort}
+A sort is \key{stable} if equal keys keep their original relative order.
+\end{definitionbox}
+\begin{definitionbox}{In-place sort}
+A sort is \key{in-place} if it uses $O(1)$ auxiliary space beyond the input.
+\end{definitionbox}
+
+\muted{Reference treatment: Knuth, \emph{TAOCP} Vol.~3; Horowitz \& Sahni Ch.~7 --- both chapter-level, not page-indexed.}
+
+\subsection{Insertion sort: grow a sorted prefix}
+
+The deck's insertion sort, written in C (Wirth \S2.2.1, p.46; Karumanchi Ch.~10, pp.504--546 (PDF)):
+
+{\footnotesize
+\begin{verbatim}
+void insertionSort(int A[], int n) {
+  for (int i = 1; i < n; i++) {
+    int key = A[i], j = i - 1;         // key is the element to place
+    while (j >= 0 && A[j] > key) {     // shift larger elements right
+      A[j + 1] = A[j];
+      j--;
+    }
+    A[j + 1] = key;                    // drop key into its slot
+  }
+}
+\end{verbatim}
+}
+
+The invariant is: before iteration $i$, the subarray $A[0..i-1]$ is sorted. The outer loop extends that sorted prefix by one element; the inner loop shifts the larger elements rightward until \texttt{key} finds its place. When the prefix is already sorted, the inner loop runs \emph{once} --- which is the whole point of an adaptive sort.
+
+\begin{figure}[h]
+  \centering
+  % Diagram: insertion sort of [5,2,4,6,1,3]; the sorted prefix (gold)
+  % grows as the next key is inserted. Coordinates: 6 cells at x =
+  % 0,1.0,...,5.0; rows at y = 1.4, 0.5, -0.4.
+  \begin{tikzpicture}[every node/.style={font=\scriptsize}]
+    % row 1 (start): all white, the first cell already a sorted prefix
+    \foreach \i/\v in {0/5,1/2,2/4,3/6,4/1,5/3}
+      \node[draw, fill=white, minimum width=0.9cm, minimum height=0.7cm,
+        align=center] at (\i*1.0, 1.4) {\v};
+    \node[draw, fill=primary-gold!35, minimum width=0.9cm,
+      minimum height=0.7cm, align=center] at (0, 1.4) {5};
+    \node[anchor=east, text=neutral] at (-0.6, 1.4) {start};
+    % row 2: the sorted prefix is cells 0..1 (gold)
+    \foreach \i/\v in {0/2,1/5,2/4,3/6,4/1,5/3}
+      \node[draw, fill=white, minimum width=0.9cm, minimum height=0.7cm,
+        align=center] at (\i*1.0, 0.5) {\v};
+    \foreach \i/\v in {0/2,1/5}
+      \node[draw, fill=primary-gold!35, minimum width=0.9cm,
+        minimum height=0.7cm, align=center] at (\i*1.0, 0.5) {\v};
+    \node[anchor=east, text=neutral] at (-0.6, 0.5) {insert $2$};
+    % row 3: the sorted prefix is cells 0..2 (gold)
+    \foreach \i/\v in {0/2,1/4,2/5,3/6,4/1,5/3}
+      \node[draw, fill=white, minimum width=0.9cm, minimum height=0.7cm,
+        align=center] at (\i*1.0, -0.4) {\v};
+    \foreach \i/\v in {0/2,1/4,2/5}
+      \node[draw, fill=primary-gold!35, minimum width=0.9cm,
+        minimum height=0.7cm, align=center] at (\i*1.0, -0.4) {\v};
+    \node[anchor=east, text=neutral] at (-0.6, -0.4) {insert $4$};
+    \node[text=primary-gold] at (2.6, -1.15)
+      {gold $=$ sorted prefix (grows by one each step)};
+  \end{tikzpicture}
+  \caption{Insertion sort of \texttt{[5, 2, 4, 6, 1, 3]}: the gold sorted prefix grows by one each step (cf.\ Wirth \S2.2.1, p.46).}
+  \label{fig:insertion}
+\end{figure}
+
+\textbf{Board: the full trace, step by step (instance 1).} Start with the prefix \texttt{[5]}. Then insert each remaining element, narrating the shifts: insert $2$ (shift $5$) $\Rightarrow$ \texttt{[2, 5, 4, 6, 1, 3]}; insert $4$ (shift $5$) $\Rightarrow$ \texttt{[2, 4, 5, 6, 1, 3]}; insert $6$ (no shift, $6 > 5$) $\Rightarrow$ unchanged; insert $1$ (shift $6,5,4,2$) $\Rightarrow$ \texttt{[1, 2, 4, 5, 6, 3]}; insert $3$ (shift $6,5,4$) $\Rightarrow$ \texttt{[1, 2, 3, 4, 5, 6]}. Build order: write the array once, then re-draw the gold prefix growing by one cell per row. Underline step 3 --- it is the adaptive case in miniature: the prefix was already sorted, so the inner loop stopped after a single comparison and no shift.
+
+\textbf{Board: distinct instance 2 --- \texttt{[4, 2, 5, 1, 3]}.} A different input, to be traced by the class rather than by you. After $i=1$ (key $2$): \texttt{[2, 4, 5, 1, 3]} (one shift). After $i=2$ (key $5$): unchanged, no shift ($5 > 4$). After $i=3$ (key $1$): shift $5,4,2$ $\Rightarrow$ \texttt{[1, 2, 4, 5, 3]}. After $i=4$ (key $3$): shift $5,4$ $\Rightarrow$ \texttt{[1, 2, 3, 4, 5]}. Total shifts: $1 + 0 + 3 + 2 = 6$. \textbf{Live hook:} pose the already-sorted input --- ``how many shifts does \texttt{[1, 2, 3, 4, 5]} cost?'' (Zero shifts; $n-1$ comparisons; the inner loop stops immediately every time. That is the $O(n)$ best case.)
+
+\subsection{Insertion sort: the bill}
+
+Count the shifts (the inner-loop body). The outer loop runs $i = 1 \dots n-1$, so there are $n-1$ insertions:
+
+\begin{center}
+{\footnotesize
+\begin{tabular}{lll}
+  \toprule
+  \textbf{case} & \textbf{comparisons / shifts} & \textbf{example input} \\
+  \midrule
+  best & $n-1$ (each key already in place) & already sorted: $O(n)$ \\
+  worst & $\sum_{i=1}^{n-1} i = \dfrac{n(n-1)}{2}$ & reverse sorted: $\Theta(n^2)$ \\
+  average & $\Theta(n^2)$ & random order \\
+  \bottomrule
+\end{tabular}}
+\end{center}
+
+Insertion sort is \good{adaptive}: its cost falls to $O(n)$ on nearly-sorted input --- it is the only one of the three comparison sorts with a linear best case. It is also \good{stable} (equal keys stay in order, because we shift only on \texttt{A[j] > key}, not $\ge$) and \good{in-place} ($O(1)$ extra space). Those last two properties are why insertion sort is the base case inside efficient sorts in Week 9.
+
+\textbf{Board: derive the worst-case sum.} Do not just quote $\frac{n(n-1)}{2}$ --- build it: on reverse-sorted input the $i$-th key must shift past all $i$ elements before it, so the total is $1 + 2 + \dots + (n-1)$. Write the sum, then the closed form. \textbf{Board: the stability trace (second board moment).} Take \texttt{[(A,2), (B,2)]} (two equal keys, A before B) and trace one insertion: the inner loop shifts only while \texttt{A[j] > key}, and since $2 \not> 2$ it stops --- A stays before B. \textbf{The live hook:} ``what single character in the code guarantees stability?'' (The strict \texttt{>}; had it been \texttt{>=}, equal keys would be shifted and the order would swap.)
+
+\subsection{Selection sort: repeatedly pick the minimum}
+
+The deck's selection sort, written in C (Wirth \S2.2.2, p.48; Karumanchi Ch.~10, pp.504--546 (PDF)):
+
+{\footnotesize
+\begin{verbatim}
+void selectionSort(int A[], int n) {
+  for (int i = 0; i < n - 1; i++) {
+    int m = i;                          // index of the minimum so far
+    for (int j = i + 1; j < n; j++)
+      if (A[j] < A[m]) m = j;           // find the smallest in A[i..n-1]
+    swap(&A[i], &A[m]);                 // put it at the front of the rest
+  }
+}
+\end{verbatim}
+}
+
+The invariant is: after iteration $i$, the subarray $A[0..i]$ holds the $i+1$ smallest elements, in final position. The scan finds the next minimum, and one swap moves it into place. Note that the scan always covers the whole unsorted remainder --- regardless of whether the input is already sorted.
+
+\begin{figure}[h]
+  \centering
+  % Diagram: selection sort of [5,2,4,6,1,3]; green = finalised prefix;
+  % gold = current minimum being selected. Cells at x = 0,1.0,...,5.0;
+  % rows at y = 1.3, 0.4, -0.5.
+  \begin{tikzpicture}[every node/.style={font=\scriptsize}]
+    % row 1: original; the minimum 1 sits at index 4 (gold)
+    \foreach \i/\v in {0/5,1/2,2/4,3/6,4/1,5/3}
+      \node[draw, fill=white, minimum width=0.9cm, minimum height=0.7cm,
+        align=center] at (\i*1.0, 1.3) {\v};
+    \node[draw, fill=primary-gold!35, minimum width=0.9cm,
+      minimum height=0.7cm, align=center] at (4, 1.3) {1};
+    \node[anchor=east, text=neutral] at (-0.6, 1.3) {min is $1$};
+    % row 2: after swapping 5 and 1 (index 0 green, next min 2 gold)
+    \foreach \i/\v in {0/1,1/2,2/4,3/6,4/5,5/3}
+      \node[draw, fill=white, minimum width=0.9cm, minimum height=0.7cm,
+        align=center] at (\i*1.0, 0.4) {\v};
+    \node[draw, fill=positive!25, minimum width=0.9cm,
+      minimum height=0.7cm, align=center] at (0, 0.4) {1};
+    \node[draw, fill=primary-gold!35, minimum width=0.9cm,
+      minimum height=0.7cm, align=center] at (1, 0.4) {2};
+    \node[anchor=east, text=neutral] at (-0.6, 0.4) {swap $5,1$};
+    % row 3: indices 0..2 final (green)
+    \foreach \i/\v in {0/1,1/2,2/3,3/6,4/5,5/4}
+      \node[draw, fill=white, minimum width=0.9cm, minimum height=0.7cm,
+        align=center] at (\i*1.0, -0.5) {\v};
+    \foreach \i/\v in {0/1,1/2,2/3}
+      \node[draw, fill=positive!25, minimum width=0.9cm,
+        minimum height=0.7cm, align=center] at (\i*1.0, -0.5) {\v};
+    \node[anchor=east, text=neutral] at (-0.6, -0.5) {swap $4,3$};
+    \node[text=positive] at (2.6, -1.25)
+      {green $=$ finalised smallest elements};
+  \end{tikzpicture}
+  \caption{Selection sort of \texttt{[5, 2, 4, 6, 1, 3]}: green marks finalised smallest elements, gold the current minimum (cf.\ Wirth \S2.2.2, p.48).}
+  \label{fig:selection}
+\end{figure}
+
+\textbf{Board: the scan-and-swap trace (instance 1).} Row 1: scan the whole array, find $1$ at index $4$ (mark it gold), swap it with index $0$ (value $5$) $\Rightarrow$ \texttt{[1, 2, 4, 6, 5, 3]}, index $0$ final (green). Row 2: scan \texttt{A[1..5]}, find $2$ (already at index $1$), no-op swap. Row 3: scan \texttt{A[2..5]}, find $3$ at index $5$, swap with index $2$ (value $4$) $\Rightarrow$ \texttt{[1, 2, 3, 6, 5, 4]}, indices $0..2$ final. Build order: current array, then gold the minimum found, then green the newly finalised slot. Underline that the scan \emph{always} covers the whole remainder.
+
+\textbf{Board: distinct instance 2 --- the instability trace.} Take \texttt{[2\_a, 2\_b, 1]} (label the two $2$s so their order is visible). The scan finds the minimum $1$ at index $2$; the long-range swap puts it at index $0$, giving \texttt{[1, 2\_b, 2\_a]} --- the two equal keys have \emph{changed order}. \textbf{Prediction hook:} before the swap, ask ``are these two $2$s equal? then can selection sort ever move one past the other?'' (Yes --- the swap leaps index $0$ over index $2$, dragging \texttt{2\_a} past \texttt{2\_b}. That is exactly why selection sort is not stable.)
+
+\subsection{Selection sort: the bill (and a warning)}
+
+The inner-loop comparisons do not depend on the data at all: $\sum_{i=0}^{n-2} (n-1-i) = \dfrac{n(n-1)}{2}$ --- every input.
+
+\begin{center}
+{\footnotesize
+\begin{tabular}{lll}
+  \toprule
+  \textbf{case} & \textbf{comparisons} & \textbf{swaps} \\
+  \midrule
+  best & $\Theta(n^2)$ & $0$ (already sorted) \\
+  worst & $\Theta(n^2)$ & $n-1$ \\
+  \bottomrule
+\end{tabular}}
+\end{center}
+
+Selection sort is \bad{not adaptive}: a sorted input is scanned just as hard as a reversed one, always $\Theta(n^2)$ comparisons. Its one virtue is the minimum number of \emph{writes} ($n-1$ swaps), useful when moving data is far costlier than comparing it. It is \bad{not stable}: the long-range swap can leap an equal key over its twin. It is, however, \good{in-place}: $O(1)$ auxiliary space.
+
+\textbf{Board: count the comparisons on sorted input.} Ask the class to count comparisons for \texttt{[1, 2, 3, 4, 5]}: the outer loop still scans $4 + 3 + 2 + 1 = 10$ times even though no swap happens. \textbf{Live question:} ``when is selection sort the right tool despite being $\Theta(n^2)$?'' (When moving data is very expensive --- exactly $n-1$ swaps is the minimum possible number of writes for a sort.)
+
+\subsection{Bubble sort: swap neighbours, bubble the max up}
+
+The deck's bubble sort with an early exit, written in C (Wirth \S2.2.3, p.50; Karumanchi Ch.~10, pp.504--546 (PDF)):
+
+{\footnotesize
+\begin{verbatim}
+void bubbleSort(int A[], int n) {
+  for (int i = 0; i < n - 1; i++) {
+    int swapped = 0;
+    for (int j = 0; j < n - 1 - i; j++)
+      if (A[j] > A[j + 1]) { swap(&A[j], &A[j + 1]); swapped = 1; }
+    if (!swapped) break;     // a clean pass: already sorted
+  }
+}
+\end{verbatim}
+}
+
+The invariant is: after pass $i$, the largest $i+1$ elements are final at the right end, so each pass can stop $i$ slots earlier. The \texttt{swapped} flag is the practical touch: a pass with no swap proves the array is sorted, so we stop.
+
+\begin{figure}[h]
+  \centering
+  % Diagram: one bubble pass over [5,2,4,6,1,3]; adjacent swaps push the
+  % largest to the right end. Cells at x = 0,1.0,...,5.0; two rows at
+  % y = 1.2 and 0.1; swap arrows between adjacent cells in row 1.
+  \begin{tikzpicture}[every node/.style={font=\scriptsize}]
+    \foreach \i/\v in {0/5,1/2,2/4,3/6,4/1,5/3}
+      \node[draw, fill=white, minimum width=0.9cm, minimum height=0.7cm,
+        align=center] at (\i*1.0, 1.2) {\v};
+    \foreach \i in {0,1,2,4}
+      \draw[<->, thick, color=negative] (\i*1.0+0.45, 1.62)
+        -- (\i*1.0+0.55, 1.62);
+    \node[anchor=east, text=neutral] at (-0.6, 1.2) {pass 1};
+    \foreach \i/\v in {0/2,1/4,2/5,3/1,4/3,5/6}
+      \node[draw, fill=white, minimum width=0.9cm, minimum height=0.7cm,
+        align=center] at (\i*1.0, 0.1) {\v};
+    \node[draw, fill=primary-gold!25, minimum width=0.9cm,
+      minimum height=0.7cm, align=center] at (5, 0.1) {6};
+    \node[anchor=east, text=neutral] at (-0.6, 0.1) {result};
+    \node[text=primary-gold, align=center] at (2.6, -0.7)
+      {$6$ bubbles to its final slot; the next pass stops one slot sooner};
+  \end{tikzpicture}
+  \caption{One bubble pass over \texttt{[5, 2, 4, 6, 1, 3]}: adjacent swaps push the maximum $6$ to its final slot (cf.\ Wirth \S2.2.3, p.50).}
+  \label{fig:bubble}
+\end{figure}
+
+\textbf{Board: one full pass (instance 1).} Compare neighbours and swap when out of order: $(5,2)$ swap $\Rightarrow$ \texttt{[2, 5, 4, 6, 1, 3]}; $(5,4)$ swap $\Rightarrow$ \texttt{[2, 4, 5, 6, 1, 3]}; $(5,6)$ no swap; $(6,1)$ swap $\Rightarrow$ \texttt{[2, 4, 5, 1, 6, 3]}; $(6,3)$ swap $\Rightarrow$ \texttt{[2, 4, 5, 1, 3, 6]}. After one pass the maximum $6$ has bubbled to the end and is final (mark it gold). Build order: the starting row, then the pass drawn as the value moving rightward one comparison at a time, then the finalised gold cell. Point out the next pass stops one slot sooner.
+
+\textbf{Board: distinct instance 2 --- the early exit.} Trace \texttt{[1, 2, 4, 3]}: $(1,2)$ no swap, $(2,4)$ no swap, $(4,3)$ swap $\Rightarrow$ \texttt{[1, 2, 3, 4]}. That pass \emph{did} swap, so a second pass runs: $(1,2)$, $(2,3)$, $(3,4)$ --- no swaps, so \texttt{swapped} stays $0$ and the loop breaks. Two passes total. \textbf{Live hook:} ``on already-sorted input \texttt{[1, 2, 3, 4, 5]}, how many passes does the \emph{plain} bubble sort make, and how many does this flagged version make?'' (Plain: $n-1$ passes, all doing nothing, $\Theta(n^2)$. Flagged: one pass, then break --- $O(n)$. The flag is the difference between adaptive and not.)
+
+\subsection{Bubble sort: the bill}
+
+\begin{center}
+{\footnotesize
+\begin{tabular}{lll}
+  \toprule
+  \textbf{case} & \textbf{comparisons} & \textbf{note} \\
+  \midrule
+  best & $n-1$ & sorted input: pass $1$ swaps nothing, early exit \\
+  worst & $\dfrac{n(n-1)}{2}$ & reverse sorted: $\Theta(n^2)$ \\
+  average & $\Theta(n^2)$ & random order \\
+  \bottomrule
+\end{tabular}}
+\end{center}
+
+Bubble sort is \good{adaptive} only \emph{with} the early-exit flag; the naive version is $\Theta(n^2)$ on every input, including sorted data. It is \good{stable} (equal adjacent keys are never swapped, because we swap only on strict $>$ --- their relative order is preserved) and \good{in-place}. Its comparison count equals insertion sort's on average, but bubble sort does far more \emph{swaps}; insertion sort is the better practical choice among the three. \muted{All three comparison sorts hit the same $\Theta(n^2)$ wall. Week 9 asks whether any comparison sort can do better --- and counting sort, next, sidesteps comparisons entirely.}
+
+\textbf{Board: the swap-count comparison (hook).} On the \emph{same} reverse-sorted input, insertion sort and bubble sort make the same number of comparisons but insertion makes roughly \emph{half} as many element moves (each shift moves an element one slot; a bubble swap moves two). Write the two counts side by side and ask: ``same comparisons --- so why is insertion sort the practical choice?'' (Fewer data movements; on a machine where a move costs the same as a comparison, that halves the constant.)
+
+\subsection{Counting sort: sort without comparing}
+
+All three sorts above compare keys pairwise. But if the keys are small non-negative integers, the key \emph{is already an array index} --- so it can be counted, not compared. Counting sort tallies how many times each value occurs, converts those counts to positions with a running total, and scatters each element to its slot. It never asks ``is $A[i] < A[j]$?'' The precondition is that keys lie in a known small range $0..k-1$. The trade is linear time for $\Theta(n + k)$ extra space --- and it is only correct for keys that fit that range. In the calculator, counting the frequency of each byte or token class, and bucketing identifiers by length, are both one-pass counting sorts --- no comparisons at all. The deck's code (Karumanchi Ch.~10, pp.504--546 (PDF); Horowitz \& Sahni Ch.~7, standard treatment):
+
+{\footnotesize
+\begin{verbatim}
+void countingSort(int A[], int n, int k) {   // keys in 0..k-1
+  int *count = calloc(k, sizeof(int));       // zero-initialised tally
+  for (int i = 0; i < n; i++) count[A[i]]++;
+  for (int v = 1; v < k; v++) count[v] += count[v - 1];  // prefix sums
+  int *out = malloc(n * sizeof(int));
+  for (int i = n - 1; i >= 0; i--)           // reverse pass => stable
+    out[--count[A[i]]] = A[i];
+  for (int i = 0; i < n; i++) A[i] = out[i];
+  free(out); free(count);                    // Week 1: every malloc freed
+}
+\end{verbatim}
+}
+
+\texttt{calloc(k, ...)} zeroes the tally, so no counting slot is read before it is written (Week 1's \texttt{calloc} guarantee, reused). The reverse pass over $A$ makes equal keys land in their original relative order --- that is what makes this sort stable.
+
+\begin{figure}[h]
+  \centering
+  % Diagram: for A = [4,2,2,5,3,3,1] (keys 0..5): tally per value, then
+  % prefix sums give each value's position. Cells at x = 0,1.0,...,5.0 with
+  % value labels beneath; two rows at y = 0.9 (count) and y = -0.1 (prefix).
+  \begin{tikzpicture}[every node/.style={font=\scriptsize}]
+    \foreach \i/\c in {0/0,1/1,2/2,3/2,4/1,5/1}
+      \node[draw, fill=light-bg, minimum width=0.9cm,
+        minimum height=0.7cm, align=center] (c\i) at (\i*1.0, 0.9) {\c};
+    \node[anchor=east, text=neutral] at (-0.6, 0.9) {tally};
+    \foreach \i/\p in {0/0,1/1,2/3,3/5,4/6,5/7}
+      \node[draw, fill=primary-gold!20, minimum width=0.9cm,
+        minimum height=0.7cm, align=center] at (\i*1.0, -0.1) {\p};
+    \node[anchor=east, text=neutral] at (-0.6, -0.1) {prefix};
+    \foreach \i in {0,...,5}
+      \node[text=neutral] at (\i*1.0, -0.65) {\tiny value \i};
+    \node[text=primary-blue, align=center] at (2.5, -1.35)
+      {prefix sum $=$ where the next occurrence of that value goes};
+  \end{tikzpicture}
+  \caption{Counting sort of $A = [4, 2, 2, 5, 3, 3, 1]$: the tally row counts each value, the prefix row gives the scatter positions (cf.\ Karumanchi, Ch.~10, pp.504--546 (PDF)).}
+  \label{fig:counting}
+\end{figure}
+
+\textbf{Board: tally, then prefix, then scatter (instance 1).} For $A = [4, 2, 2, 5, 3, 3, 1]$, keys in $0..5$ so $k = 6$. Tally row: value $0$ occurs $0$ times, $1$ once, $2$ twice, $3$ twice, $4$ once, $5$ once $\Rightarrow$ \texttt{[0, 1, 2, 2, 1, 1]}. Prefix row (running total): \texttt{[0, 1, 3, 5, 6, 7]}. Build order: write the labels ``value $0..5$'' first, then the tally row, then the prefix row as a running sum (each entry equals the previous plus the tally above it). Narrate the meaning: prefix[v] is where the next occurrence of value $v$ goes during the scatter. Then scatter \emph{in reverse} ($i$ from $n-1$ down to $0$), placing each element into \texttt{--count[A[i]]}, and underline that the reverse pass is what preserves equal keys' order.
+
+\textbf{Board: distinct instance 2 --- \texttt{[2, 0, 3, 2, 1, 3, 0]}.} A fresh input, $k = 4$. Tally: value $0$ twice, $1$ once, $2$ twice, $3$ twice $\Rightarrow$ \texttt{[2, 1, 2, 2]}. Prefix: \texttt{[2, 3, 5, 7]}. Scatter in reverse and the sorted array is \texttt{[0, 0, 1, 2, 2, 3, 3]}. \textbf{Prediction hook before the scatter:} ``given the prefix row, where does the last $0$ in the input (value $0$) land, and where does the $1$ land?'' (The $1$ has prefix index $3$, so it goes to slot $3$; the two $0$s fill slots $1$ then $0$ because the scatter is right-to-left --- stability in action.)
+
+\begin{teachingaside}
+The range precondition is the trap. Students see ``count occurrences'' and reach for counting sort everywhere; the honest bill is $\Theta(n+k)$ \emph{space}, and if the keys span $0..10^9$ the tally array is enormous --- counting sort is then worse than useless. The second trap is stability: it is the \emph{reverse} scatter pass that makes the sort stable, not the tally itself; a forward scatter would reverse equal keys' order. Anchor both: ``pay for the range; scatter backwards.''
+\end{teachingaside}
+
+\subsection{Counting sort: the bill}
+
+\begin{center}
+{\footnotesize
+\begin{tabular}{lll}
+  \toprule
+  \textbf{phase} & \textbf{work} & \textbf{cost} \\
+  \midrule
+  tally & one pass over $A$ & $\Theta(n)$ \\
+  prefix sums & one pass over $0..k-1$ & $\Theta(k)$ \\
+  scatter & one reverse pass over $A$ & $\Theta(n)$ \\
+  \midrule
+  total & & $\Theta(n + k)$ time, $\Theta(n + k)$ space \\
+  \bottomrule
+\end{tabular}}
+\end{center}
+
+Counting sort is \good{linear time} when $k = O(n)$. But watch the range: if keys span a huge range, the tally array is enormous and counting sort is worse than useless. It is \good{stable} (with the reverse scatter) but \bad{not in-place} ($\Theta(n + k)$ auxiliary). Crucially, it sorts \emph{without comparing keys} --- so the $\Theta(n \log n)$ comparison lower bound of Week 9 does not apply to it.
+
+\subsection{The four sorts, compared}
+
+\begin{center}
+{\footnotesize
+\begin{tabular}{llllll}
+  \toprule
+  \textbf{sort} & \textbf{best} & \textbf{worst} & \textbf{space} &
+    \textbf{stable} & \textbf{in-place} \\
+  \midrule
+  insertion & $O(n)$ & $\Theta(n^2)$ & $O(1)$ & yes & yes \\
+  selection & $\Theta(n^2)$ & $\Theta(n^2)$ & $O(1)$ & no & yes \\
+  bubble & $O(n)$ & $\Theta(n^2)$ & $O(1)$ & yes & yes \\
+  counting & $\Theta(n+k)$ & $\Theta(n+k)$ & $O(n+k)$ & yes & no \\
+  \bottomrule
+\end{tabular}}
+\end{center}
+
+Read the table as a workload guide, not a ranking: \key{nearly sorted} input $\to$ insertion sort, whose $O(n)$ best case is the whole point; \key{small integer keys} in a known range $\to$ counting sort, linear but at the cost of $O(n+k)$ space; and when \key{minimal writes} matters more than comparisons $\to$ selection sort, with its exactly $n-1$ swaps. No single winner --- every row is right for \emph{some} input. The skill is stating the workload, then choosing.
+
+\textbf{Board: reconstruct the table row by row (instance 1).} Do not copy the table --- build it. Write the four sort names down the left, then fill best/worst from the derivations the class just did (insertion: $O(n)$ best because of the strict-\texttt{>} stop; selection: $\Theta(n^2)$ always; bubble: $O(n)$ best only with the flag; counting: $\Theta(n+k)$ because the key is an index). Add the stability and in-place columns last, each with a one-word justification. \textbf{Live-interaction hook:} pose the two workloads before revealing --- ``(i) an already almost-sorted array; (ii) $10^6$ ages in $0..120$ --- which elementary sort fits each best?'' (i) insertion sort --- nearly every key is already in place, so the run is $O(n)$; (ii) counting sort --- $k = 121 \ll n$, so $\Theta(n+k) \approx \Theta(n)$. Selection or bubble would be $\Theta(n^2)$ on both --- the wrong tool for either input.
+
+\textbf{Board: distinct instance 2 --- two more loads, one straight from the table.} Give a fresh pair and have the class place each on the table before you confirm: ``(iii) a reverse-sorted array of $10^5$ keys, and (iv) $10^6$ keys that are already sorted.'' (iii) every comparison sort is worst-case $\Theta(n^2)$, but selection sort makes exactly $n-1$ swaps versus insertion sort's $\Theta(n^2)$ shifts --- if writes are expensive, selection wins on moves; (iv) insertion and bubble both drop to $O(n)$ (bubble only with the flag), while selection stays $\Theta(n^2)$ and counting pays its $\Theta(n+k)$ space. Land the reading of the table: ``best/worst'' answers ``what shape of input,'' and stable/in-place answers ``what does the job cost'' --- together they pick the tool.
+
+\section{Stability, In-Place, and the Classic Mistakes}
+
+\key{Stable} means equal keys keep their original relative order. This matters when records are sorted by a \emph{secondary} key after already being sorted by a primary one --- a stable sort preserves the earlier ordering within ties.
+
+\begin{example}[Worked example --- stability]
+Sort \texttt{[(A,2), (B,1), (C,2)]} by the number. A stable sort yields \texttt{[(B,1), (A,2), (C,2)]} --- \texttt{A} stays before \texttt{C}, since both carry key $2$ and \texttt{A} came first. An unstable sort may return \texttt{[(B,1), (C,2), (A,2)]} --- same keys, different record order.
+\end{example}
+
+\textbf{Board: the multi-key sort (instance 1).} Show the record-sort scenario concretely: a class list sorted by \emph{name} first, then re-sorted by \emph{grade}; a stable sort keeps students with the same grade in name order, an unstable one scrambles them. Draw the before-list, then the two possible after-lists side by side. Build order: records, primary sort, then the secondary sort under both stability regimes. \textbf{Board: distinct instance 2 --- labeled equal keys.} On \texttt{[3\_a, 1, 3\_b, 2]}, ask which of insertion, selection, bubble, and counting are stable and what tie order a stable sort leaves: insertion, bubble, and counting are stable; selection is not; a stable result is \texttt{[1, 2, 3\_a, 3\_b]}. \textbf{Live hook:} ``point to the one code line that makes selection sort unstable'' (the long-range \texttt{swap(\&A[i], \&A[m])} --- it can leap an equal key over its twin).
+
+\key{In-place} means $O(1)$ auxiliary space beyond the input. Insertion, selection, and bubble sort are in-place; counting sort needs a $\Theta(n+k)$ output buffer and a $\Theta(k)$ tally, so it is not. Summing the properties: \good{stable} sorts here are insertion, bubble, and counting; \bad{not stable} is selection, whose long-range swap can leap an equal key.
+
+\begin{teachingaside}
+The stability work only lands if students can see \emph{why} it matters, and the multi-key sort is the reason: ``sort by name, then by grade'' must not destroy the name order within a grade. Make the point with the labeled-equal-keys trace, then tie it forward --- stability is not academic trivia; it is the property radix sort (Week 9) is entirely built on, which is why it is introduced here.
+\end{teachingaside}
+
+\subsection{Three classic mistakes}
+
+\bad{Binary searching unsorted data} --- no crash, just a plausible wrong answer. The precondition is a contract: sort first, or use linear search. \bad{Forgetting the overflow in \texttt{mid}} --- \texttt{(lo + hi)/2} overflows \texttt{int} for large indices; write \texttt{lo + (hi - lo)/2}. The same trap appears as \texttt{mid * mid} in \texttt{isqrt} and the \texttt{(long long)} casts in C. \bad{Claiming a sort is $\Theta(n \log n)$ ``because it sorts''} --- the elementary sorts are all $\Theta(n^2)$ worst case. State the \emph{case} and the \emph{bound}, and check whether the algorithm even compares keys (counting sort does not).
+
+How to revise: for each sort, write one sentence naming the invariant, the best case, the worst case, and whether it is stable --- then trace one pass by hand. The test is traces and cases, not definitions.
+
+\begin{teachingaside}
+These three mistakes are diagnostic, not decorative --- each maps to a specific conceptual hole. The first says the student treats the precondition as a hint; the second says they ignore C's fixed-width arithmetic; the third says they conflate a \emph{lower bound on a class of algorithms} with the cost of any particular algorithm. If a student makes the third mistake, the fix is not ``memorize the table'' but ``state the case, state the bound, and ask whether the algorithm compares keys at all.''
+\end{teachingaside}
+
+\section{Summary}
+
+\textbf{The one-sentence spine:} order turns an $O(n)$ scan into an $O(\log n)$ probe, and the elementary sorts are the cheapest ways to buy that order for a given input --- each with a different bill.
+
+\key{The search contract}: linear search needs no order, $\Theta(n)$ worst case; binary search \emph{requires} sorted input and is $\Theta(\log n)$ worst case --- but is silently wrong on unsorted data. The lower/upper-bound variants return the first/last occurrence in $O(\log n)$, and their difference counts duplicates without a scan.
+
+\key{Binary search on a monotone predicate} answers questions about values that are not stored: $\lfloor\sqrt{n}\rfloor$ (search the answer space $0..n$; widen \texttt{mid*mid} with \texttt{(long long)}), and the longest common prefix (search the prefix length; sort once, then compare only the first and last strings).
+
+\key{Elementary sorts}, with their honest bills:
+
+\begin{center}
+{\footnotesize
+\begin{tabular}{llllll}
+  \toprule
+  \textbf{sort} & \textbf{best} & \textbf{worst} & \textbf{space} &
+    \textbf{stable} & \textbf{in-place} \\
+  \midrule
+  insertion & $O(n)$ & $\Theta(n^2)$ & $O(1)$ & yes & yes \\
+  selection & $\Theta(n^2)$ & $\Theta(n^2)$ & $O(1)$ & no & yes \\
+  bubble & $O(n)$ & $\Theta(n^2)$ & $O(1)$ & yes & yes \\
+  counting & $\Theta(n+k)$ & $\Theta(n+k)$ & $O(n+k)$ & yes & no \\
+  \bottomrule
+\end{tabular}}
+\end{center}
+
+\key{Dictionary at the end}: \emph{stable} = equal keys keep their order (insertion, bubble, counting yes; selection no); \emph{in-place} = $O(1)$ auxiliary (all but counting); the three properties --- stable, in-place, best/worst case --- decide which sort fits an input. Every elementary sort is $\Theta(n^2)$ worst case; counting sort is the only one that escapes comparisons, and pays $O(n+k)$ space for it.
+
+\textbf{Bridge to Week 9.} All three comparison sorts hit the same $\Theta(n^2)$ wall, and counting sort sidestepped comparisons entirely. Week 9 asks whether any \emph{comparison} sort can beat $\Theta(n \log n)$ --- and which algorithms escape that bound: quick, merge, shell, radix, heap.
+
+\end{document}
