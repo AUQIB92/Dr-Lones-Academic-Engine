@@ -1,0 +1,104 @@
+% =============================================================================
+% Assignments/CS502/03-system-calls-assignment.tex
+% Assignment 3: System Calls
+%
+% Student set — NO answers. Solution key: 03-system-calls-solutions.tex
+% (gitignored, never published). Sourced from Slides/CS502/03-system-calls.tex;
+% every problem reuses the deck's notation and extends its worked examples to
+% new programs, argument counts, and traces.
+%
+% Compile with: cd Assignments/CS502 &&
+%   TEXINPUTS=../../Preambles;$TEXINPUTS xelatex -interaction=nonstopmode 03-system-calls-assignment.tex
+%   BIBINPUTS=../..;$BIBINPUTS bibtex 03-system-calls-assignment
+%   TEXINPUTS=../../Preambles;$TEXINPUTS xelatex -interaction=nonstopmode 03-system-calls-assignment.tex (x2)
+%   (Windows/MiKTeX uses ; not : as the path separator)
+% =============================================================================
+
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\input{../../Preambles/header}
+\coursecode{CS502}
+\renewcommand{\thesection}{3.\arabic{section}}
+
+\setlength{\emergencystretch}{2.5em}
+
+\title{Assignment 3: System Calls}
+\author{Auqib Hamid Lone\\[0.3em]
+  \emph{Department of Computer Science \& Engineering}, \emph{GCET Ganderbal}}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\noindent\textbf{Deadline:} \key{two weeks from the date of issue} --- there is no automatic late penalty; if you need more time, ask before the deadline and an extension will be granted (see the course policy in the syllabus).
+
+\noindent Answer every question. Show all working for Numerical and Design questions --- a bare final answer without the derivation earns partial credit only.
+
+\noindent\textbf{Reading:} Silberschatz et al., \emph{Operating System Concepts}, Ch.~2 \S2.3--2.4, pp.~55--66 \cite{SilberschatzOSC_operating_system_concepts}; Bovet \& Cesati, \emph{Understanding the Linux Kernel}, Ch.~10, pp.~398--419 \cite{BovetCesati_understanding_linux_kernel}.
+
+\section{Conceptual}
+
+\textbf{Q1.} A classmate posts: ``\texttt{printf} is a system call, \texttt{fork} is really file management because the child opens files, and the six categories are cosmetic labels.'' Respond precisely \cite{SilberschatzOSC_operating_system_concepts}.
+\begin{enumerate}
+  \item[(a)] Trace \texttt{printf("hello\textbackslash n")} from the C library to the kernel. Name the user-space buffer, the system call the library eventually issues, and explain why the same \texttt{printf} may cause zero, one, or many system calls.
+  \item[(b)] State whether \texttt{printf} is a system call, and contrast the programmer's API view with the kernel's system-call view in terms of layer, buffering, portability, and return value.
+  \item[(c)] Explain what would go wrong if the kernel were linked into every user program. Address protection, isolation, portability, and evolution, and name the hardware mechanism that makes the boundary enforceable.
+  \item[(d)] Classify \texttt{fork}, \texttt{open}, \texttt{ioctl}, \texttt{getpid}, \texttt{pipe}, and \texttt{chmod} into the six categories. Then explain why \texttt{fork} is process control rather than file management even though the child may open files.
+\end{enumerate}
+
+\textbf{Q2.} Trace \texttt{write(fd, buf, n)} end-to-end from the library stub to the return to user mode \cite{BovetCesati_understanding_linux_kernel}.
+\begin{enumerate}
+  \item[(a)] List the steps in order. Name the argument registers, the register holding the system-call number, the trap instruction on x86-64 and on legacy x86, what the hardware saves, the mode switch, the system-call table, the handler, and the return register.
+  \item[(b)] Explain why the kernel dispatches through a table indexed by number rather than searching for a handler by name, and what it means that the number is part of the \emph{application binary interface} (ABI). A maintainer proposes renumbering \texttt{write} from 1 to 7 to make room for a new call: state exactly what breaks, and why new calls are appended instead.
+  \item[(c)] At which step are \texttt{fd} and \texttt{buf} validated? What does the kernel do if \texttt{buf} points into kernel memory, and why may it not simply dereference the pointer? Name the error code and the Linux copy routines it uses instead.
+\end{enumerate}
+
+\section{Numerical}
+
+\textbf{Q3.} Following the lecture's \texttt{cp} trace, a shell runs \texttt{cp big.bin copy.bin} \cite{SilberschatzOSC_operating_system_concepts}. The source is exactly 8~MiB and \texttt{cp} uses an 8~KiB user buffer. The shell \texttt{fork}s, the child \texttt{exec}s \texttt{cp}, \texttt{cp} opens both files, loops \texttt{read}/\texttt{write}, closes both descriptors, and calls \texttt{exit(0)}; the shell then \texttt{wait}s. Assume no other system calls, no signals, and no page faults.
+\begin{enumerate}
+  \item[(a)] Count the system calls. Separate the shell's \texttt{fork}/\texttt{exec}/\texttt{wait}, \texttt{cp}'s two \texttt{open}s, two \texttt{close}s, and one \texttt{exit}, the \texttt{read} calls (include the final \texttt{read} that returns 0), and the \texttt{write} calls. Give the total and the number of user$\leftrightarrow$kernel mode switches, one per system call.
+  \item[(b)] Give the number of bytes moved from file to user buffer and from user buffer to file over the whole run, and the total crossing the user/kernel boundary. Contrast this with the 8~MiB of unique file data.
+  \item[(c)] A system call costs $0.9~\mu\text{s}$. Compute the total system-call overhead in milliseconds, and express it as a percentage of the 8~MiB transfer time at 200~MiB/s.
+  \item[(d)] Repeat (a) and (c) with a 64~KiB buffer. State the reduction factor in mode switches.
+\end{enumerate}
+
+\textbf{Q4.} Batching changes the number of boundary crossings, not the number of bytes.
+\begin{enumerate}
+  \item[(a)] A 1~MiB file is read once with \texttt{read(fd, buf, 1048576)}, versus with exactly $1{,}048{,}576$ successful one-byte reads (ignore the terminating end-of-file read for this comparison). Each call costs $0.75~\mu\text{s}$ of kernel overhead independent of the byte count. Compute the total system-call overhead in each case, giving the one-byte total in milliseconds and seconds, and the ratio between them. At 400~MiB/s, compute the data-transfer time; in the one-byte case, compute total elapsed time and the percentage spent crossing the boundary. State the lesson in one sentence.
+  \item[(b)] The x86-64 Linux convention reserves \texttt{rax} for the system-call number and provides six argument registers: \texttt{rdi}, \texttt{rsi}, \texttt{rdx}, \texttt{r10}, \texttt{r8}, \texttt{r9}. A proposed call takes nine 8-byte arguments.
+  \begin{enumerate}
+    \item[(i)] How many arguments fit in the argument registers?
+    \item[(ii)] If the remaining arguments go on the user stack, how many bytes must the kernel read from the stack?
+    \item[(iii)] If instead all nine arguments are placed in one parameter block and a single register points to it, how many bytes is the block, and how many argument registers are freed?
+    \item[(iv)] When a call needs more arguments than the registers can carry, which method does a real ABI choose, and why?
+  \end{enumerate}
+\end{enumerate}
+
+\section{Design}
+
+\textbf{Q5.} A shell executes \texttt{cat notes.txt | wc -l}. Design the complete system-call trace, beginning in the shell before the first \texttt{fork} \cite{SilberschatzOSC_operating_system_concepts}.
+\begin{enumerate}
+  \item[(a)] Give the ordered trace. For each call, name the process (shell, \texttt{cat}, or \texttt{wc}), the category, the arguments, and what the return value is used for. Include \texttt{pipe}, both \texttt{fork}s, the descriptor wiring (\texttt{dup2} and the closes), both \texttt{exec}s, the data path, and the final \texttt{wait}s.
+  \item[(b)] Explain why the write end must be closed in \texttt{wc} and the read end in \texttt{cat}, and state exactly what happens to \texttt{wc} if \texttt{cat}'s write end is never closed.
+  \item[(c)] Count the system calls for a 96~KiB file read in 32~KiB chunks, assuming \texttt{cat} and \texttt{wc} both use 32~KiB buffers and both read until end-of-file. Count closes that keep a pipe end open; exclude optional closes of standard descriptors that \texttt{exit} releases anyway. State which counts depend on the file size.
+\end{enumerate}
+
+\textbf{Q6.} A 64-bit architecture reserves \texttt{rax} for the system-call number and provides six argument registers (\texttt{rdi}, \texttt{rsi}, \texttt{rdx}, \texttt{r10}, \texttt{r8}, \texttt{r9}) \cite{BovetCesati_understanding_linux_kernel}. You are adding a kernel-assisted copy call with seven logical arguments:
+\begin{quote}
+\ttfamily\small
+int copy\_range(int fd\_in, off\_t *off\_in, int fd\_out,\\
+\hspace*{4.2em}off\_t *off\_out, size\_t len, unsigned int flags,\\
+\hspace*{4.2em}size\_t *out\_copied);
+\end{quote}
+\begin{enumerate}
+  \item[(a)] Explain why registers alone are insufficient. Give the exact count of arguments and registers.
+  \item[(b)] Design a parameter block in the caller's memory. Give a table with offset, size, field, and direction (in, in-out, or out), then state the block's total size and alignment and what goes in \texttt{rdi} and \texttt{rax}.
+  \item[(c)] Give the kernel's validation sequence, in order, for the block pointer and for each pointer field. Name \texttt{EFAULT} and the \texttt{copy\_from\_user}/\texttt{copy\_to\_user} discipline. Say what a \texttt{NULL} \texttt{off\_in} means versus an invalid non-\texttt{NULL} one.
+  \item[(d)] The call copies 4~MiB and succeeds. How many bytes of argument data are copied into the kernel and how many back out? How many user/kernel mode switches occur, and does the 4~MiB payload add any?
+  \item[(e)] If all seven arguments were pushed on the user stack instead, how many bytes would the kernel read from the stack? Why is the block still the better choice for this call?
+\end{enumerate}
+
+\bibliography{../../Bibliography_base}
+\bibliographystyle{plain}
+\end{document}

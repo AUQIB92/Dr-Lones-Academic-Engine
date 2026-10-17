@@ -1,0 +1,595 @@
+% =============================================================================
+% 03-system-calls.tex — Week 3:
+% System Calls: Mechanics, Parameter Passing, and Types
+%
+% Course: Operating Systems (PCC CS-502)
+% Anchor reading: Silberschatz, Galvin & Gagne, Operating System Concepts,
+%                 8th ed. — Ch. 2 §2.3 (system calls, pp. 55-58) and §2.4
+%                 (types of system calls, pp. 58-66); page-verified via
+%                 master_supporting_docs/CS502/supporting_books/SilberschatzOSC/index.md.
+%                 Bovet & Cesati, Understanding the Linux Kernel, 3rd ed. —
+%                 Ch. 10 (system calls, pp. 398-419); page-verified via
+%                 .../LinuxKernel/index.md.
+%
+% Compile with: /compile-latex CS502/03-system-calls
+% =============================================================================
+
+\documentclass[aspectratio=169]{beamer}
+\input{header}
+\coursecode{CS502}
+
+\title{System Calls}
+\subtitle{Week 3 --- Mechanics, Parameter Passing, and Types}
+\author[Dr. Auqib Hamid Lone]{%
+  \textbf{Dr. Auqib Hamid Lone}\\
+  \small Assistant Professor in Computer Science \& Engineering
+}
+\institute[GCET Ganderbal]{%
+  \small\textbf{PCC CS-502: Operating Systems}\\[0.3em]
+  Department of Computer Science \& Engineering\\
+  Government College of Engineering \& Technology (GCET), Ganderbal
+}
+\date[\today]{\small\today}
+
+\begin{document}
+
+\frame{\titlepage}
+
+% =============================================================================
+% ACT 0 --- THE COMMAND THAT KEEPS KNOCKING
+% =============================================================================
+\section{The Command That Keeps Knocking}
+
+\begin{frame}{Welcome: How Many Times Does \texttt{cp} Enter the Kernel?}
+  \begin{block}{The big question}
+    You run \texttt{cp notes.txt backup.txt}. The command opens one file,
+    creates another, copies every byte, and closes both. How many times does
+    the program cross from user mode into the kernel --- and what does it say
+    each time?
+  \end{block}
+  \begin{itemize}
+    \item \texttt{cp} is ordinary user code. It cannot touch the disk, the
+      page tables, or another process's memory.
+    \item Every privileged operation must be requested through a
+      \key{system call}.
+    \item The request has a name, a number, arguments, and a return value.
+  \end{itemize}
+  \vspace{0.15cm}
+  \begin{alertblock}{Running thread for today}
+    We follow \texttt{cp} through its system calls and open up the mechanism
+    that carries each request across the boundary.
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}{Roadmap: Four Questions About the Doorway}
+  \begin{enumerate}
+    \item \key{What is a system call?} --- the kernel's programming interface.
+    \item \key{How does control cross the boundary?} --- the trap and the
+      system-call table.
+    \item \key{How do arguments travel?} --- registers, memory blocks, and the
+      stack.
+    \item \key{What kinds of calls exist?} --- the six standard categories.
+  \end{enumerate}
+  \vspace{0.2cm}
+  \muted{The mechanism is hardware; the interface is software; the taxonomy is
+  the vocabulary you will use for the rest of the course.}
+\end{frame}
+
+\transitionslide{Programmers rarely invoke a system call directly. They call a library function --- and the library eventually executes the trap.}
+
+% =============================================================================
+% ACT 1 --- API VS. SYSTEM CALL
+% =============================================================================
+\section{API vs.\ System Call}
+
+\begin{frame}{Two Views of the Same Service}
+  \centering
+  \renewcommand{\arraystretch}{1.35}
+  \begin{tabular}{p{0.44\textwidth}p{0.44\textwidth}}
+    \textbf{Programmer's view (API)} & \textbf{Kernel's view (system call)} \\
+    \hline
+    \texttt{fopen}, \texttt{fread}, \texttt{fwrite}, \texttt{fclose} &
+    \texttt{open}, \texttt{read}, \texttt{write}, \texttt{close} \\
+    Standard C library; buffered; portable &
+    Kernel entry points; unbuffered; architecture-specific \\
+    Returns a \texttt{FILE *} or a count &
+    Returns a file descriptor or $-1$ with \texttt{errno} \\
+  \end{tabular}
+  \vspace{0.35cm}
+  \begin{itemize}
+    \item The API is a \emph{convenience layer}; the system call is the
+      \emph{actual request} to the kernel.
+    \item One library call may issue zero, one, or many system calls
+      (buffering changes the count).
+  \end{itemize}
+  \muted{Silberschatz et al., Ch.~2 \S2.3, pp.~55--58.}
+\end{frame}
+
+\begin{frame}{What Exactly Is a System Call?}
+  \begin{block}{Definition}
+    A \key{system call} is the programmatic request from a user program to a
+    kernel service. It is the boundary of the operating system's programming
+    interface.
+  \end{block}
+  \begin{itemize}
+    \item It looks like a function call in C, but it is \emph{not} an ordinary
+      function call.
+    \item It changes the privilege level: the CPU enters kernel mode, runs
+      kernel code, and returns to user mode.
+    \item The kernel executes it on behalf of the calling process, with the
+      kernel's privileges --- after validating the request.
+  \end{itemize}
+  \vspace{0.15cm}
+  \muted{The same word is used for the API function, the trap instruction, and
+  the kernel routine; context tells you which layer is meant.}
+\end{frame}
+
+\begin{frame}{Why Not Link the Kernel Into Every Program?}
+  \begin{itemize}
+    \item \textbf{Protection:} user code would run with kernel privileges and
+      could corrupt the machine.
+    \item \textbf{Isolation:} one buggy program could overwrite another's
+      memory or the kernel's data structures.
+    \item \textbf{Portability:} the same API can sit on different kernels and
+      instruction sets.
+    \item \textbf{Evolution:} the kernel can change its internals without
+      recompiling every application.
+  \end{itemize}
+  \vspace{0.2cm}
+  \begin{alertblock}{The trade-off}
+    Every system call costs a mode switch. The design goal is to keep the
+    boundary narrow and the calls efficient.
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}{Socratic Check 1}
+  \begin{block}{Question}
+    \texttt{printf} is not a system call. What does it eventually call, and
+    why does the C library buffer the output first?
+  \end{block}
+  \vspace{0.25cm}
+  \begin{itemize}
+    \item \texttt{printf} formats into a user-space buffer.
+    \item When the buffer fills or is flushed, the library calls
+      \texttt{write}, which traps into the kernel.
+    \item Buffering reduces the number of expensive mode switches.
+  \end{itemize}
+\end{frame}
+
+% =============================================================================
+% ACT 2 --- MECHANICS
+% =============================================================================
+\section{Mechanics of a System Call}
+
+\transitionslide{The trap instruction is the hinge: one instruction moves the CPU from user mode to kernel mode and hands it a number.}
+
+\begin{frame}{The Trap Path}
+  \centering
+  \begin{tikzpicture}[every node/.style={font=\small}]
+    \node[dag-node, minimum width=2.8cm] (user) at (-5.2,0) {User code};
+    \node[dag-node, minimum width=2.8cm] (lib) at (-1.8,0) {Library stub};
+    \node[dag-node, minimum width=2.8cm] (trap) at (1.8,0) {Trap};
+    \node[dag-node, minimum width=2.8cm] (table) at (5.2,0) {Syscall table};
+    \node[dag-node, minimum width=2.8cm] (svc) at (5.2,-2.0) {Kernel handler};
+    \draw[observed-edge] (user) -- (lib);
+    \draw[observed-edge] (lib) -- (trap);
+    \draw[observed-edge] (trap) -- (table);
+    \draw[observed-edge] (table) -- (svc);
+    \draw[observed-edge] (svc) -- ++(-5.2,0) -| (user);
+  \end{tikzpicture}
+  \vspace{0.2cm}
+  \begin{itemize}
+    \item The stub places the \key{system-call number} and arguments in
+      registers.
+    \item The trap saves the user PC and flags, switches to kernel mode, and
+      jumps to the kernel's trap entry point.
+    \item The kernel indexes the \key{system-call table} by number and calls
+      the handler.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Worked Trace: \texttt{write(fd, buf, n)}}
+  \begin{enumerate}
+    \item \texttt{fd}, \texttt{buf}, and \texttt{n} are placed in the
+      argument registers.
+    \item The system-call number for \texttt{write} is placed in a designated
+      register.
+    \item The stub executes \texttt{syscall} (x86-64) or \texttt{int 0x80}
+      (legacy x86).
+    \item Hardware switches to kernel mode, saves the return address, and
+      enters the trap handler.
+    \item The kernel validates \texttt{fd}, checks that \texttt{buf} lies in
+      user memory, and performs the write.
+    \item The return value is placed in a register; the kernel restores user
+      mode and returns.
+    \item On error, the library sets \texttt{errno} and returns $-1$.
+  \end{enumerate}
+  \vspace{0.1cm}
+  \muted{Bovet \& Cesati, Ch.~10, pp.~398--419; Silberschatz et al., Ch.~2
+  \S2.3.}
+\end{frame}
+
+\begin{frame}{The System-Call Table}
+  \begin{itemize}
+    \item A kernel array indexed by system-call number.
+    \item Each entry is a function pointer to the handler.
+    \item The number is the \key{ABI}: it must stay stable across kernel
+      versions.
+    \item Adding a call means adding a table entry and a handler --- not
+      changing the trap instruction.
+  \end{itemize}
+  \vspace{0.2cm}
+  \begin{block}{Why a table?}
+    The trap instruction carries only a number. The table turns that number
+    into the right kernel routine without a long search.
+  \end{block}
+  \muted{On Linux x86-64, \texttt{write} is system call 1; the table lives in
+  the kernel's trap entry code.}
+\end{frame}
+
+\begin{frame}{Return Values and \texttt{errno}}
+  \begin{itemize}
+    \item The kernel returns a value in a register: a count, a file
+      descriptor, or an error code.
+    \item A negative return value signals an error; the library translates it
+      into \texttt{-1} and sets \texttt{errno}.
+    \item The caller must check the return value --- the kernel cannot print a
+      message for it.
+    \item The kernel never trusts user pointers or lengths; it validates them
+      before copying.
+  \end{itemize}
+  \vspace{0.2cm}
+  \begin{exampleblock}{Example}
+    \texttt{read} returns the number of bytes read, \texttt{0} at end of file,
+    or $-1$ on error with \texttt{errno} set to \texttt{EFAULT},
+    \texttt{EBADF}, or similar.
+  \end{exampleblock}
+\end{frame}
+
+% =============================================================================
+% ACT 3 --- PARAMETER PASSING
+% =============================================================================
+\section{Parameter Passing}
+
+\transitionslide{A system call is a function call across a privilege boundary. The arguments must cross too --- and the kernel must not trust any of them.}
+
+\begin{frame}{Three Ways to Pass Arguments}
+  \centering
+  \begin{tikzpicture}[every node/.style={font=\small}]
+    \node[dag-node, minimum width=3.4cm, minimum height=1.1cm] (reg) at (-5.0,0)
+      {Registers};
+    \node[dag-node, minimum width=3.4cm, minimum height=1.1cm] (block) at (0,0)
+      {Block / table\\in memory};
+    \node[dag-node, minimum width=3.4cm, minimum height=1.1cm] (stack) at (5.0,0)
+      {Stack};
+    \node[text=primary-gold, align=center] at (-5.0,-1.25) {fast\\few arguments};
+    \node[text=primary-gold, align=center] at (0,-1.25) {many arguments\\one pointer};
+    \node[text=primary-gold, align=center] at (5.0,-1.25) {natural for\\C calling convention};
+  \end{tikzpicture}
+  \vspace{0.35cm}
+  \begin{itemize}
+    \item Silberschatz describes all three; real ABIs choose one or a mix.
+    \item The kernel must know where to find the arguments before it can
+      validate them.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Method 1: Registers}
+  \begin{itemize}
+    \item The caller places the first few arguments in designated registers.
+    \item Fast: no memory access beyond the registers already saved on entry.
+    \item Limited by the number of argument registers.
+  \end{itemize}
+  \vspace{0.2cm}
+  \begin{exampleblock}{Linux x86-64 \texttt{read(fd, buf, count)}}
+    \begin{tabular}{@{}ll@{}}
+      \texttt{rax} & system-call number for \texttt{read} \\
+      \texttt{rdi} & \texttt{fd} \\
+      \texttt{rsi} & \texttt{buf} (user virtual address) \\
+      \texttt{rdx} & \texttt{count} \\
+    \end{tabular}
+  \end{exampleblock}
+  \muted{The kernel still checks that \texttt{buf} is a legal user address.}
+\end{frame}
+
+\begin{frame}{Method 2: Block or Table in Memory}
+  \begin{itemize}
+    \item The caller stores the arguments in a memory block.
+    \item A register holds the \emph{address} of the block.
+    \item The kernel copies the block into kernel space and validates every
+      field.
+  \end{itemize}
+  \vspace{0.2cm}
+  \begin{exampleblock}{A call with many arguments}
+    \texttt{open(path, flags, mode)} can be passed as a table holding the
+    pointer to \texttt{path}, \texttt{flags}, and \texttt{mode}; the kernel
+    reads the table once.
+  \end{exampleblock}
+  \muted{The pointer itself is untrusted: the kernel must verify that the whole
+  block lies in the caller's address space.}
+\end{frame}
+
+\begin{frame}{Method 3: Stack}
+  \begin{itemize}
+    \item The caller pushes arguments onto the user stack.
+    \item The kernel reads them from the saved user stack.
+    \item Natural for languages and calling conventions that already pass
+      arguments on the stack.
+  \end{itemize}
+  \vspace{0.2cm}
+  \begin{block}{The common requirement}
+    Whichever method is used, the kernel must (1) locate the arguments,
+    (2) copy them into kernel memory, and (3) validate every pointer and
+    length before using it.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Pointer Validation: Never Trust User Memory}
+  \begin{itemize}
+    \item A user pointer may point to kernel memory, another process's memory,
+      or unmapped memory.
+    \item The kernel checks the range against the process's address space.
+    \item It copies data with special routines
+      (\texttt{copy\_from\_user}/\texttt{copy\_to\_user} on Linux) that handle
+      faults safely.
+    \item A bad pointer returns \texttt{EFAULT}; it does not crash the kernel.
+  \end{itemize}
+  \vspace{0.2cm}
+  \begin{alertblock}{The security rule}
+    Every argument is untrusted input. Validation happens in kernel mode,
+    before the kernel acts on the request.
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}{Socratic Check 2}
+  \begin{block}{Question}
+    A user program passes a pointer to a kernel address to \texttt{read}. What
+    should happen, and why can the kernel not simply dereference it?
+  \end{block}
+  \vspace{0.25cm}
+  \begin{itemize}
+    \item Dereferencing it would let user code read or overwrite kernel data.
+    \item The kernel checks that the range lies in the user address space.
+    \item If it does not, the call fails with \texttt{EFAULT}.
+  \end{itemize}
+\end{frame}
+
+% =============================================================================
+% ACT 4 --- TYPES OF SYSTEM CALLS
+% =============================================================================
+\section{Types of System Calls}
+
+\transitionslide{System calls are not a random list. They fall into six categories, and every command you run is a combination of them.}
+
+\begin{frame}{The Six Categories}
+  \centering
+  \footnotesize
+  \renewcommand{\arraystretch}{1.3}
+  \begin{tabular}{p{0.24\textwidth}p{0.38\textwidth}p{0.30\textwidth}}
+    \textbf{Category} & \textbf{Purpose} & \textbf{Typical calls} \\
+    \hline
+    Process control & create, terminate, wait, load & \texttt{fork}, \texttt{exec},
+    \texttt{wait}, \texttt{exit} \\
+    File management & create, open, read, write, close & \texttt{open},
+    \texttt{read}, \texttt{write}, \texttt{close}, \texttt{lseek} \\
+    Device management & request/release, read/write, control & \texttt{ioctl},
+    \texttt{read}, \texttt{write} \\
+    Information maintenance & get/set time, process, file attributes &
+    \texttt{getpid}, \texttt{alarm}, \texttt{sleep}, \texttt{stat} \\
+    Communication & create/delete connections, send/receive & \texttt{pipe},
+    \texttt{mmap}, \texttt{socket}, \texttt{send}, \texttt{recv} \\
+    Protection & set/get permissions & \texttt{chmod}, \texttt{umask},
+    \texttt{chown}, \texttt{setuid} \\
+  \end{tabular}
+  \vspace{0.2cm}
+  \muted{Silberschatz et al., Ch.~2 \S2.4, pp.~58--66.}
+\end{frame}
+
+\begin{frame}{Process Control}
+  \begin{itemize}
+    \item \texttt{fork}: create a child process that is a copy of the parent.
+    \item \texttt{exec}: replace the current process image with a new program.
+    \item \texttt{wait}: block until a child terminates and collect its status.
+    \item \texttt{exit}: terminate the calling process and release its
+      resources.
+  \end{itemize}
+  \vspace{0.2cm}
+  \begin{exampleblock}{The shell's job}
+    A shell \texttt{fork}s, the child \texttt{exec}s the command, and the
+    parent \texttt{wait}s. \texttt{cp} itself is the child after \texttt{exec}.
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}{File Management}
+  \begin{itemize}
+    \item \texttt{open}: create or open a file, returning a file descriptor.
+    \item \texttt{read}/\texttt{write}: transfer bytes between user memory and
+      the file.
+    \item \texttt{lseek}: move the file offset without transferring data.
+    \item \texttt{close}: release the descriptor and flush state.
+    \item \texttt{stat}: read metadata (size, owner, permissions, times).
+  \end{itemize}
+  \vspace{0.2cm}
+  \muted{The file descriptor is a small integer index into the process's
+  per-process open-file table --- not the file itself.}
+\end{frame}
+
+\begin{frame}{Device, Information, Communication, Protection}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{block}{Device management}
+        \texttt{ioctl} controls device-specific behavior; \texttt{read} and
+        \texttt{write} move data. Devices are often accessed through the same
+        descriptor interface as files.
+      \end{block}
+      \begin{block}{Information maintenance}
+        \texttt{getpid}, \texttt{alarm}, \texttt{sleep}, \texttt{time};
+        \texttt{stat} for file metadata.
+      \end{block}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{block}{Communication}
+        \texttt{pipe}, \texttt{mmap}, \texttt{socket}, \texttt{send},
+        \texttt{recv}: move data between processes or across a network.
+      \end{block}
+      \begin{block}{Protection}
+        \texttt{chmod}, \texttt{umask}, \texttt{chown}, \texttt{setuid}: set or
+        query access rights.
+      \end{block}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Worked Trace: \texttt{cp} Across the Categories}
+  \begin{enumerate}
+    \item \textbf{Process control:} the shell \texttt{fork}s and the child
+      \texttt{exec}s \texttt{cp}.
+    \item \textbf{File management:} \texttt{open("notes.txt", O\_RDONLY)} and
+      \texttt{open("backup.txt", O\_WRONLY|O\_CREAT)}.
+    \item \textbf{File management:} a loop of \texttt{read} into a buffer and
+      \texttt{write} to the destination.
+    \item \textbf{File management:} \texttt{close} both descriptors.
+    \item \textbf{Process control:} \texttt{exit(0)}; the shell \texttt{wait}s.
+  \end{enumerate}
+  \vspace{0.15cm}
+  \muted{One shell command, ten or more system calls. The categories are not
+  abstract: they are the steps in the trace.}
+\end{frame}
+
+\begin{frame}{Socratic Check 3}
+  \begin{block}{Question}
+    Which category does \texttt{fork} belong to, and why is it not file
+    management even though the child may open files?
+  \end{block}
+  \vspace{0.25cm}
+  \begin{itemize}
+    \item \texttt{fork} creates a new process --- process control.
+    \item The child inherits the parent's open-file table, but \texttt{fork}
+      itself does not create or access a file.
+    \item The category describes the \emph{operation}, not the resources the
+      process may use afterward.
+  \end{itemize}
+\end{frame}
+
+% =============================================================================
+% ACT 5 --- SYSTEM CALLS IN PRACTICE
+% =============================================================================
+\section{System Calls in Practice}
+
+\transitionslide{The interface is stable, but every call has a cost. Good systems programmers batch calls and know when the boundary is being crossed.}
+
+\begin{frame}{Numbers, ABI, and Compatibility}
+  \begin{itemize}
+    \item Each architecture defines a system-call number for each service.
+    \item The numbers are part of the \key{application binary interface}.
+    \item A kernel cannot renumber existing calls without breaking every
+      compiled program.
+    \item New calls are added at the end of the table; old calls remain for
+      compatibility.
+  \end{itemize}
+  \vspace{0.2cm}
+  \begin{block}{Consequence}
+    The system-call table is a long-lived contract between the kernel and every
+    binary that runs on it.
+  \end{block}
+\end{frame}
+
+\begin{frame}{The Cost of Crossing the Boundary}
+  \begin{itemize}
+    \item Save user context and switch to kernel mode.
+    \item Index the table and enter the handler.
+    \item Validate arguments and copy data across the boundary.
+    \item Perform the operation, then restore the user context.
+  \end{itemize}
+  \vspace{0.2cm}
+  \begin{exampleblock}{Why batching matters}
+    Copying 1\,MB in one \texttt{read} costs one mode switch; copying it in
+    1-byte chunks costs a million. The bytes are the same; the crossings are
+    not.
+  \end{exampleblock}
+  \muted{\texttt{strace} shows the actual calls a program makes --- useful for
+  seeing the boundary in action.}
+\end{frame}
+
+\begin{frame}{Common Misconceptions}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{block}{Wrong}
+        \begin{itemize}
+          \item ``\texttt{printf} is a system call.''
+          \item ``A system call is just a function call.''
+          \item ``The kernel can trust the user's pointer.''
+          \item ``Every library call traps into the kernel.''
+        \end{itemize}
+      \end{block}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{block}{Right}
+        \begin{itemize}
+          \item \texttt{printf} uses buffered \texttt{write} calls.
+          \item It changes privilege level and uses a kernel entry point.
+          \item User pointers and lengths are untrusted and validated.
+          \item Many library calls stay entirely in user space.
+        \end{itemize}
+      \end{block}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Takeaways}
+  \begin{itemize}
+    \item A \key{system call} is the program's request to the kernel; it is
+      invoked through a trap, not an ordinary call.
+    \item The \key{system-call number} selects a handler from the kernel's
+      dispatch table.
+    \item Arguments travel in \key{registers}, a \key{memory block}, or the
+      \key{stack}; every pointer and length is validated.
+    \item The six categories --- process control, file management, device
+      management, information maintenance, communication, protection ---
+      organize the interface.
+    \item Mode switches are expensive; batch work to reduce them.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Next: System Programs and OS Structures}
+  \begin{itemize}
+    \item Today: how a program names a kernel service, how the arguments cross
+      the boundary, and what kinds of calls exist.
+    \item Next lecture: the user-level programs built on top of these calls,
+      and the internal structures --- monolithic, layered, microkernel,
+      modular, virtual machine --- that organize the kernel itself.
+  \end{itemize}
+  \vspace{0.3cm}
+  \begin{block}{Reading}
+    Silberschatz et al., \emph{Operating System Concepts}, Ch.~2
+    \S2.5--2.8 \cite{SilberschatzOSC_operating_system_concepts}; Stallings,
+    \emph{Operating Systems: Internals and Design Principles}, Ch.~2 and
+    Ch.~4 \S4.3 \cite{StallingsOS_internals_design_principles}.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Further Reading (Page-Cited)}
+  \footnotesize
+  \begin{itemize}
+    \item A.~Silberschatz, P.~B.~Galvin, G.~Gagne, \emph{Operating System
+      Concepts}, 8e --- Ch.~2 \S2.3 (system calls, pp.~55--58), \S2.4 (types
+      of system calls, pp.~58--66).
+    \item D.~P.~Bovet \& M.~Cesati, \emph{Understanding the Linux Kernel}, 3e
+      --- Ch.~10 (system calls, pp.~398--419), for the concrete x86/Linux
+      entry and exit path.
+    \item W.~Stallings, \emph{Operating Systems: Internals and Design
+      Principles}, 6e --- Ch.~3 (process description and control), for the
+      process context in which calls execute.
+  \end{itemize}
+  \vspace{0.2cm}
+  \muted{Page-verified via each book's \texttt{index.md} under
+  \texttt{master\_supporting\_docs/CS502/supporting\_books/}.}
+\end{frame}
+
+\begin{frame}[allowframebreaks]{References}
+  \footnotesize
+  \bibliographystyle{plain}
+  \bibliography{../../Bibliography_base}
+\end{frame}
+
+\end{document}

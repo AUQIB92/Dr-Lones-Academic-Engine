@@ -1,0 +1,428 @@
+% =============================================================================
+% InstructorHandouts/CS502/02-os-operations-protection-instructor-handout.tex
+% Instructor Handout 2: Operating-System Operations and System Protection
+%
+% INSTRUCTOR-ONLY. Complete, self-contained teaching guide -- explanation,
+% embedded diagrams, presentation guidance, worked examples, and delivery
+% commentary are woven together per topic, so an instructor can teach directly
+% from this file with no slides or Notes open. Explanations/diagrams/examples
+% trace to Slides/CS502/02-os-operations-protection.tex and
+% Notes/CS502/02-os-operations-protection-notes.tex; "Teaching note" asides are
+% instructor judgment, visually distinguished but not a separate section.
+%
+% Anchor readings (page-verified):
+%   Silberschatz, Galvin & Gagne, Operating System Concepts, 8e,
+%     Ch. 1 §1.5, pp. 20-23 (dual-mode operation, timer, protection).
+%   Stallings, Operating Systems: Internals and Design Principles, 6e,
+%     Ch. 3 §3.5 p. 140 (execution of the OS), §3.6 p. 143 (security issues).
+%   Bovet & Cesati, Understanding the Linux Kernel, 3e, Ch. 4 and Ch. 10 --
+%     chapter-level only (not page-cited here).
+%
+% Compile from InstructorHandouts/CS502 with XeLaTeX (3 passes) and bibtex:
+%   $env:TEXINPUTS="../../Preambles;"; xelatex -interaction=nonstopmode 02-os-operations-protection-instructor-handout.tex
+%   $env:BIBINPUTS="../..;"; bibtex 02-os-operations-protection-instructor-handout
+%   xelatex (x2)
+% =============================================================================
+
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\setlength{\textfloatsep}{9pt plus 2pt minus 2pt}
+\setlength{\floatsep}{8pt plus 2pt minus 2pt}
+\setlength{\intextsep}{8pt plus 2pt minus 2pt}
+\setlength{\abovecaptionskip}{6pt}
+\setlength{\belowcaptionskip}{0pt}
+\input{../../Preambles/header}
+\coursecode{CS502}
+\renewcommand{\thesection}{2.\arabic{section}}
+\renewcommand{\thefigure}{2.\arabic{figure}}
+\renewcommand{\thetable}{2.\arabic{table}}
+\newtheorem{example}{Example}[section]
+\newenvironment{definitionbox}[1]{%
+  \par\noindent\textbf{Definition (#1).}\ \itshape
+}{\par\vspace{0.3em}}
+\newenvironment{teachingaside}{\begin{quote}\small\color{primary-gold}\textbf{Teaching note:}\ }{\end{quote}}
+
+\title{Instructor Handout 2: Operating-System Operations and System Protection}
+\author{Auqib Hamid Lone\\[0.3em]
+  \emph{Department of Computer Science \& Engineering}, \emph{GCET Ganderbal}}
+\date{\today}
+
+\begin{document}
+\maketitle
+{\centering\large\color{negative}\textbf{Instructor Copy --- Not for Student Distribution}\par}
+\vspace{0.2cm}
+
+\section{Before You Teach This Lecture}
+
+\begin{itemize}
+  \item \textbf{Silberschatz, Galvin \& Gagne, \textit{Operating System Concepts}, 8e} --- Ch.~1 §1.5, pp.~20--23: dual-mode operation, the timer, and the protection mechanisms built on them. This is the primary anchor for the whole lecture. \emph{Page-verified.}
+  \item \textbf{Stallings, \textit{Operating Systems: Internals and Design Principles}, 6e} --- Ch.~3 §3.5, p.~140: execution of the operating system (when and how the kernel runs, and the mode switches that get it there). Ch.~3 §3.6, p.~143: security issues, the source for the protection-versus-security distinction. \emph{Page-verified.}
+  \item \textbf{Prepare the live demo and name one concrete machine} (Linux, Windows, macOS): have a terminal ready to launch a runaway process and kill it from a second terminal, and refer to that OS whenever you say ``the kernel.'' Rehearse so the demo costs ninety seconds. Optional chapter-level colour for the trap path: Bovet \& Cesati, \textit{Understanding the Linux Kernel}, 3e, Ch.~4 and Ch.~10 (not page-cited here).
+  \item \textbf{Prerequisite check and arithmetic.} Students met kernel-versus-shell in Lecture~1 and saw registers, interrupts, and I/O in CS401; recall those in two minutes. Do the $12\ \mu\text{s}/Q$ derivation cold before class --- the $1\ \mu\text{s}$ case (1200\%) must land without hesitation. This lecture assumes the system-call \emph{idea} but defers the mechanics to Lecture~3.
+\end{itemize}
+
+\section{The Control Problem}
+
+Open with the story, not the definition. A student logs in to a shared laboratory machine and runs \texttt{while(1);}. The condition is the constant $1$, the body is empty, so the processor executes the test and the branch forever. The program performs no input, produces no output, issues no system call, and never exits. On a single-core machine two programs cannot both be ``running'' at one instant: the CPU executes one instruction stream at a time. The prediction seems unavoidable --- the machine should freeze. It does not. The instructor, from another terminal, can still list the process and kill it. This lecture explains both facts.
+
+The explanation is not that the OS watches from outside. The OS is a program that must run on the same CPU as the code it supervises, using the same registers and physical memory. It cannot run ``in the background'' while user code runs. The kernel therefore runs only when an \key{event} transfers control to it: a system call, an interrupt, or an exception. Between events it is not executing at all. That fact produces the central design problem, which is worth writing on the board verbatim:
+
+\begin{quote}
+\itshape
+Build a machine that can run untrusted code at full speed, yet guarantee that the trusted kernel can always regain control.
+\end{quote}
+
+Every mechanism in the lecture is an answer to that sentence. Keep the sentence visible for the whole class; refer back to it when the timer arrives.
+
+\begin{teachingaside}
+Resist defining ``mode bit'' in the first five minutes. Let the class sit with the paradox and propose resolutions; the hardware answer then resolves a puzzle they have already felt, which is more durable than a definition delivered cold.
+\end{teachingaside}
+
+\subsection*{What goes wrong without a boundary}
+
+Without a boundary, four failures follow immediately. A buggy pointer writes over another process's memory --- or over the kernel itself --- because nothing checks the address. A malicious program disables interrupts, and the timer can no longer fire. A program reprograms the timer never to expire, then loops forever. A program issues raw disk commands, bypassing the file system and every access-control check. The lesson is blunt: \bad{no boundary means no isolation, no multiplexing, and no trust.}
+
+\noindent\textbf{Board:} Draw the two-instruction loop, not the whole program. On the board, in order: (1) write \texttt{L1:} at the left margin; (2) write \texttt{cmp 1, 0} and \texttt{jmp L1}; (3) circle both instructions and label the circle ``user mode, mode bit $=1$''; (4) write ``no trap, no I/O, no privileged instruction'' underneath. Narration: ``The test is arithmetic, the branch is a branch --- both unprivileged. Every iteration is legal, so the hardware has no reason to stop it.''
+
+\noindent\textbf{Board:} Build the failure ledger as a two-column table. On the board, in order: (1) draw the headers ``Failure'' and ``Mechanism that prevents it''; (2) fill only the left column --- buggy pointer, disable interrupts, reprogram the timer, raw disk command; (3) ask the class for the right column before writing it; (4) record the answers: memory protection, privileged instruction, privileged timer load, privileged I/O. Narration: ``Each row is a different resource, but every fix moves the dangerous operation behind the boundary.'' Protection is a family of mechanisms, not one switch.
+
+\begin{teachingaside}
+Ask the predictive question before the ledger's right column exists: ``Of these four failures, which one can dual-mode operation alone stop?'' Students usually say ``all of them.'' The correct answer is the first three kinds of misuse of \emph{authority}; the runaway loop in the next section is the case dual-mode cannot stop, because the loop never asks for authority at all. Planting this now makes the timer feel necessary rather than arbitrary.
+\end{teachingaside}
+
+\section{Dual-Mode Operation}
+
+Protection begins with a single hardware bit. The bit records which of two worlds the CPU is currently executing in, and the instruction set itself changes depending on its value.
+
+\begin{definitionbox}{Dual-mode operation}
+A hardware \key{mode bit} records the current privilege level. The kernel runs in \key{kernel mode} (mode bit $=0$); user programs run in \key{user mode} (mode bit $=1$). Some instructions are legal only when the bit is $0$.
+\end{definitionbox}
+
+The two modes differ in what they may execute and touch. Kernel mode carries the full instruction set, access to all memory and all devices, and the ability to change the mode bit. User mode carries a restricted instruction set, access only to the process's own address space, and no direct way to change the bit. The restriction is not a convention that well-behaved programs respect; it is enforced by the hardware on every instruction. The mode bit is \emph{hardware state}, not an ordinary memory variable (Silberschatz et al., Ch.~1 §1.5, pp.~20--23).
+
+\subsection*{Who may execute what?}
+
+The instruction set is partitioned accordingly. Table~\ref{tab:privileged} lists the two halves.
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{p{0.44\textwidth}p{0.44\textwidth}}
+\toprule
+\textbf{Privileged (kernel only)} & \textbf{Unprivileged (user or kernel)} \\
+\midrule
+\textbullet~set or clear the mode bit & \textbullet~arithmetic and logic \\
+\textbullet~disable or enable interrupts & \textbullet~loads and stores to the process's own memory \\
+\textbullet~load the timer & \textbullet~branches and function calls \\
+\textbullet~issue raw I/O instructions & \textbullet~read the clock (not set it) \\
+\textbullet~change the page-table base & \textbullet~execute a trap instruction \\
+\textbullet~halt the machine & \\
+\bottomrule
+\end{tabular}
+\caption{The privilege partition. A privileged instruction executed in user mode traps to the kernel rather than succeeding silently.}
+\label{tab:privileged}
+\end{table}
+
+Two entries deserve comment. Loading the timer is privileged: user control would make preemption optional, since the program could set the next expiry beyond its own lifetime. Changing the page-table base is privileged: it would let a process redirect translation to another process's frames. The last unprivileged entry is the important one --- a user program may execute a trap instruction, the only legal door into the kernel (Section~2.5). A privileged instruction executed in user mode does not fail silently; it \bad{traps} to the kernel, which normally terminates the process.
+
+\begin{teachingaside}
+Write the mode-bit polarity on the board and keep it there: kernel $=0$, user $=1$. Students who have met the opposite convention elsewhere will invert it under exam pressure. What matters is not the numeric value but that the bit is hardware state outside the user's writable address space; say that explicitly, and tell the class the exam uses this course's convention.
+\end{teachingaside}
+
+\subsection*{The mode transition graph}
+
+Figure~\ref{fig:mode-graph} shows the complete set of legal transitions between the two modes.
+
+% Diagram: mode transition graph.
+% Coordinates: (x, y)
+%   user at (-3.4, 0)    -- user mode, left
+%   kernel at (3.4, 0)   -- kernel mode, right
+\begin{figure}[h]
+  \centering
+  \begin{tikzpicture}[every node/.style={font=\small}]
+    \node[dag-node, minimum width=3.4cm, minimum height=1.1cm] (user) at (-3.4,0)
+      {User mode\\[2pt]\footnotesize mode bit $=1$};
+    \node[dag-node, minimum width=3.4cm, minimum height=1.1cm] (kernel) at (3.4,0)
+      {Kernel mode\\[2pt]\footnotesize mode bit $=0$};
+    \draw[observed-edge] (user.east) --
+      node[above, text=primary-blue] {return-from-trap} (kernel.west);
+    \draw[observed-edge] (user.north) to[bend left=28]
+      node[above, text=primary-blue] {trap / system call} (kernel.north);
+    \draw[observed-edge] (user.south) to[bend right=28]
+      node[below, text=primary-gold] {interrupt / exception} (kernel.south);
+  \end{tikzpicture}
+  \caption{The mode transition graph. Entry into the kernel is always a controlled hardware event; the return path restores the saved user context and the user mode bit.}
+  \label{fig:mode-graph}
+\end{figure}
+
+Build order (from the coordinate map): place the user box at $(-3.4,0)$ and the kernel box at $(3.4,0)$, each labelled with its mode-bit value; draw the mid-height return edge from user east to kernel west; then the upper arc from user north to kernel north; then the lower arc from user south to kernel south. Narration: ``Start where the program lives: user mode, bit one. The only way up is an event --- a trap or system call on the upper arc, an interrupt or exception on the lower arc. The only way back is the return-from-trap, which restores the saved context and the user bit.'' Point out what is \emph{not} drawn: no user-controlled edge into the kernel, and no edge that bypasses the hardware.
+
+Entry into the kernel is always a \key{controlled} hardware event. A trap or system call is deliberate; an interrupt or exception is forced. In every case the hardware, not user code, performs the mode switch and selects the entry point. The return path restores the saved user context and the user mode bit. The kernel does not ``call'' user code; it returns to it.
+
+\noindent\textbf{Board:} Run the privilege classification drill. On the board, in order: (1) draw two columns, ``kernel only'' and ``any mode''; (2) read the eight items one at a time and let the class vote before you write; (3) place each under the winning column. Items: (a) add two registers; (b) disable interrupts; (c) read the clock; (d) load the timer; (e) execute \texttt{syscall}; (f) change the page-table base; (g) branch to a function; (h) halt. Answers: (a) any, (b) kernel, (c) any, (d) kernel, (e) any, (f) kernel, (g) any, (h) kernel. Narration: ``Safe operations touch only your own state; dangerous ones touch shared state or the mechanisms of control.'' Items (c) and (e) generate the best argument.
+
+\noindent\textbf{Board:} Trace one \texttt{write} as a two-lane swimlane. On the board, in order: (1) draw a vertical boundary and label the lanes ``user'' and ``kernel''; (2) write \texttt{write(1, buf, n)} in the user lane; (3) draw the argument registers, then the trap arrow crossing the boundary; (4) in the kernel lane write ``hardware saves PC/flags'', ``validate'', ``perform I/O'', ``store return value''; (5) draw the return-from-trap arrow; (6) write ``library sets errno'' in the user lane. Narration: ``The crossing is a hardware event, not a function call: user code does not choose the entry address and cannot return to an arbitrary instruction inside the kernel.'' Ask which step could not be predicted from the C code (the hardware context save). This rehearses Lecture~3.
+
+\begin{teachingaside}
+This is the moment for Socratic Check~1. Pose it exactly as written: ``Why can't the mode bit live in ordinary memory? Describe the attack that becomes possible if it does.'' Collect two or three answers before revealing the sequence: the program stores \texttt{0} into the variable, disables interrupts, reprograms the timer, overwrites the page tables, and the hardware no longer has a trusted state to return to. The bit must live outside the address space user code can write. If a student says ``the OS could check the variable,'' push back: the check would run on the same compromised machine.
+\end{teachingaside}
+
+The consequence is worth its own sentence, because students file protection under ``policy.'' Protection is not a policy the OS can choose to enforce; it is a property the hardware guarantees. The OS decides \emph{what} to protect, but the mode bit decides \emph{whether} it can. This small, hardware-enforced boundary is the foundation of the \key{trusted computing base} --- the set of components the system must trust (Stallings, Ch.~3 §3.5, p.~140).
+
+\begin{teachingaside}
+Keep the three event words straight, because the deck's graph deliberately groups them and the exam will separate them. A \key{trap} is software-initiated and deliberate (the \texttt{syscall} instruction); an \key{interrupt} is asynchronous and external (the timer); an \key{exception} is synchronous and unintended (a privileged instruction attempted in user mode, or a bad address). All three enter the kernel through hardware; only the trap is requested by the program. Expect students to call all three ``interrupts''; correct it once, precisely, and move on.
+\end{teachingaside}
+
+\section{The Timer and Preemption}
+
+\subsection*{The loop that never leaves user mode}
+
+The runaway program is a different kind of problem from the ones dual-mode operation solves. \texttt{while(1);} executes only unprivileged instructions. It never traps, never calls the OS, and never touches a device. Every instruction it executes is legal in user mode. If nothing external interrupts it, the kernel never runs again, and the machine is not corrupted --- it is simply \bad{monopolized}. The OS needs an event that fires \emph{without} the user program's cooperation. That event is the \key{timer interrupt}.
+
+\begin{definitionbox}{Timer interrupt}
+An asynchronous event raised by a hardware timer when its count reaches zero. It switches the CPU into kernel mode and transfers control to the kernel's timer handler, regardless of what user code is doing.
+\end{definitionbox}
+
+The mechanism has five steps. A hardware timer counts down independently of the instruction stream. When it reaches zero, it raises a \key{timer interrupt}. The interrupt switches the CPU to kernel mode and jumps to the kernel's timer handler. The handler saves the running process's context and calls the scheduler. Loading the timer is a \key{privileged} instruction, so user code cannot set it. The timer is a device, not a software alarm. If user code could reload it, preemption would be optional --- and a malicious program would opt out (Silberschatz et al., Ch.~1 §1.5, pp.~20--23; Stallings, Ch.~3 §3.5, p.~140).
+
+\subsection*{A quantum on the timeline}
+
+Figure~\ref{fig:quantum} places one scheduling interval, called a quantum, on a timeline.
+
+% Diagram: two processes alternating in 10 ms quanta.
+% Coordinates: (x, y)
+%   time axis at y = 0, from x = 0 to x = 12.4 (0, 10, ..., 40 ms)
+%   P1 block 0-3 (0-10 ms), P2 block 3-6, P1 block 6-9, P2 block 9-12
+%   timer ticks at x = 3, 6, 9
+\begin{figure}[h]
+  \centering
+  \begin{tikzpicture}[x=1cm,y=1cm,every node/.style={font=\small}]
+    \draw[->, thick, draw=jet] (0,0) -- (12.4,0) node[right] {time};
+    \foreach \x/\lab in {0/0,3/10,6/20,9/30,12/40} {
+      \draw[jet] (\x,0.08) -- (\x,-0.08);
+      \node[below, text=jet] at (\x,0) {\lab\,ms};
+    }
+    \draw[fill=light-bg, draw=primary-blue, thick] (0,0.35) rectangle (3,0.85);
+    \node at (1.5,0.6) {\texttt{P1}};
+    \draw[fill=light-bg, draw=primary-gold, thick] (3,0.35) rectangle (6,0.85);
+    \node at (4.5,0.6) {\texttt{P2}};
+    \draw[fill=light-bg, draw=primary-blue, thick] (6,0.35) rectangle (9,0.85);
+    \node at (7.5,0.6) {\texttt{P1}};
+    \draw[fill=light-bg, draw=primary-gold, thick] (9,0.35) rectangle (12,0.85);
+    \node at (10.5,0.6) {\texttt{P2}};
+    \foreach \x in {3,6,9} {
+      \draw[primary-gold, thick] (\x,0.9) -- (\x,1.25);
+      \node[above, text=primary-gold] at (\x,1.25) {timer};
+    }
+  \end{tikzpicture}
+  \caption{Two processes sharing one CPU in 10\,ms quanta. The timer fires at 10, 20, and 30\,ms, even when the running process is still runnable.}
+  \label{fig:quantum}
+\end{figure}
+
+\begin{definitionbox}{Quantum}
+The fixed interval of CPU time that the scheduler grants one process before the timer interrupt forces a re-evaluation. In this lecture each process receives a $10$~ms quantum.
+\end{definitionbox}
+
+Build order (from the coordinate map): draw the time axis and its five ticks first, so the scale is visible before any block exists; then shade the P1 block (0--10\,ms), then P2, P1, P2; finally add the three gold timer marks. Narration: ``P1 runs, the timer fires at ten milliseconds whether P1 is finished or not, so P2 gets the CPU; at twenty it fires again.'' Every block ends at a gold tick, not at a natural completion --- that is what ``forced'' means. The process sees continuous execution; the kernel sees a sequence of bounded intervals.
+
+Each process receives one $10$~ms quantum. The timer fires at the end of every quantum, even if the process is still runnable. The scheduler decides who runs next; the timer only guarantees that the decision happens. In Figure~\ref{fig:quantum}, \texttt{P1} and \texttt{P2} alternate every $10$~ms, with timer interrupts at $10$, $20$, and $30$~ms.
+
+\begin{definitionbox}{Preemption}
+The kernel forcibly takes the CPU away from a running process at a timer interrupt, saves its context, and may schedule a different process.
+\end{definitionbox}
+
+Cooperative scheduling makes yielding voluntary: a process yields when it chooses to, and one infinite loop stops the system. Preemptive scheduling makes yielding unnecessary: the timer fires, and the kernel keeps control of the CPU whether or not the process wanted to give it up. The difference is not politeness; it is who holds the power to decide. The choice of quantum is a trade-off. A large quantum wastes response time: an interactive process waits longer before it next runs. A tiny quantum wastes CPU time on context switches. The next example makes the second cost quantitative.
+
+\begin{example}[The Overhead of a Context Switch]
+\label{ex:quantum}
+A context switch costs $12\ \mu\text{s}$. The quantum is $Q$. What fraction of CPU time is spent switching?
+
+Let $Q$ be measured in microseconds. The CPU completes $1/Q$ quanta per microsecond, hence $10^6/Q$ quanta per second, and one context switch occurs at each quantum boundary. The switching time per second is therefore
+\[
+  \left(\frac{10^6}{Q}\right)(12\ \mu\text{s}) = \frac{12\times 10^6}{Q}\ \mu\text{s}.
+\]
+As a fraction of one second ($10^6\ \mu\text{s}$), the overhead is $12/Q$. Equivalently,
+\[
+  \text{overhead} = \frac{12\ \mu\text{s}}{Q},
+\]
+provided $Q$ is expressed in microseconds.
+
+\begin{center}
+\renewcommand{\arraystretch}{1.35}
+\begin{tabular}{c|c|c}
+  \textbf{Quantum $Q$} & \textbf{Switches per second} & \textbf{Overhead} \\
+  \hline
+  $100\ \mu\text{s}$ & $10{,}000$ & $120{,}000\ \mu\text{s} = 12\%$ \\
+  $1\ \text{ms}$     & $1{,}000$  & $12{,}000\ \mu\text{s} = 1.2\%$ \\
+  $10\ \text{ms}$    & $100$      & $1{,}200\ \mu\text{s} = 0.12\%$ \\
+\end{tabular}
+\end{center}
+
+For $Q=100\ \mu\text{s}$, there are $10{,}000$ switches per second; at $12\ \mu\text{s}$ each that is $120{,}000\ \mu\text{s}=12\%$ of the second. For $Q=1$~ms the same calculation gives $1.2$, and for $Q=10$~ms, $0.12\%$. The fixed cost is divided by a larger $Q$ as the quantum grows --- which is why the quantum cannot simply be made as small as possible.
+\end{example}
+
+\noindent\textbf{Board:} Build a second quantum timeline with different numbers: a $5$~ms quantum, three processes, $0$--$30$~ms. On the board, in order: (1) draw the axis with ticks every $5$~ms; (2) mark the timer ticks; (3) fill the blocks round-robin --- P1 $0$--$5$, P2 $5$--$10$, P3 $10$--$15$, P1 $15$--$20$, P2 $20$--$25$, P3 $25$--$30$; (4) circle every instant at which the kernel has control: $5$, $10$, $15$, $20$, $25$, $30$~ms. Narration: ``The pattern is longer but the rule is identical: every block ends at a timer tick, and every tick is a moment when the kernel could change its mind.'' Erase one block and ask who runs next. This is a constructed variant of the deck's two-process figure.
+
+\noindent\textbf{Board:} Shade the switching fraction on a one-second bar. On the board, in order: (1) draw a rectangle labelled ``one second of CPU time''; (2) for $Q=250\ \mu\text{s}$, compute $10^6/250 = 4{,}000$ switches $\times\,12\ \mu\text{s} = 48{,}000\ \mu\text{s}=4.8\%$, and shade that sliver; (3) for $Q=2$~ms, compute $500\times12=6{,}000\ \mu\text{s}=0.6\%$, and shade a visibly smaller sliver; (4) label both. Narration: ``The small quantum buys responsiveness by spending almost five percent of the CPU on switching; the two-millisecond quantum spends well under one percent.'' Ask which an interactive login prompt prefers and which a batch job prefers; require the reason.
+
+\begin{teachingaside}
+Pose Socratic Check~2 before revealing the answer: ``If a small quantum improves response time, why not $1\ \mu\text{s}$?'' Let the class commit to a number. Then compute $12/1=1200\%$: the CPU spends twelve times as long switching as executing. Add the costs the formula omits --- cache and TLB state are destroyed on every switch, and the scheduler itself consumes CPU --- and conclude that real systems choose $1$--$100$~ms.
+\end{teachingaside}
+
+\section{Protection in Depth}
+
+The mode bit and the timer protect the CPU. A complete boundary also protects memory and the devices.
+
+% Diagram: three protected resources, with the guarding mechanism beneath each.
+% Coordinates: (x, y)
+%   cpu at (-4.2, 0)   -- CPU time
+%   mem at (0, 0)      -- memory
+%   io at (4.2, 0)     -- I/O devices
+%   mechanism labels at y = -1.15 under each box
+\begin{figure}[h]
+  \centering
+  \begin{tikzpicture}[every node/.style={font=\small}]
+    \node[dag-node, minimum width=3.2cm, minimum height=1.0cm] (cpu) at (-4.2,0)
+      {CPU time};
+    \node[dag-node, minimum width=3.2cm, minimum height=1.0cm] (mem) at (0,0)
+      {Memory};
+    \node[dag-node, minimum width=3.2cm, minimum height=1.0cm] (io) at (4.2,0)
+      {I/O devices};
+    \node[text=primary-gold] at (-4.2,-1.15) {timer};
+    \node[text=primary-gold] at (0,-1.15) {MMU};
+    \node[text=primary-gold] at (4.2,-1.15) {privileged I/O};
+  \end{tikzpicture}
+  \caption{The three resources the kernel protects and the hardware mechanism behind each.}
+  \label{fig:three-things}
+\end{figure}
+
+Build order (from the coordinate map): place the three resource boxes left to right at $(-4.2,0)$, $(0,0)$, and $(4.2,0)$; add the three gold mechanism labels beneath them at $y=-1.15$; then point from each box to its label while narrating: ``CPU time is guarded by the timer; memory by the MMU; I/O by privileged instructions.'' The figure is spare because the point is the one-to-one correspondence. If asked where the mode bit belongs, answer that it is the precondition for all three: every mechanism below assumes the CPU can distinguish kernel from user code.
+
+\subsection*{Memory protection}
+
+Three organizations are common, all enforcing the same rule at different granularities. With \textbf{contiguous allocation}, base and limit registers bound the process and the hardware checks every address. With \textbf{paging}, the page table maps only the process's legal pages, and an unmapped reference traps. With \textbf{segmentation}, each segment has its own base and limit, and the hardware checks the offset. The pattern is the same: user code never sees a physical address; every access is translated and checked, and a violation becomes a \key{trap}, not a silent write. Details belong to Unit~III (Lectures~20--25).
+
+\noindent\textbf{Board:} Check three addresses against a base/limit pair. On the board, in order: (1) write ``base $=$ \texttt{0x10000}'', ``limit $=$ 64\,KB $=$ \texttt{0x10000}''; (2) draw a bar from \texttt{0x10000} to \texttt{0x20000}; (3) mark the test addresses \texttt{0x10000}, \texttt{0x1FFFF}, \texttt{0x20000} below it; (4) evaluate: the base byte and the last byte are legal, the one-past-the-end address is not. Narration: ``The limit register holds the \emph{size} here, not the last legal address --- make that convention explicit before you grade.'' The illegal access traps to the kernel, which normally terminates the process; a silent write would corrupt whatever lay beyond the limit. Trapping converts invisible corruption into an attributable fault.
+
+\subsection*{I/O protection}
+
+All raw I/O instructions are privileged. A user program cannot talk to a disk, network card, or timer directly. The user-level \texttt{read} and \texttt{write} calls are system calls: the kernel validates the buffer, device, and count, then invokes the device driver, which programs the controller. \texttt{cat} never touches the controller; it asks the kernel, which decides whether the request is legal. Direct access would let a process bypass file permissions, corrupt another process's data, or hang the device for everyone; privileging the instruction makes validation unavoidable.
+
+\subsection*{Protection versus security}
+
+Protection is a \emph{mechanism}; security is a \emph{policy} that uses it (Table~\ref{tab:protection-security}). Protection is internal --- memory isolation, privilege levels, access control --- enforced by the OS and hardware. Security faces external threats --- authentication, malware defense, firewalls --- and is enforced by policy, cryptography, and administrative practice. A perfect mode bit does not help if the administrator grants every user root access (Stallings, Ch.~3 §3.6, p.~143).
+
+\begin{table}[h]
+\centering
+\small
+\renewcommand{\arraystretch}{1.4}
+\begin{tabular}{p{0.42\textwidth}p{0.42\textwidth}}
+\toprule
+\textbf{Protection} & \textbf{Security} \\
+\midrule
+Internal mechanisms among processes & External threats and attackers \\
+memory isolation, privilege levels, access control & authentication, malware defense, network firewalls \\
+Enforced by the OS and hardware & Enforced by policy, cryptography, and administrative practice \\
+\bottomrule
+\end{tabular}
+\caption{Protection is the mechanism; security is the policy that uses it (Stallings, Ch.~3 §3.6, p.~143).}
+\label{tab:protection-security}
+\end{table}
+
+\subsection*{The system-call gate}
+
+% Diagram: the system-call gate, user process to trap to table to service and back.
+% Coordinates: (x, y)
+%   user at (-4.3, 0)   -- user process, left
+%   trap at (-0.8, 0)   -- trap instruction, center-left
+%   table at (3.0, 0)   -- system-call table, right
+%   svc at (3.0, -2.0)  -- kernel service, below the table
+\begin{figure}[h]
+  \centering
+  \begin{tikzpicture}[every node/.style={font=\small}]
+    \node[dag-node, minimum width=3.0cm] (user) at (-4.3,0) {User process};
+    \node[dag-node, minimum width=2.6cm] (trap) at (-0.8,0) {Trap};
+    \node[dag-node, minimum width=3.0cm] (table) at (3.0,0) {System-call table};
+    \node[dag-node, minimum width=3.0cm] (svc) at (3.0,-2.0) {Kernel service};
+    \draw[observed-edge] (user) -- (trap);
+    \draw[observed-edge] (trap) -- (table);
+    \draw[observed-edge] (table) -- (svc);
+    \draw[observed-edge] (svc) -- ++(-3.6,0) -| (user);
+  \end{tikzpicture}
+  \caption{The system-call gate: a trap dispatches through the system-call table to a kernel service and returns through the same controlled entry point.}
+  \label{fig:syscall-gate}
+\end{figure}
+
+Build order (from the coordinate map): place the user process at $(-4.3,0)$, the trap at $(-0.8,0)$, the table at $(3.0,0)$, and the service at $(3.0,-2.0)$; draw the forward path left to right then down; draw the return path westward and up into the user process. Narration: ``Every request takes the same four hops --- user, trap, table, service --- and returns along the same path. The table makes the gate safe: the program supplies a \emph{number}, not an address, so it cannot jump into the middle of the kernel.'' The trap is the \key{only legal door}; the kernel validates every argument and pointer; the return path restores user mode. Lecture~3 opens this door.
+
+\noindent\textbf{Board:} Draw the legal path for \texttt{cat} as a three-box flow with a return arrow. On the board, in order: (1) write \texttt{cat} in a box; (2) write \texttt{read} beside it, with an arrow crossing a boundary labelled ``trap''; (3) write ``kernel validates fd/buffer/count''; (4) write ``driver programs controller'' below; (5) draw the return arrow to \texttt{cat}. Narration: ``\texttt{cat} executes no privileged instruction. Privilege lives in the kernel; the program only asks, and the kernel checks descriptor, buffer, and count before the driver touches the controller.'' Erase the middle box and have a student restore the three validations.
+
+\begin{teachingaside}
+Pose Socratic Check~3 here, before the board flow: ``If all I/O instructions are privileged, how does \texttt{cat} read a file? Trace the legal path in three steps.'' A satisfactory answer names the library \texttt{read} and the trap, then the kernel's validation and dispatch to the driver, then the driver programming the controller and the return to user mode. A weak answer says ``the kernel does it for \texttt{cat}'' without naming the trap; press for the boundary crossing, because that is the examinable step.
+\end{teachingaside}
+
+\section{Putting It Together: The Control Loop}
+
+Protection is not one mechanism. It is a loop: the timer fires, the kernel runs, the scheduler chooses, and user code resumes --- or traps when it asks for something it cannot do.
+
+% Diagram: the full control loop.
+% Coordinates: (x, y)
+%   user at (-4.0, -1.0)    -- user process running, lower left
+%   kernel at (-4.0, 2.0)   -- kernel saves context, upper left
+%   sched at (3.6, 2.0)     -- scheduler, upper right
+%   restore at (3.6, -1.0)  -- kernel restores context, lower right
+\begin{figure}[h]
+  \centering
+  \begin{tikzpicture}[every node/.style={font=\small}]
+    \node[dag-node, minimum width=3.0cm] (user) at (-4.0,-1.0) {User process running};
+    \node[dag-node, minimum width=3.0cm] (kernel) at (-4.0,2.0) {Kernel: save context};
+    \node[dag-node, minimum width=3.0cm] (sched) at (3.6,2.0) {Scheduler};
+    \node[dag-node, minimum width=3.0cm] (restore) at (3.6,-1.0) {Kernel: restore context};
+    \draw[observed-edge] (user.north) -- node[left, text=primary-gold] {timer} (kernel.south);
+    \draw[observed-edge] (kernel.east) -- (sched.west);
+    \draw[observed-edge] (sched.south) -- (restore.north);
+    \draw[observed-edge] (restore.west) -- node[below, text=primary-gold] {return-from-trap} (user.east);
+  \end{tikzpicture}
+  \caption{The full control loop: a timer interrupt transfers control to the kernel, the scheduler chooses, and a return-from-trap resumes user code.}
+  \label{fig:control-loop}
+\end{figure}
+
+Build order (from the coordinate map): place the four boxes at the corners of a rectangle; draw the left edge upward, labelling it ``timer''; the top edge to the scheduler; the right edge down to ``kernel: restore context''; the bottom edge back to the user, labelled ``return-from-trap.'' Narrate it as a clock: ``The loop runs on every timer tick and every blocking system call. The kernel is event-driven; the process cannot see the loop, only time passing.'' Both edge labels are hardware events; the scheduler is the only box where a \emph{decision} is made.
+
+\begin{example}[Stopping the Runaway Process]
+\label{ex:runaway}
+\texttt{P1} enters \texttt{while(1);} in user mode at $t=0$. The timeline unfolds as follows.
+\begin{enumerate}
+  \item $t=0$: \texttt{P1} enters \texttt{while(1);} in user mode.
+  \item $t=10$~ms: the timer fires; hardware switches to kernel mode.
+  \item The kernel saves \texttt{P1}'s PC and registers in its process control block (PCB).
+  \item The scheduler picks \texttt{P2}; the kernel restores \texttt{P2}'s context and returns to user mode.
+  \item $t=20$~ms: the timer fires again; the scheduler may pick \texttt{P1} or a third process.
+  \item If \texttt{P1} must be stopped, the kernel can deliver a signal or terminate it --- it already has control.
+\end{enumerate}
+At no step is \texttt{P1} asked to cooperate. The timer is external, the save is kernel work, and the scheduler's choice is made in kernel mode.
+\end{example}
+
+\noindent\textbf{Board:} Trace round-robin control with three processes. On the board, in order: (1) draw a $0$--$40$~ms axis with $10$~ms ticks; (2) put \texttt{P1} on $0$--$10$, \texttt{P2} on $10$--$20$, \texttt{P3} on $20$--$30$, \texttt{P1} again on $30$--$40$; (3) mark $10$, $20$, $30$, $40$ and write ``kernel has control'' above each; (4) ask the class to name every instant at which the kernel could terminate \texttt{P1}. Narration: ``\texttt{P1} never yields, yet the kernel holds the CPU at four instants --- stopping it is a kernel decision, not a favour.'' This is a constructed three-process trace of the deck's runaway mechanism.
+
+\noindent\textbf{Board:} Blank-recall the loop, then insert the system-call edge. On the board, in order: (1) redraw Figure~\ref{fig:control-loop} with the four boxes and the two edge labels erased; (2) have a student reconstruct ``timer'' and ``return-from-trap''; (3) add an entry edge labelled ``trap / system call'' and a second exit edge labelled ``return-from-trap''; (4) ask which box the system-call path enters (the same kernel entry, via the trap handler). Narration: ``The loop has two doors: the timer pushes the process out, and a system call lets it ask to come in. Either way the kernel saves context, decides, and returns.'' Do not fill in the reconstruction.
+
+\begin{teachingaside}
+Ask before drawing the three-process trace: ``\texttt{P1} never yields. How many times can the kernel act on it in the first forty milliseconds?'' Students often answer ``never'' or ``once.'' Have them commit, then draw. The four instants are the payoff and directly answer the opening paradox. If time is short, this is the one board example not to skip.
+\end{teachingaside}
+
+\section{Exit Ticket and Comprehension Checks}
+
+Use the deck's three Socratic Checks in order; they double as the exit ticket. (1) \emph{Why can't the mode bit live in ordinary memory?} Expect the store-\texttt{0} attack, the consequences (interrupts disabled, timer reprogrammed, page tables overwritten), and the loss of any trusted state. (2) \emph{Why not a $1\ \mu\text{s}$ quantum?} Expect $12/1=1200\%$, cache/TLB destruction, and scheduler cost; real systems pick $1$--$100$~ms. (3) \emph{If I/O is privileged, how does \texttt{cat} read?} Expect \texttt{read} $\to$ trap $\to$ validation $\to$ driver $\to$ controller $\to$ return, with no privileged instruction from \texttt{cat}. Two more recur: ``protection and security are the same thing'' (see §2.5; Stallings, Ch.~3 §3.6, p.~143) and ``a system call is a function call'' (the trap is a hardware event with a fixed entry point --- why Lecture~3 needs a full hour).
+
+\section{Summary: Fast Pre-Class Refresh}
+
+\begin{itemize}
+  \item \key{The design problem.} The kernel shares the CPU with the code it supervises, so it runs only on an event; protection must let untrusted code run at full speed while guaranteeing the kernel can regain control.
+  \item \key{Dual-mode operation.} A hardware mode bit (kernel $=0$, user $=1$). Mode-bit change, interrupt control, timer load, raw I/O, page-table base, and halt are kernel-only; in user mode they trap. The bit must be hardware, or user code could write \texttt{0} and become the kernel (Silberschatz et al., Ch.~1 §1.5, pp.~20--23; Stallings, Ch.~3 §3.5, p.~140).
+  \item \key{The timer and preemption.} User code can loop forever without a privileged instruction, so the kernel needs an external event: the timer interrupts, the handler saves context and calls the scheduler. Loop: timer (or trap) $\to$ save $\to$ schedule $\to$ restore $\to$ return.
+  \item \key{The quantum trade-off.} Overhead is $12\ \mu\text{s}/Q$ --- $12\%$ at $100\ \mu\text{s}$, $1.2\%$ at $1$~ms, $0.12\%$ at $10$~ms; at $1\ \mu\text{s}$, $1200\%$, plus cache/TLB destruction.
+  \item \key{Memory, I/O, and policy.} Base/limit, page tables, or segments check every access; raw I/O is privileged, so devices are reachable only through validated calls and drivers. Protection is the mechanism; security is the policy that uses it (Stallings, Ch.~3 §3.6, p.~143).
+\end{itemize}
+
+\end{document}

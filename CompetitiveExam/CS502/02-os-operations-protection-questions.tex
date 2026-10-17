@@ -1,0 +1,93 @@
+% =============================================================================
+% CompetitiveExam/CS502/02-os-operations-protection-questions.tex
+% Competitive Exam Practice 2 — GATE (Computer Science) Pattern
+% Operating-System Operations and System Protection
+%
+% Student-facing — NO answers. Answer key:
+% 02-os-operations-protection-answers.tex.
+% Provenance: ALL questions are Original (GATE-pattern). No item in this set is
+% a quoted past-year question; the repository's indexed PYQ volumes carry no
+% verified Operating-Systems topic map, so no GATE year or question number is
+% claimed — see the provenance policy in .claude/rules/verification-protocol.md
+% and the sourcing ladder in CompetitiveExam/Books/index.md.
+%
+% Compile with: cd CompetitiveExam/CS502 &&
+%   TEXINPUTS=../../Preambles;$TEXINPUTS xelatex -interaction=nonstopmode 02-os-operations-protection-questions.tex
+% =============================================================================
+
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\input{../../Preambles/header}
+\coursecode{CS502}
+\renewcommand{\thesection}{2.\arabic{section}}
+
+\title{Competitive Exam Practice 2: Operating-System Operations and System Protection\\\large GATE (Computer Science) Pattern}
+\author{Auqib Hamid Lone\\[0.3em]
+  \emph{Department of Computer Science \& Engineering}, \emph{GCET Ganderbal}}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\noindent Each question carries 1--2 marks. MCQ = single correct option; NAT = Numerical Answer Type. \emph{All questions in this set are original, written in the GATE pattern --- no past-year provenance is claimed for any item.}
+
+\begin{enumerate}
+
+\item[\textbf{Q1}] \textit{[Original, GATE-pattern]} \textbf{[MCQ, 1 mark]} Which of the following statements about dual-mode operation is \textbf{TRUE}?
+
+\begin{enumerate}
+  \item[(A)] The mode bit is an ordinary word in the process's data segment, so a program can set it with a normal store.
+  \item[(B)] Mode bit $1$ denotes kernel mode and mode bit $0$ denotes user mode.
+  \item[(C)] The hardware checks the mode bit before executing a privileged instruction, and only controlled events such as traps, interrupts, and exceptions change the mode.
+  \item[(D)] A user-mode program may disable interrupts, provided it re-enables them before the next timer expiry.
+\end{enumerate}
+
+\item[\textbf{Q2}] \textit{[Original, GATE-pattern]} \textbf{[MCQ, 1 mark]} Which pair consists \textbf{only} of privileged instructions?
+
+\begin{enumerate}
+  \item[(A)] Read the clock; execute a trap instruction
+  \item[(B)] Load the timer; change the page-table base register
+  \item[(C)] Add two registers; disable interrupts
+  \item[(D)] Branch to a subroutine; issue a raw I/O instruction
+\end{enumerate}
+
+\item[\textbf{Q3}] \textit{[Original, GATE-pattern]} \textbf{[MCQ, 1 mark]} Which statement about the trap instruction and the system-call gate is \textbf{TRUE}?
+
+\begin{enumerate}
+  \item[(A)] The trap instruction is privileged, so only code already running in kernel mode can execute it.
+  \item[(B)] The trap instruction is unprivileged; it transfers control to a hardware-defined entry point, not to an address chosen by the program.
+  \item[(C)] After a trap, the kernel may return to any instruction address supplied by the user process.
+  \item[(D)] The kernel validates the system-call arguments only after it has returned to user mode.
+\end{enumerate}
+
+\item[\textbf{Q4}] \textit{[Original, GATE-pattern]} \textbf{[MCQ, 1 mark]} Which statement about memory and I/O protection is \textbf{TRUE}?
+
+\begin{enumerate}
+  \item[(A)] Base and limit registers are compared against every address by kernel software, on each user memory access.
+  \item[(B)] A page table protects memory even if user code is able to write the page-table base register.
+  \item[(C)] Raw I/O instructions may be executed by user code because device registers are memory-mapped.
+  \item[(D)] An out-of-limit address traps to the kernel, and raw I/O instructions are privileged, so devices are reached only through kernel-validated system calls.
+\end{enumerate}
+
+\item[\textbf{Q5}] \textit{[Original, GATE-pattern]} \textbf{[MCQ, 2 marks]} Which of the following is a \emph{protection} mechanism rather than a \emph{security} policy?
+
+\begin{enumerate}
+  \item[(A)] Requiring a password at login
+  \item[(B)] Checking every user address against a base-and-limit pair in hardware
+  \item[(C)] Installing a firewall rule that blocks a remote-access port
+  \item[(D)] Encrypting a backup tape before it leaves the building
+\end{enumerate}
+
+\item[\textbf{Q6}] \textit{[Original, GATE-pattern]} \textbf{[NAT, 2 marks]} A context switch costs $12\ \mu\text{s}$. The scheduler uses a quantum of $250\ \mu\text{s}$. The percentage of CPU time spent on context switching is \rule{1.5cm}{0.4pt}.
+
+\item[\textbf{Q7}] \textit{[Original, GATE-pattern]} \textbf{[NAT, 2 marks]} A hardware timer interrupts every $1\ \text{ms}$. Each timer interrupt costs $25\ \mu\text{s}$ to handle. The quantum is $5\ \text{ms}$, and one context switch costing $15\ \mu\text{s}$ occurs at every quantum boundary. The total percentage of CPU time spent on timer handling and context switching is \rule{1.5cm}{0.4pt}.
+
+\item[\textbf{Q8}] \textit{[Original, GATE-pattern]} \textbf{[NAT, 1 mark]} A process executes $950\ \text{ms}$ of user-mode instructions and makes $2000$ system calls. Each system call spends $25\ \mu\text{s}$ in kernel mode. The percentage of the process's total CPU time spent in kernel mode is \rule{1.5cm}{0.4pt}.
+
+\item[\textbf{Q9}] \textit{[Original, GATE-pattern]} \textbf{[NAT, 1 mark]} A runaway process executes only unprivileged instructions. The quantum is $8\ \text{ms}$ and a context switch costs $16\ \mu\text{s}$. Over an interval of $2\ \text{s}$, the total time (in ms) lost to context switches forced by timer preemption is \rule{1.5cm}{0.4pt}.
+
+\item[\textbf{Q10}] \textit{[Original, GATE-pattern]} \textbf{[NAT, 1 mark]} A program makes $1500$ system calls; each call requires two mode switches (into the kernel and back). During the same run the timer preempts the program $250$ times, and each preemption likewise requires two mode switches. The total number of mode switches is \rule{1.5cm}{0.4pt}.
+
+\end{enumerate}
+
+\end{document}
