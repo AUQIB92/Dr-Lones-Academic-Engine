@@ -1,0 +1,347 @@
+% =============================================================================
+% InstructorHandouts/CS502/09-cpu-scheduling-advanced-instructor-handout.tex
+% Instructor Handout 9: Priority, Round Robin, Multilevel Queues, and
+% Multiprocessor Scheduling
+%
+% INSTRUCTOR-ONLY. Complete, self-contained teaching guide -- explanation,
+% embedded diagrams, presentation guidance, and delivery commentary woven
+% together per topic. Explanations/diagrams/examples trace to
+% Slides/CS502/09-cpu-scheduling-advanced.tex and
+% Notes/CS502/09-cpu-scheduling-advanced-notes.tex; extra board examples use
+% new numbers, each checked with a discrete-event simulator. "Teaching note"
+% asides are instructor judgment, visually distinguished.
+%
+% Anchor readings: Silberschatz 8e Ch. 5 §5.3 (pp. 192-199), §5.5 (p. 200);
+%   Stallings 6e Ch. 9 §9.2 (p. 410), Ch. 10 §10.1 (p. 453); Bovet & Cesati
+%   3e Ch. 7 (pp. 258-293). All page-verified via supporting_books/*/index.md.
+%
+% Compile with: cd InstructorHandouts/CS502 &&
+%   TEXINPUTS=../../Preambles:$TEXINPUTS xelatex -interaction=nonstopmode 09-cpu-scheduling-advanced-instructor-handout.tex
+% =============================================================================
+
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{array}
+\input{../../Preambles/header}
+\coursecode{CS502}
+\renewcommand{\thesection}{9.\arabic{section}}
+\renewcommand{\thefigure}{9.\arabic{figure}}
+\renewcommand{\thetable}{9.\arabic{table}}
+\newtheorem{example}{Example}
+\renewcommand{\theexample}{9.\arabic{example}}
+\newenvironment{definitionbox}[1]{%
+  \par\noindent\textbf{Definition (#1).}\ \itshape
+}{\par\vspace{0.3em}}
+\newenvironment{teachingaside}{\begin{quote}\small\color{primary-gold}\textbf{Teaching note:}\ }{\end{quote}}
+\setlength{\emergencystretch}{2.5em}
+
+% Gantt helper -- verbatim from the Beamer source.
+\newcommand{\gantt}[3]{%
+  \begin{tikzpicture}[x=#1cm,y=1cm,baseline={(0,0.35)}]
+    \foreach \n/\s/\e/\c in {#2} {
+      \draw[draw=primary-blue,fill=\c] (\s,0) rectangle (\e,0.7);
+      \node[font=\scriptsize] at ({(\s+\e)/2},0.35) {\n};
+      \node[font=\tiny,anchor=north] at (\s,-0.02) {\s};
+      \node[font=\tiny,anchor=north] at (\e,-0.02) {\e};
+    }
+    \foreach \n/\t in {#3} {
+      \draw[-{Latex[length=1.2mm]},draw=primary-gold,thick] (\t,-0.75) -- (\t,-0.42);
+      \node[font=\tiny,text=primary-gold] at (\t,-0.95) {\n};
+    }
+  \end{tikzpicture}%
+}
+
+\title{Instructor Handout 9: Priority, Round Robin,\\Multilevel Queues, and Multiprocessor Scheduling\\[0.3em]
+  \large Lecture 9 --- closes Unit I}
+\author{Auqib Hamid Lone\\[0.3em]
+  \emph{Department of Computer Science \& Engineering}, \emph{GCET Ganderbal}}
+\date{\today}
+
+\begin{document}
+\maketitle
+{\centering\large\color{negative}\textbf{Instructor Copy --- Not for Student Distribution}\par}
+\vspace{0.5cm}
+
+\section{Before You Teach This Lecture}
+
+\begin{itemize}
+  \item \textbf{Silberschatz, Galvin \& Gagne, \textit{Operating System Concepts}, 8e} --- Ch.~5 \S5.3: Priority (p.~192), Round Robin (p.~194), Multilevel Queue (p.~196, Fig.~5.6), Multilevel Feedback Queue (p.~197); \S5.5 multiple-processor scheduling (p.~200 onward). Primary anchor; \emph{page-verified} via the course index. The subsection-level detail of \S5.5 (affinity, load balancing, multicore) is indexed only at section level, so treat it as the section's general treatment.
+  \item \textbf{Stallings, \textit{Operating Systems: Internals and Design Principles}, 6e} --- Ch.~9 \S9.2 (scheduling algorithms, p.~410) for RR, priority and feedback scheduling; Ch.~10 \S10.1 (multiprocessor scheduling, p.~453). \emph{Page-verified.}
+  \item \textbf{Bovet \& Cesati, \textit{Understanding the Linux Kernel}, 3e} --- Ch.~7 (pp.~258--293): priorities, timeslices, per-CPU runqueues and SMP runqueue balancing. Use for ``what Linux actually does''. \emph{Page-verified.}
+  \item \textbf{Know the running workload $W$ cold} (Table~\ref{tab:W}). Every slide reuses it; students will copy your Gantt charts, so practise each one once on paper before class.
+  \item \textbf{State the conventions before the first chart:} lower number $=$ higher priority; ties to the earlier arrival; in RR an arrival at a quantum boundary joins the queue \emph{before} the preempted process. Most student disagreements about RR answers are disagreements about this tie rule.
+  \item \textbf{Prerequisite check (two minutes):} TAT, WT, RT and the FCFS/SJF/SRTF Gantt method from Lecture~8; the timer interrupt from Lecture~2; the context switch from Lecture~6.
+\end{itemize}
+
+\begin{table}[h]
+\centering
+\renewcommand{\arraystretch}{1.15}
+\begin{tabular}{lcccl}
+  \textbf{Process} & \textbf{Arrival} & \textbf{$\tau$} & \textbf{Priority} & \textbf{Character} \\ \hline
+  \texttt{P1} & 0 & 8 & 3 & medium batch job \\
+  \texttt{P2} & 1 & 4 & 1 & interactive, important \\
+  \texttt{P3} & 2 & 9 & 4 & long compute job \\
+  \texttt{P4} & 3 & 5 & 2 & system daemon \\
+  \texttt{P5} & 4 & 2 & 5 & short, low-importance \\
+\end{tabular}
+\caption{Running workload $W$ (ms). Total work 28 ms.}
+\label{tab:W}
+\end{table}
+
+\begin{teachingaside}
+The thesis to keep on the board all hour: \emph{no policy wins every column}. Leave a blank five-row comparison table (FCFS, NP priority, P priority, RR $q=3$, MLFQ $\times$ avg WT, avg TAT, avg RT, P5 done at, switches) in a corner and fill one row after each section. The finished table is the lecture's conclusion.
+\end{teachingaside}
+
+\section{Opening: Where FCFS and SJF Left Us}
+
+A laptop runs a video call, a compiler and a backup. FCFS lets the backup block the call (the \key{convoy effect}); SJF needs burst lengths nobody knows. Real schedulers combine four ideas --- \key{Priority}, \key{RR}, \key{MLQ}, \key{MLFQ} --- and must also decide which CPU a process runs on.
+
+Recall the metrics: TAT $=$ completion $-$ arrival; WT $=$ TAT $-\ \tau$; RT $=$ first dispatch $-$ arrival. FCFS on $W$ runs P1 0--8, P2 8--12, P3 12--21, P4 21--26, P5 26--28: WT $= 0,7,10,18,22$, average $57/5 = 11.4$ ms; TAT average 17.0 ms. P5 needs 2 ms and waits 22.
+
+\begin{figure}[h]
+\centering
+\gantt{0.42}{P1/0/8/light-bg,P2/8/12/light-bg,P3/12/21/light-bg,P4/21/26/light-bg,P5/26/28/light-bg}{P1/0,P2/1,P3/2,P4/3,P5/4}
+\caption{FCFS baseline on $W$.}
+\end{figure}
+
+\textbf{Board:} the baseline. \emph{On the board, in order:} (i) a time axis 0--28 with ticks every 2 ms; (ii) gold arrival arrows under 0,1,2,3,4 labelled P1--P5; (iii) the five FCFS bars; (iv) the WT column computed aloud, P5 last. \emph{Say:} ``Twenty-two milliseconds of waiting for two of work. Today's question is who should have gone first.''
+
+\begin{teachingaside}
+Ask students to draw the axis and arrows themselves before you draw bars; they reuse that axis for four more charts. Arrivals belong \emph{on the axis}, never inside bars --- a habit worth enforcing now.
+\end{teachingaside}
+
+\section{Priority Scheduling}
+
+\begin{definitionbox}{Priority scheduling}
+Allocate the CPU to the ready process with the highest priority; equal priorities are broken FCFS.
+\end{definitionbox}
+
+Priorities are internal (time limits, memory needs, I/O-to-CPU burst ratio) or external (importance, payment, department). SJF is the special case where priority is the predicted next burst. Non-preemptive priority decides only when the CPU frees; preemptive priority reacts to each arrival.
+
+\textbf{Non-preemptive on $W$:} P1 0--8 (alone at 0); at 8, ready $=\{$P2(1), P3(4), P4(2), P5(5)$\}$, so P2 8--12, P4 12--17, P3 17--26, P5 26--28. WT $= 0,7,15,9,22$, average 10.6; TAT average 16.2.
+
+\textbf{Preemptive on $W$:} P1 0--1; P2 arrives at 1 and preempts (P1 keeps 7); P2 1--5; at 5 P4 (2) beats P1 (3): P4 5--10; P1 10--17; P3 17--26; P5 26--28. WT $= 9,0,15,2,22$, average 9.6; TAT average 15.2; RT average 7.8.
+
+\begin{figure}[h]
+\centering
+\gantt{0.42}{P1/0/8/light-bg,P2/8/12/light-bg,P4/12/17/light-bg,P3/17/26/light-bg,P5/26/28/light-bg}{P1/0,P2/1,P3/2,P4/3,P5/4}\\[1.2em]
+\gantt{0.42}{P1/0/1/light-bg,P2/1/5/light-bg,P4/5/10/light-bg,P1/10/17/light-bg,P3/17/26/light-bg,P5/26/28/light-bg}{P1/0,P2/1,P3/2,P4/3,P5/4}
+\caption{Non-preemptive (top) and preemptive (bottom) priority on $W$.}
+\end{figure}
+
+\textbf{Board:} preemption at $t=1$. \emph{On the board, in order:} (i) reuse the axis; (ii) draw P1's bar from 0 and stop the chalk at 1; (iii) write ``P2 (1) $>$ P1 (3)'' above the cut; (iv) finish the chart, writing P1's remaining work (7) above its resumed bar. \emph{Say:} ``The important process waits zero. Who paid?'' --- answer: P1 (9 ms) and, as always, P5 (22).
+
+\textbf{Board:} a second instance, all arrivals at 0 (new numbers): P1 (4, pr 2), P2 (3, pr 1), P3 (6, pr 3), P4 (2, pr 2). \emph{On the board, in order:} list the four rows; sort by priority, breaking the P1/P4 tie by arrival order (P1 listed first); draw P2 0--3, P1 3--7, P4 7--9, P3 9--15. WT $= 3,0,9,7$; average $19/4 = 4.75$ ms. \emph{Live hook:} ask ``with every arrival at 0, does preemption change anything?'' (No --- no arrival can interrupt.)
+
+\textbf{Starvation and aging.} \key{Starvation}: a ready process that never runs because better work keeps arriving. \key{Aging}: raise a process's priority as it waits. With priorities 0--63 and aging of 1 step per 10 ms, the worst case (entering at 63) reaches 0 after $63\times10 = 630$ ms; nothing then outranks it, so its wait is bounded.
+
+\begin{teachingaside}
+Where students get stuck: the direction of the priority scale. Some textbooks and exam papers use ``larger is higher''. Make them write the convention at the top of every answer. Socratic question worth asking live: ``P1 started first but finished after P2 and P4 --- unfair? What would SRTF do at $t=1$?'' SRTF makes the same preemption (P2's 4 ms $<$ P1's remaining 7) for a different reason: SJF is a priority algorithm with a different key.
+\end{teachingaside}
+
+\section{Round Robin}
+
+\begin{definitionbox}{Round Robin}
+FCFS with timer preemption: each process runs for at most one quantum $q$, then goes to the tail of the ready queue.
+\end{definitionbox}
+
+\textbf{RR, $q=3$, on $W$} (track the queue at each dispatch): $t=3$: [P2, P3, P4] then P1 rejoins $\to$ [P2, P3, P4, P1]; $t=6$: P5 (arrived 4) precedes P2 $\to$ [P3, P4, P1, P5, P2]; $t=15$: [P5, P2, P3, P4, P1], and P5 (2) and P2 (1 left) finish without a full quantum; $t=21$: [P4, P1, P3] drains to 23, 25, 28. First dispatch 0,3,6,9,15; completion 25,18,28,23,17; TAT average 20.2; WT $= 17,13,17,15,11$, average 14.6; RT $= 0,2,4,6,11$, average 4.6.
+
+\begin{figure}[h]
+\centering
+\gantt{0.42}{P1/0/3/light-bg,P2/3/6/light-bg,P3/6/9/light-bg,P4/9/12/light-bg,P1/12/15/light-bg,P5/15/17/light-bg,%
+    P2/17/18/light-bg,P3/18/21/light-bg,P4/21/23/light-bg,P1/23/25/light-bg,P3/25/28/light-bg}{P1/0,P2/1,P3/2,P4/3,P5/4}
+\caption{RR, $q=3$, on $W$.}
+\end{figure}
+
+\textbf{Board:} the RR queue as a column. \emph{On the board, in order:} (i) draw the axis; (ii) to the right, a vertical ``ready queue'' column; (iii) at each quantum boundary, first add arrivals to the queue, \emph{then} append the preempted process, then pop the head and draw its bar. \emph{Say at $t=6$:} ``P5 arrived at 4, while P2 was running --- so P5 is ahead of P2.''
+
+\textbf{Board:} a second instance (new numbers, all at 0): P1 5, P2 3, P3 4. $q=2$: P1 0--2, P2 2--4, P3 4--6, P1 6--8, P2 8--9, P3 9--11, P1 11--12; WT $= 7,6,7$, average $20/3 \approx 6.67$. $q=4$: P1 0--4, P2 4--7, P3 7--11, P1 11--12; WT $= 7,4,7$, average 6.0. \emph{Live hook:} ``predict which quantum gives the lower average WT before I draw it.''
+
+\textbf{The quantum sweep on $W$} (context switches $=$ changes of running process): $q=1$: WT 13.0, TAT 18.6, RT 1.2, 25 switches; $q=2$: 13.0, 18.6, 2.8, 13; $q=3$: 14.6, 20.2, 4.6, 10; $q=4$: 13.0, 18.6, 6.0, 8; $q=5$: 12.6, 18.2, 7.4, 6; $q\ge 9$: 11.4, 17.0, 11.4, 4 (RR $=$ FCFS). RT grows with $q$; WT does not move monotonically: with $q=4$, P2's 4 ms burst finishes in one slice; with $q=3$ it needs two and waits a whole round.
+
+\textbf{Overhead.} With switch cost $s$, the useful fraction is $q/(q+s)$; with $s=0.5$: $q=1$ gives 66.7\%, $q=3$ 85.7\%, $q=10$ 95.2\%. On $W$, $q=1$'s 25 switches add 12.5 ms to a 28 ms schedule; $q=3$'s 10 add 5 ms. Rule of thumb: $q$ large compared with $s$, yet small enough that about 80\% of bursts finish within one quantum.
+
+\textbf{Bound.} With $n$ ready processes, no process waits more than $(n-1)q$ for its next quantum. On $W$, $q=3$: $4\times3 = 12$; the largest RT is P5's 11.
+
+\begin{teachingaside}
+Where students get stuck: the tie rule, and counting a finished process as ``preempted''. A process whose burst ends inside its quantum leaves voluntarily and never rejoins. Socratic question: ``$q=2$ and $q=4$ give 13.0 but $q=3$ gives 14.6 --- does a bigger quantum always reduce waiting?'' Let them argue before revealing the P2 explanation.
+\end{teachingaside}
+
+\section{Multilevel Queue Scheduling}
+
+\begin{definitionbox}{Multilevel queue}
+The ready queue is split into classes; each process is permanently assigned to one queue by type, and each queue has its own algorithm.
+\end{definitionbox}
+
+\begin{figure}[h]
+\centering
+  % Coordinate map (cm): queue boxes x in [-3,3], centres y=1.5,0.5,-0.5,-1.5,
+  % height 0.7 each (gaps 0.3); policy labels at x=4.6; priority arrow
+  % x=-4.3 from y=-1.85 to y=1.85, its label at x=-5.4 (clear of the arrow).
+  \begin{tikzpicture}[every node/.style={font=\small}]
+    \node[dag-node, minimum width=6cm, minimum height=0.7cm] (q0) at (0,1.5)
+      {system processes};
+    \node[dag-node, minimum width=6cm, minimum height=0.7cm] (q1) at (0,0.5)
+      {interactive processes};
+    \node[dag-node, minimum width=6cm, minimum height=0.7cm] (q2) at (0,-0.5)
+      {interactive editing};
+    \node[dag-node, minimum width=6cm, minimum height=0.7cm] (q3) at (0,-1.5)
+      {batch processes};
+    \node[text=primary-gold, anchor=west] at (3.3,1.5) {RR};
+    \node[text=primary-gold, anchor=west] at (3.3,0.5) {RR};
+    \node[text=primary-gold, anchor=west] at (3.3,-0.5) {RR};
+    \node[text=primary-gold, anchor=west] at (3.3,-1.5) {FCFS};
+    \draw[observed-edge] (-4.3,-1.85) -- (-4.3,1.85);
+    \node[align=center, font=\footnotesize] at (-5.5,0) {higher\\priority};
+  \end{tikzpicture}
+\caption{Multilevel queue --- after Silberschatz et al., Ch.~5 \S5.3, p.~196 (Fig.~5.6).}
+\end{figure}
+
+\emph{How to present it:} draw the four boxes top to bottom first, then the policy labels on the right, and the ``higher priority'' arrow last --- the arrow is the policy \emph{between} queues, which is the point of the next sentence. Between-queue policy is either fixed preemptive priority (lower queues can starve) or time slicing (e.g.\ 80\% foreground RR, 20\% background FCFS; nothing starves). MLQ is cheap (class chosen once) and inflexible (a process cannot change class).
+
+\textbf{Board:} the deck's two-queue example. Foreground RR $q=2$, background FCFS, fixed preemptive priority; A (0, 4, fg), B (1, 6, bg), D (2, 3, bg), C (6, 3, fg). A 0--4; B 4--6; C arrives at 6 and preempts B (4 left); C 6--9; B 9--13; D 13--16. WT: A 0, C 0, B 6, D 11; average 4.25.
+
+\begin{figure}[h]
+\centering
+\gantt{0.48}{A/0/4/light-bg,B/4/6/hi-slate!20,C/6/9/light-bg,B/9/13/hi-slate!20,D/13/16/hi-slate!20}{A/0,B/1,D/2,C/6}
+\caption{Two-queue MLQ (foreground light, background shaded).}
+\end{figure}
+
+\textbf{Board:} a second instance (new numbers): A (0, 3, fg), B (0, 5, bg), C (2, 4, fg), same policies. A 0--2; at 2 A's quantum expires and C has just arrived, so C goes first: C 2--4, A 4--5, C 5--7; only then B 7--12. WT $= 2$ (A), 1 (C), 7 (B). \emph{Live hook:} ``B arrived at time 0 --- when does it first run?'' (At 7, after the foreground drains.)
+
+\begin{teachingaside}
+Where students get stuck: assuming a preempted background process goes to the \emph{tail} of its queue. In fixed-priority MLQ with FCFS in the background, it resumes at the head --- B resumes at 9 before D.
+\end{teachingaside}
+
+\section{Multilevel Feedback Queue}
+
+\begin{definitionbox}{Multilevel feedback queue}
+Processes move between queues: using a full quantum demotes; waiting too long may promote (aging).
+\end{definitionbox}
+
+Five parameters define an MLFQ: number of queues; algorithm per queue; demotion rule; promotion rule; entry queue. It can mimic RR, FCFS, or an SJF approximation without knowing any burst.
+
+\begin{figure}[h]
+\centering
+  % Coordinate map (cm): Q0/Q1/Q2 boxes at x=0, y=1.4/0/-1.4, size 5.2x0.75.
+  % Demotion arrows leave each box's east side, go right to x=3.6, then
+  % down to the next box's east side (no box crossed). Labels at x=3.75
+  % (anchor west), midway between rows: clear of both arrows and boxes.
+  \begin{tikzpicture}[every node/.style={font=\small}]
+    \node[dag-node, minimum width=5.2cm, minimum height=0.75cm] (q0) at (0,1.4)
+      {$Q_0$: RR, $q = 2$ ms};
+    \node[dag-node, minimum width=5.2cm, minimum height=0.75cm] (q1) at (0,0)
+      {$Q_1$: RR, $q = 4$ ms};
+    \node[dag-node, minimum width=5.2cm, minimum height=0.75cm] (q2) at (0,-1.4)
+      {$Q_2$: FCFS};
+    \draw[observed-edge] (q0.east) -- (3.6,1.4) -- (3.6,0) -- (q1.east);
+    \draw[observed-edge] (q1.east) -- (3.6,0) -- (3.6,-1.4) -- (q2.east);
+    \node[anchor=west, font=\footnotesize, text=primary-gold] at (3.75,0.7)
+      {used full quantum};
+    \node[anchor=west, font=\footnotesize, text=primary-gold] at (3.75,-0.7)
+      {used full quantum};
+    \draw[observed-edge] (-4.6,1.4) -- (q0.west);
+    \node[anchor=east, font=\footnotesize] at (-4.7,1.4) {new arrival};
+  \end{tikzpicture}
+\caption{Three-level MLFQ --- after Silberschatz et al., Ch.~5 \S5.3, p.~197.}
+\end{figure}
+
+\emph{How to present it} (coordinate-map order): the three boxes top to bottom; the ``new arrival'' arrow into $Q_0$; then each demotion arrow, saying ``used full quantum'' as you draw it. Draw no upward arrow yet --- introduce promotion only when starvation comes up.
+
+\textbf{Board:} MLFQ on $W$. 0--10: each process gets 2 ms in $Q_0$; only P5 finishes (at 10). 10--23: $Q_1$ runs P1 (10--14, demoted), P2 (14--16, done), P3 (16--20, demoted), P4 (20--23, done). 23--28: $Q_2$ runs P1 (to 25), P3 (to 28). WT $= 17,11,17,15,4$, average 12.8; TAT 18.4; RT $= 0,1,2,3,4$, average 2.0; 10 switches.
+
+\begin{figure}[h]
+\centering
+\gantt{0.42}{P1/0/2/light-bg,P2/2/4/light-bg,P3/4/6/light-bg,P4/6/8/light-bg,P5/8/10/light-bg,P1/10/14/primary-gold!30,%
+    P2/14/16/primary-gold!30,P3/16/20/primary-gold!30,P4/20/23/primary-gold!30,P1/23/25/hi-slate!20,P3/25/28/hi-slate!20}{P1/0,P2/1,P3/2,P4/3,P5/4}
+\caption{MLFQ on $W$ ($Q_0$ light, $Q_1$ gold, $Q_2$ grey).}
+\end{figure}
+
+\textbf{Board:} the late short arrival. P1 (0, 9), P2 (1, 3), P3 (2, 6), P4 (8, 2). 0--6: three $Q_0$ slices, all demoted; 6--8: P1 in $Q_1$; at 8 P4 enters $Q_0$ and preempts P1 (to the tail of $Q_1$); P4 8--10 (WT 0); P2 10--11; P3 11--15; P1 15--19 in $Q_1$ and 19--20 in $Q_2$. WT $= 11,7,7,0$, average 6.25; TAT average 11.25. \emph{Live hook:} stop at $t=8$ and ask ``draw the next bar''.
+
+\begin{figure}[h]
+\centering
+\gantt{0.48}{P1/0/2/light-bg,P2/2/4/light-bg,P3/4/6/light-bg,P1/6/8/primary-gold!30,P4/8/10/light-bg,%
+    P2/10/11/primary-gold!30,P3/11/15/primary-gold!30,P1/15/19/primary-gold!30,P1/19/20/hi-slate!20}{P1/0,P2/1,P3/2,P4/8}
+\caption{MLFQ with a late short arrival.}
+\end{figure}
+
+\begin{teachingaside}
+Where students get stuck: what a preempted $Q_1$ process gets when it resumes --- a fresh quantum or the remainder. Tell them the deck's examples give the same completion times either way, and that an exam must state its rule. Socratic question: ``A CPU-bound program issues a tiny I/O just before every quantum expires --- what happens?'' It never uses a full quantum, so it is never demoted; the defence is cumulative per-level CPU accounting plus periodic promotion.
+\end{teachingaside}
+
+\section{Multiprocessor Scheduling}
+
+Asymmetric multiprocessing: one master CPU makes all scheduling decisions and does I/O and kernel work. SMP: every CPU is self-scheduling, so scheduler data needs protection. Modern general-purpose OSes are SMP, which raises the question of one common queue versus per-CPU queues.
+
+\begin{figure}[h]
+\centering
+  % Coordinate map (cm). Left: common queue box at (-4.5,1.1), 3.6x0.7;
+  % CPU0/CPU1 boxes at (-5.6,-0.9) and (-3.4,-0.9), 1.6x0.7; arrows run from
+  % the queue's south side to each CPU's north side (no crossing).
+  % Right: queue boxes at (2.4,1.1) and (5.6,1.1), 2.6x0.7, each straight
+  % above its CPU at y=-0.9; vertical arrows. Captions at y=-1.75.
+  \begin{tikzpicture}[every node/.style={font=\small}]
+    \node[dag-node, minimum width=3.6cm, minimum height=0.7cm] (cq) at (-4.5,1.1)
+      {common ready queue};
+    \node[dag-node, minimum width=1.6cm, minimum height=0.7cm] (c0) at (-5.6,-0.9) {CPU0};
+    \node[dag-node, minimum width=1.6cm, minimum height=0.7cm] (c1) at (-3.4,-0.9) {CPU1};
+    \draw[observed-edge] (cq.south) ++(-0.9,0) -- (c0.north);
+    \draw[observed-edge] (cq.south) ++(0.9,0) -- (c1.north);
+    \node[dag-node, minimum width=2.6cm, minimum height=0.7cm] (pq0) at (2.4,1.1) {queue 0};
+    \node[dag-node, minimum width=2.6cm, minimum height=0.7cm] (pq1) at (5.6,1.1) {queue 1};
+    \node[dag-node, minimum width=1.6cm, minimum height=0.7cm] (d0) at (2.4,-0.9) {CPU0};
+    \node[dag-node, minimum width=1.6cm, minimum height=0.7cm] (d1) at (5.6,-0.9) {CPU1};
+    \draw[observed-edge] (pq0) -- (d0);
+    \draw[observed-edge] (pq1) -- (d1);
+    \draw[counterfactual-edge] (pq0.east) -- (pq1.west);
+    \node[font=\footnotesize, text=primary-gold] at (4.0,0.5) {migrate};
+    \node[font=\footnotesize, text=neutral] at (-4.5,-1.75) {balanced, but shared lock};
+    \node[font=\footnotesize, text=neutral] at (4.0,-1.75) {cache-warm, but may drift out of balance};
+  \end{tikzpicture}
+\caption{Common ready queue versus per-CPU queues.}
+\end{figure}
+
+\emph{How to present it:} draw the left half, ask ``what is the cost?'' (one lock), then draw the right half and ask the same question (imbalance); add the dashed ``migrate'' arrow last --- it introduces load balancing.
+
+\textbf{Affinity:} a process prefers its last CPU because the cache holds its data; migration costs a cache refill. Soft affinity (OS tries) versus hard affinity (process restricts itself, e.g.\ \texttt{sched\_setaffinity}); on NUMA, affinity also keeps the process near its memory. \textbf{Load balancing:} push migration (a periodic task moves work off busy CPUs) and pull migration (an idle CPU takes work); Linux uses both with per-CPU runqueues and periodic balancing. Migrate only when the imbalance outweighs the cache cost. \textbf{Multicore:} a memory stall idles a core after a cache miss; hardware threads let the core switch threads; the OS schedules software threads onto logical CPUs and the hardware schedules hardware threads onto the pipeline.
+
+\textbf{Board:} the deck's balance example. Bursts 6, 5, 4, 3, 2, 2 on two CPUs. Static split (J1--J3 / J4--J6): finish 15, CPU1 idle 8. Common queue: CPU0 J1 0--6, J4 6--9, J5 9--11; CPU1 J2 0--5, J3 5--9, J6 9--11: finish $11 = 22/2$.
+
+\textbf{Board:} a second instance (new numbers): bursts 9, 4, 4, 3, 3, 1 (total 24). Static split: $9+4+4 = 17$ vs.\ $3+3+1 = 7$, finish 17. Common queue: CPU0 J1 0--9, J5 9--12; CPU1 J2 0--4, J3 4--8, J4 8--11, J6 11--12: finish $12 = 24/2$. \emph{Live hook:} ``what is the best any schedule could do?'' (Total/CPUs.)
+
+\begin{teachingaside}
+Where students get stuck: thinking more CPUs automatically means proportionally faster. The two examples show that balance, not CPU count, sets the finish time.
+\end{teachingaside}
+
+\section{Exit Ticket / Comprehension Checks}
+
+\begin{enumerate}
+  \item What does RR become when $q \ge$ the longest burst? (FCFS.)
+  \item Which policy on $W$ gives the lowest average WT, and which the lowest average RT? (Preemptive priority 9.6; MLFQ 2.0.)
+  \item One sentence: how does MLFQ differ from MLQ? (Processes move between queues by observed behaviour.)
+  \item Ten processes, $q=20$ ms: maximum wait for the next quantum? (180 ms.)
+\end{enumerate}
+
+\section{Summary: One-Page Refresh}
+
+\begin{center}
+\renewcommand{\arraystretch}{1.15}
+\begin{tabular}{lccccc}
+  \textbf{Policy on $W$} & \textbf{avg WT} & \textbf{avg TAT} & \textbf{avg RT} & \textbf{P5 done} & \textbf{switches} \\ \hline
+  FCFS & 11.4 & 17.0 & 11.4 & 28 & 4 \\
+  Priority (NP) & 10.6 & 16.2 & 10.6 & 28 & 4 \\
+  Priority (P) & 9.6 & 15.2 & 7.8 & 28 & 5 \\
+  RR, $q=3$ & 14.6 & 20.2 & 4.6 & 17 & 10 \\
+  MLFQ (2, 4, FCFS) & 12.8 & 18.4 & 2.0 & 10 & 10 \\
+\end{tabular}
+\end{center}
+
+Priority runs the most important ready process; aging prevents starvation. RR bounds the wait for the next quantum by $(n-1)q$; useful fraction $q/(q+s)$; $q\ge$ longest burst gives FCFS. MLQ: fixed classes, own policies, fixed-priority or time-sliced between queues. MLFQ: demote on full quantum, promote on long wait, five parameters. Multiprocessor: SMP, common vs.\ per-CPU queues, affinity, push/pull balancing, hardware threads. Misconceptions to pre-empt: priority-scale direction, monotone WT in $q$, ``RR always beats FCFS'', ``MLQ moves processes'', ``more CPUs always help''.
+
+\section{Readings to Prepare Next Time}
+
+Lecture~10 opens Unit~II: race conditions and the critical-section problem. Read Silberschatz et al., Ch.~6 \S6.1--6.2 (pp.~225--229) and Stallings, Ch.~5 \S5.1. Bridge sentence for the end of class: ``A scheduler can stop a process at any timer interrupt. Next time: what goes wrong when two such processes share data.''
+
+\end{document}

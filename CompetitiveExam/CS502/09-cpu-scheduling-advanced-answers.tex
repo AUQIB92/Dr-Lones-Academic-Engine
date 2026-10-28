@@ -1,0 +1,45 @@
+% =============================================================================
+% CompetitiveExam/CS502/09-cpu-scheduling-advanced-answers.tex
+% ANSWER KEY — Competitive Exam Practice 9.
+% Provenance: ALL questions are Original (GATE-pattern); see the questions file.
+% Every numerical answer was produced by a discrete-event simulator and
+% re-derived by hand from Slides/CS502/09-cpu-scheduling-advanced.tex methods.
+%
+% Compile with: cd CompetitiveExam/CS502 &&
+%   TEXINPUTS=../../Preambles:$TEXINPUTS xelatex -interaction=nonstopmode 09-cpu-scheduling-advanced-answers.tex
+% =============================================================================
+
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\input{../../Preambles/header}
+\coursecode{CS502}
+\renewcommand{\thesection}{9.\arabic{section}}
+
+\title{Answer Key --- Competitive Exam Practice 9: Priority, Round Robin,\\Multilevel Queues, and Multiprocessor Scheduling\\\large GATE (Computer Science) Pattern}
+\author{Auqib Hamid Lone\\[0.3em]
+  \emph{Department of Computer Science \& Engineering}, \emph{GCET Ganderbal}}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{enumerate}
+\item[\textbf{Q1}] \textbf{(B).} No process ever exhausts its quantum, so none is preempted and the circular queue is served in arrival order --- exactly FCFS.
+
+\item[\textbf{Q2}] \textbf{(B).} (A) describes MLFQ, not MLQ, whose queue assignment is permanent. (C) is false: a steady stream of higher-priority arrivals can starve a low-priority process. (D) is false: average WT is not monotone in $q$ (on the lecture workload, $q=2,3,4$ give 13.0, 14.6, 13.0 ms).
+
+\item[\textbf{Q3}] \textbf{4.00.} Gantt: P1 0--1, P2 1--4 (preempts P1), P1 4--8, P4 8--10, P3 10--18. Completions 8, 4, 18, 10; TAT $= 8, 3, 16, 7$; WT $= 3, 0, 8, 5$; average $16/4 = 4.00$.
+
+\item[\textbf{Q4}] \textbf{8.25.} Gantt: P1 0--2, P2 2--4, P3 4--5, P1 5--7, P4 7--9, P2 9--10, P1 10--11, P4 11--13. At $t=2$, P2 and P3 have arrived and join before the preempted P1: [P2, P3, P1]; at $t=4$, P4 (arrived at 3) joins before the preempted P2: [P3, P1, P4, P2]. Completions 11, 10, 5, 13; TAT $= 11, 9, 3, 10$; average $33/4 = 8.25$.
+
+\item[\textbf{Q5}] \textbf{12.} P1 0--2 ($Q_0$, demoted), P2 2--4 ($Q_0$, demoted), P1 4--5 ($Q_1$) preempted by P3's arrival, P3 5--6 ($Q_0$, done), P2 6--8 ($Q_1$, done), P1 8--12 (its remaining 4 ms). The answer is 12 whether or not a preempted process keeps the rest of its quantum.
+
+\item[\textbf{Q6}] \textbf{180.} $(n-1)q = 9 \times 20 = 180$ ms.
+
+\item[\textbf{Q7}] \textbf{80.} $q/(q+s) = 4/5 = 80\%$.
+
+\item[\textbf{Q8}] \textbf{14.} CPU0: J1 0--8, J4 8--10, J6 10--14. CPU1: J2 0--3, J3 3--9, J5 9--14. Both finish at 14 $= 28/2$, the lower bound.
+
+\item[\textbf{Q9}] \textbf{(C).} In asymmetric multiprocessing a single master CPU makes all scheduling decisions; self-scheduling on shared kernel data describes SMP. (A), (B), (D) are true.
+\end{enumerate}
+\end{document}

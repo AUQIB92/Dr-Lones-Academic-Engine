@@ -1,0 +1,55 @@
+% =============================================================================
+% CompetitiveExam/CS502/08-cpu-scheduling-basics-answers.tex
+% ANSWER KEY — Competitive Exam Practice 8
+% CPU Scheduling: Concepts, Criteria, FCFS and SJF
+%
+% Answer key; see the questions file for the full statements.
+% Provenance: ALL questions are Original (GATE-pattern). No item in this set is
+% attributed to a past GATE paper, and no year/question number is claimed.
+% Every numerical answer was computed with a verified scheduling simulator
+% (FCFS, non-preemptive SJF, SRTF); no ties occur in any instance.
+%
+% Source of truth: Slides/CS502/08-cpu-scheduling-basics.tex and
+% Notes/CS502/08-cpu-scheduling-basics-notes.tex.
+%
+% Compile with: cd CompetitiveExam/CS502 &&
+%   TEXINPUTS=../../Preambles:$TEXINPUTS xelatex -interaction=nonstopmode 08-cpu-scheduling-basics-answers.tex
+% =============================================================================
+
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\input{../../Preambles/header}
+\coursecode{CS502}
+\renewcommand{\thesection}{8.\arabic{section}}
+
+\title{Answer Key --- Competitive Exam Practice 8: CPU Scheduling\\\large GATE (Computer Science) Pattern}
+\author{Auqib Hamid Lone\\[0.3em]
+  \emph{Department of Computer Science \& Engineering}, \emph{GCET Ganderbal}}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{enumerate}
+\item[\textbf{Q1}] \textbf{(A).} A non-preemptive scheduler decides only when the CPU is released voluntarily: when the running process blocks (I) or terminates (IV). Decisions at II and III would take the CPU from a running process, which is preemption.
+
+\item[\textbf{Q2}] \textbf{(B).} With all processes at time 0, $\sum_i \mathrm{WT}_i = \sum_k (n-k)\tau_{(k)}$; the decreasing weights are matched to increasing bursts only by shortest-first order, so SJF is optimal. (D) is false: total work is fixed, but the average waiting time depends on the order (e.g.\ 17 vs.\ 3~ms for bursts 24, 3, 3).
+
+\item[\textbf{Q3}] \textbf{(B).} This is the convoy effect of non-preemptive FCFS: everyone moves at the speed of the long CPU-bound burst. Starvation (A) is the failure of SJF/SRTF, not this pattern.
+
+\item[\textbf{Q4}] \textbf{(C).} Expanding the recursion gives weights $\alpha, \alpha(1-\alpha), \alpha(1-\alpha)^2, \ldots$. (A) and (B) have the extremes swapped: $\alpha = 0$ keeps $\hat{\tau}_0$, $\alpha = 1$ copies the last burst. (D) is false: prediction does not prevent long jobs being passed over.
+
+\item[\textbf{Q5}] \textbf{4.5.} Gantt: \texttt{P1} 0--5, \texttt{P2} 5--8, \texttt{P3} 8--14, \texttt{P4} 14--15. WT $= 0, 5-1, 8-3, 14-5 = 0, 4, 5, 9$; average $18/4 = 4.5$.
+
+\item[\textbf{Q6}] \textbf{10.} \texttt{P1} runs 0--8 (alone at 0). At 8 the ready bursts are 5, 2, 3: \texttt{P3} 8--10, \texttt{P4} 10--13, \texttt{P2} 13--18. TAT $= 8, 18-2, 10-3, 13-4 = 8, 16, 7, 9$; average $40/4 = 10$.
+
+\item[\textbf{Q7}] \textbf{2.25.} At 2, \texttt{P2} (3) preempts \texttt{P1} (8 left); at 3, \texttt{P3} (1) preempts \texttt{P2} (2 left) and runs 3--4; \texttt{P2} 4--6; at 6, \texttt{P4} (4) beats \texttt{P1} (8) and runs 6--10; \texttt{P1} 10--18. CT $= 18, 6, 4, 10$; TAT $= 18, 4, 1, 4$; WT $= 8, 1, 0, 0$; average $9/4 = 2.25$.
+
+\item[\textbf{Q8}] \textbf{5.} The Gantt sequence is \texttt{P1}, \texttt{P2}, \texttt{P3}, \texttt{P2}, \texttt{P4}, \texttt{P1}: six bars, hence five switches between different processes.
+
+\item[\textbf{Q9}] \textbf{8.} $\hat{\tau}_1 = 0.5(8) + 0.5(12) = 10$; $\hat{\tau}_2 = 0.5(6) + 0.5(10) = 8$.
+
+\item[\textbf{Q10}] \textbf{5.33.} Smallest (SJF order 2, 4, 10): WT $= 0, 2, 6$, average $8/3 \approx 2.67$. Largest (order 10, 4, 2): WT $= 0, 10, 14$, average $24/3 = 8$. Difference $8 - 8/3 = 16/3 \approx 5.33$ (accept 5.30--5.36). All six orders were checked; 8 is the maximum.
+\end{enumerate}
+
+\end{document}

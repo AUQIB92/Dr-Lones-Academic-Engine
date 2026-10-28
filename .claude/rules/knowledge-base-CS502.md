@@ -76,6 +76,8 @@ paths:
 | $n$ (multiprogramming degree) | Number of processes resident in memory | **L01 (evolution) / CS401** |
 | TAT / WT / RT | Turnaround / waiting / response time | **L08** |
 | $\tau$ | CPU burst time of a process | **L08** |
+| $\hat{\tau}_n$ / $\alpha$ | Predicted $n$-th CPU burst / exponential-averaging weight: $\hat{\tau}_{n+1} = \alpha\tau_n + (1-\alpha)\hat{\tau}_n$ (Silberschatz writes $t_n$ for the measured burst; we keep $\tau$ and hat the prediction) | **L08** (confirmed) |
+| AT / ST / CT | Arrival / first-dispatch (start) / completion time; TAT = CT − AT, WT = TAT − τ, RT = ST − AT | **L08** (confirmed) |
 | FCFS / SJF / SRTF | First-Come-First-Served; Shortest-Job-First (and its preemptive Shortest-Remaining-Time-First form) | **L08** |
 | RR / Priority / MLQ / MLFQ | Round Robin; Priority; Multilevel Queue; Multilevel Feedback Queue | **L09** |
 | race condition | Two processes' interleaved accesses to shared data producing a data-dependent outcome | **L10** |

@@ -1,0 +1,892 @@
+% =============================================================================
+% 06-process-states-schedulers.tex — Lecture 6:
+% Process State Diagram, Schedulers, and Context Switch
+%
+% Course: Operating Systems (PCC CS-502)
+% Anchor reading: Silberschatz, Galvin & Gagne, Operating System Concepts,
+%                 8th ed. — Ch. 3 §3.1.2 (process states, p. 103) and §3.2
+%                 (process scheduling: queues, schedulers, context switch,
+%                 pp. 105-110); page-verified via
+%                 master_supporting_docs/CS502/supporting_books/SilberschatzOSC/index.md.
+%                 Stallings, Operating Systems: Internals and Design
+%                 Principles, 6th ed. — Ch. 3 §3.2 (process states incl.
+%                 suspended processes, p. 111) and §3.4 (process control,
+%                 mode vs. process switch, p. 135); page-verified via
+%                 .../StallingsOS/index.md.
+%                 Bovet & Cesati, Understanding the Linux Kernel, 3rd ed. —
+%                 Ch. 3 (processes, process switch, pp. 79-130); page-verified
+%                 at chapter level via .../LinuxKernel/index.md.
+%
+% Running application: one single-CPU lab machine running three processes —
+%   P1 = gcc compiling a large project (CPU-bound),
+%   P2 = a text editor waiting on the keyboard (I/O-bound),
+%   P3 = a nightly backup job submitted to a batch queue.
+%
+% Compile with: /compile-latex CS502/06-process-states-schedulers
+% =============================================================================
+
+\documentclass[aspectratio=169]{beamer}
+\input{header}
+\coursecode{CS502}
+
+\title{Process State Diagram, Schedulers, and Context Switch}
+\subtitle{Lecture 6 --- How the OS Tracks and Switches Processes}
+\author[Dr. Auqib Hamid Lone]{%
+  \textbf{Dr. Auqib Hamid Lone}\\
+  \small Assistant Professor in Computer Science \& Engineering
+}
+\institute[GCET Ganderbal]{%
+  \small\textbf{PCC CS-502: Operating Systems}\\[0.3em]
+  Department of Computer Science \& Engineering\\
+  Government College of Engineering \& Technology (GCET), Ganderbal
+}
+\date[\today]{\small\today}
+
+\begin{document}
+
+\frame{\titlepage}
+
+% =============================================================================
+% ACT 0 --- ONE CPU, THREE PROGRAMS
+% =============================================================================
+\section{One CPU, Three Programs}
+
+\begin{frame}{Welcome: Who Is Using the CPU Right Now?}
+  \begin{block}{The big question}
+    A lab machine has \emph{one} CPU core. On it, \texttt{gcc} is compiling
+    a large project, a text editor is waiting for your next keystroke, and a
+    backup job is queued for the night. All three feel ``running.'' At any
+    instant, how many of them actually are --- and how does the OS decide,
+    remember, and switch?
+  \end{block}
+  \begin{itemize}
+    \item \texttt{P1} = \texttt{gcc} (long CPU bursts), \texttt{P2} = editor
+      (short bursts, mostly waiting), \texttt{P3} = backup (submitted, not yet
+      admitted).
+    \item On one core, at most \key{one} process is running at any instant.
+  \end{itemize}
+  \vspace{0.1cm}
+  \begin{alertblock}{Running thread for today}
+    We follow \texttt{P1}, \texttt{P2}, and \texttt{P3} through their states,
+    the queues that hold them, the schedulers that move them, and the context
+    switches that hand the CPU from one to the next.
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}{Recall from Lecture 5: The Process and Its PCB}
+  \begin{itemize}
+    \item A \key{process} is a program in execution: code, data, stack, heap,
+      and the CPU state that goes with it.
+    \item The kernel records each process in a \key{process control block}
+      (PCB): state, \texttt{PC}, registers, scheduling information,
+      memory-management information, accounting, and open files.
+    \item The PCB is what lets a process \emph{stop} and later \emph{resume}
+      exactly where it left off.
+  \end{itemize}
+  \vspace{0.2cm}
+  \begin{block}{Today's question}
+    The PCB has a \emph{state} field. Which values can it hold, which events
+    change it, and who changes it?
+  \end{block}
+  \muted{Silberschatz et al., Ch.~3 \S3.1, pp.~101--103.}
+\end{frame}
+
+\begin{frame}{Roadmap: Four Questions}
+  \begin{enumerate}
+    \item \key{Which states can a process be in?} --- the five-state diagram
+      and its legal transitions.
+    \item \key{Where does the kernel keep processes?} --- the job, ready, and
+      device queues, and the queueing diagram.
+    \item \key{Who moves processes between queues?} --- the long-term,
+      short-term, and medium-term schedulers.
+    \item \key{What does a switch cost?} --- the context switch, the
+      dispatcher, and its overhead.
+  \end{enumerate}
+  \vspace{0.2cm}
+  \muted{The states are the vocabulary; the queues are the data structures;
+  the schedulers are the policies; the context switch is the mechanism.}
+\end{frame}
+
+\transitionslide{A process does not just ``run.'' It is created, waits its turn, runs, blocks, and finishes --- and the kernel tracks every step in one field of the PCB.}
+
+% =============================================================================
+% ACT 1 --- THE PROCESS STATE DIAGRAM
+% =============================================================================
+\section{The Process State Diagram}
+
+\begin{frame}{The Five Process States}
+  \begin{block}{Definition}
+    The \key{state} of a process is the PCB field that records its current
+    activity. A process is in exactly one of five states at any instant.
+  \end{block}
+  \small
+  \renewcommand{\arraystretch}{1.2}
+  \begin{tabular}{@{}p{0.17\textwidth}p{0.75\textwidth}@{}}
+    \texttt{new} & being created; the PCB is being set up \\
+    \texttt{ready} & in memory, able to run, waiting only for a CPU \\
+    \texttt{running} & its instructions are being executed on a CPU \\
+    \texttt{waiting} & blocked until some event occurs (I/O completion, a signal) \\
+    \texttt{terminated} & finished; its resources are being reclaimed \\
+  \end{tabular}
+  \vspace{0.15cm}
+
+  \muted{Silberschatz et al., Ch.~3 \S3.1, p.~103. Stallings calls
+  \texttt{waiting} ``blocked'' and \texttt{terminated} ``exit'' (Ch.~3
+  \S3.2, p.~111).}
+\end{frame}
+
+\begin{frame}{The State Diagram}
+  \centering
+  % Coordinate map (P2):
+  %   new (-5.6,1.4)  ready (-2.2,0)  running (2.2,0)  terminated (5.6,1.4)
+  %   waiting (0,-2.1). Box sizes: 2.3cm x 0.8cm.
+  %   Edges: new->ready (admitted), ready->running (scheduler dispatch, above),
+  %   running->ready (interrupt, below, bent), running->waiting (I/O or event
+  %   wait), waiting->ready (I/O or event completion), running->terminated (exit).
+  \begin{tikzpicture}[every node/.style={font=\small},
+      st/.style={dag-node, minimum width=2.3cm, minimum height=0.8cm}]
+    \node[st] (new) at (-5.6,1.4) {\texttt{new}};
+    \node[st] (rdy) at (-2.2,0) {\texttt{ready}};
+    \node[st] (run) at (2.2,0) {\texttt{running}};
+    \node[st] (trm) at (5.6,1.4) {\texttt{terminated}};
+    \node[st] (wt)  at (0,-2.1) {\texttt{waiting}};
+    \draw[observed-edge] (new) -- node[above right, font=\scriptsize] {admitted} (rdy);
+    \draw[observed-edge] (rdy.20) -- node[above, font=\scriptsize] {scheduler dispatch} (run.160);
+    \draw[observed-edge] (run.200) -- node[below, font=\scriptsize] {interrupt} (rdy.340);
+    \draw[observed-edge] (run) -- node[below right=-2pt, font=\scriptsize, align=left] {I/O or\\event wait} (wt);
+    \draw[observed-edge] (wt) -- node[below left=-2pt, font=\scriptsize, align=right] {I/O or event\\completion} (rdy);
+    \draw[observed-edge] (run) -- node[above left, font=\scriptsize] {exit} (trm);
+  \end{tikzpicture}
+  \vspace{0.15cm}
+
+  \muted{After Silberschatz et al., Ch.~3 \S3.1, p.~103.}
+\end{frame}
+
+\begin{frame}{The Six Legal Transitions}
+  \small
+  \renewcommand{\arraystretch}{1.2}
+  \begin{tabular}{@{}p{0.27\textwidth}p{0.33\textwidth}p{0.32\textwidth}@{}}
+    \textbf{Transition} & \textbf{Triggering event} & \textbf{Who acts} \\
+    \hline
+    \texttt{new} $\to$ \texttt{ready} & admitted to the system & long-term scheduler \\
+    \texttt{ready} $\to$ \texttt{running} & chosen for the CPU & short-term scheduler + dispatcher \\
+    \texttt{running} $\to$ \texttt{ready} & timer interrupt / preemption & kernel (interrupt handler) \\
+    \texttt{running} $\to$ \texttt{waiting} & I/O request, \texttt{wait}, sleep & the process itself (system call) \\
+    \texttt{waiting} $\to$ \texttt{ready} & the awaited event occurs & kernel (I/O-completion interrupt) \\
+    \texttt{running} $\to$ \texttt{terminated} & \texttt{exit} or fatal error & the process / the kernel \\
+  \end{tabular}
+  \vspace{0.25cm}
+  \begin{alertblock}{Two transitions that never happen}
+    \texttt{waiting} $\to$ \texttt{running} (a woken process must queue for
+    the CPU) and \texttt{ready} $\to$ \texttt{waiting} (only a running process
+    can issue the request it would wait on).
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}{Worked Trace: \texttt{P2}, the Editor, for One Keystroke}
+  \begin{enumerate}
+    \item \texttt{P2} is \texttt{running}; it calls \texttt{read} on the
+      keyboard. No key is pending. \hfill \texttt{running} $\to$ \texttt{waiting}
+    \item The kernel places \texttt{P2}'s PCB on the keyboard's device queue
+      and runs another process.
+    \item You press a key. The keyboard interrupt handler finds \texttt{P2}
+      waiting for it. \hfill \texttt{waiting} $\to$ \texttt{ready}
+    \item \texttt{P2}'s PCB joins the ready queue. It does \emph{not} run yet.
+    \item The short-term scheduler picks \texttt{P2}; the dispatcher loads
+      its context. \hfill \texttt{ready} $\to$ \texttt{running}
+    \item \texttt{P2} echoes the character and calls \texttt{read} again.
+      \hfill \texttt{running} $\to$ \texttt{waiting}
+  \end{enumerate}
+  \vspace{0.1cm}
+  \muted{Three transitions per keystroke. The editor spends almost all of its
+  life in \texttt{waiting}.}
+\end{frame}
+
+\begin{frame}{How Many Processes per State?}
+  \begin{itemize}
+    \item With $N$ CPU cores, at most $N$ processes are \texttt{running}.
+    \item Any number may be \texttt{ready} or \texttt{waiting} at once.
+    \item On our one-core lab machine, at one instant: \texttt{P1}
+      \texttt{running}, \texttt{P2} \texttt{waiting} on the keyboard,
+      \texttt{P3} \texttt{new} (still in the batch queue).
+  \end{itemize}
+  \vspace{0.2cm}
+  \begin{exampleblock}{A snapshot of 40 processes on a 4-core machine}
+    At most 4 are \texttt{running}. If 9 are \texttt{ready}, the remaining
+    $40 - 4 - 9 = 27$ are \texttt{waiting} (or \texttt{new}/\texttt{terminated}).
+    Typical desktops: most processes are waiting most of the time.
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}{Socratic Check 1}
+  \begin{block}{Question}
+    \texttt{P2} is \texttt{waiting} for the disk. The disk interrupt arrives
+    and the CPU is idle. Does \texttt{P2} go straight to \texttt{running}?
+  \end{block}
+  \vspace{0.25cm}
+  \begin{itemize}
+    \item No --- in the diagram it goes \texttt{waiting} $\to$
+      \texttt{ready}. The interrupt handler only marks it runnable.
+    \item The short-term scheduler then chooses among \emph{all} ready
+      processes; with an idle CPU it may pick \texttt{P2} almost immediately.
+    \item Keeping ``wake up'' and ``get the CPU'' as separate steps is what
+      lets the scheduler enforce a policy.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Extending the Diagram: Suspended Processes}
+  \begin{itemize}
+    \item Memory is finite. If every process in memory is \texttt{waiting},
+      the CPU idles even though more work is queued.
+    \item The OS can \key{swap out} a process: copy its image to disk and
+      free its memory. The process is now \key{suspended}.
+    \item Stallings splits each of \texttt{ready} and \texttt{waiting} into an
+      in-memory and a suspended version, giving a \key{seven-state model}.
+  \end{itemize}
+  \vspace{0.2cm}
+  \begin{block}{The two new states}
+    \texttt{ready/suspend}: on disk, able to run once brought back.\\
+    \texttt{blocked/suspend}: on disk \emph{and} still waiting for an event.
+  \end{block}
+  \muted{Stallings, Ch.~3 \S3.2, p.~111.}
+\end{frame}
+
+\begin{frame}{The Seven-State Diagram}
+  \centering
+  % Coordinate map (P2):
+  %   top row (memory):  new (-5.7,1.6)  ready (-1.8,1.6)  running (2.4,1.6)  exit (5.7,1.6)
+  %   middle:            blocked (0.3,0)
+  %   bottom row (disk): ready/suspend (-4.2,-1.7)  blocked/suspend (2.4,-1.7)
+  %   Boxes: 2.2cm x 0.7cm. Edges: admit, dispatch, timeout (bent below),
+  %   event wait, event occurs, release, suspend/activate pairs (left/right
+  %   offsets), event occurs (blocked/suspend -> ready/suspend).
+  \begin{tikzpicture}[every node/.style={font=\scriptsize},
+      st/.style={dag-node, minimum width=2.2cm, minimum height=0.7cm, font=\scriptsize}]
+    \node[st] (new) at (-5.7,1.6) {\texttt{new}};
+    \node[st] (rdy) at (-1.8,1.6) {\texttt{ready}};
+    \node[st] (run) at (2.4,1.6) {\texttt{running}};
+    \node[st] (ext) at (5.7,1.6) {\texttt{exit}};
+    \node[st] (blk) at (0.3,0) {\texttt{blocked}};
+    \node[st] (rs)  at (-4.2,-1.7) {\texttt{ready/suspend}};
+    \node[st] (bs)  at (2.4,-1.7) {\texttt{blocked/suspend}};
+    \draw[observed-edge] (new) -- node[above] {admit} (rdy);
+    \draw[observed-edge] (rdy.15) -- node[above] {dispatch} (run.165);
+    \draw[observed-edge] (run.195) -- node[below, pos=0.3] {timeout} (rdy.345);
+    \draw[observed-edge] (run) -- node[right, pos=0.6] {event wait} (blk);
+    \draw[observed-edge] (blk) -- node[below left, pos=0.25] {event occurs} (rdy);
+    \draw[observed-edge] (run) -- node[above] {release} (ext);
+    \draw[observed-edge] (rdy.200) -- node[left, pos=0.55] {suspend} (rs.60);
+    \draw[observed-edge] (rs.30) -- node[right, pos=0.45] {activate} (rdy.240);
+    \draw[observed-edge] (blk.300) -- node[below left, pos=0.5] {suspend} (bs.135);
+    \draw[observed-edge] (bs.east) -- ++(0.9,0) |- node[right, pos=0.25] {activate} (blk.east);
+    \draw[observed-edge, dashed] (bs) -- node[below] {event occurs} (rs);
+  \end{tikzpicture}
+  \vspace{0.1cm}
+
+  \muted{After Stallings, Ch.~3 \S3.2, p.~111. Top row: in
+  memory. Bottom row: swapped out to disk.}
+\end{frame}
+
+\transitionslide{A state is just a label. To act on it, the kernel keeps processes of each state in queues --- and the queues are where scheduling happens.}
+
+% =============================================================================
+% ACT 2 --- SCHEDULING QUEUES
+% =============================================================================
+\section{Scheduling Queues}
+
+\begin{frame}{Three Kinds of Queue}
+  \begin{itemize}
+    \item \key{Job queue}: every process in the system (in Silberschatz's
+      batch-oriented description, jobs submitted and awaiting admission).
+    \item \key{Ready queue}: processes in main memory that are
+      \texttt{ready} --- usually a linked list of PCBs.
+    \item \key{Device queues}: one per device; processes \texttt{waiting} for
+      that device.
+  \end{itemize}
+  \vspace{0.2cm}
+  \begin{block}{Implementation}
+    A queue header holds pointers to the first and last PCB; each PCB has a
+    pointer field to the next PCB in the same queue. Moving a process between
+    queues moves a pointer, not the process.
+  \end{block}
+  \muted{Silberschatz et al., Ch.~3 \S3.2, pp.~105--110.}
+\end{frame}
+
+\begin{frame}{The Ready Queue and Device Queues as Linked Lists}
+  \centering
+  % Coordinate map (P2):
+  %   header column x=-5.0: ready header (y=0.9), disk header (y=-0.9)
+  %   PCB boxes 1.7cm x 0.7cm: ready row PCB P1 (-2.2,0.9) PCB P4 (0.2,0.9) PCB P5 (2.6,0.9)
+  %   disk row PCB P2 (-2.2,-0.9) PCB P6 (0.2,-0.9)
+  %   tail arrows drawn below/above the rows, clear of boxes.
+  \begin{tikzpicture}[every node/.style={font=\small},
+      hd/.style={draw=primary-gold, fill=white, minimum width=2.4cm, minimum height=0.7cm, align=center, font=\scriptsize},
+      pcb/.style={dag-node, minimum width=1.7cm, minimum height=0.7cm}]
+    \node[hd] (rh) at (-5.0,0.9) {ready queue\\head / tail};
+    \node[pcb] (a1) at (-2.2,0.9) {PCB \texttt{P1}};
+    \node[pcb] (a2) at (0.2,0.9) {PCB \texttt{P4}};
+    \node[pcb] (a3) at (2.6,0.9) {PCB \texttt{P5}};
+    \node[hd] (dh) at (-5.0,-0.9) {disk queue\\head / tail};
+    \node[pcb] (b1) at (-2.2,-0.9) {PCB \texttt{P2}};
+    \node[pcb] (b2) at (0.2,-0.9) {PCB \texttt{P6}};
+    \draw[observed-edge] (rh) -- (a1);
+    \draw[observed-edge] (a1) -- (a2);
+    \draw[observed-edge] (a2) -- (a3);
+    \draw[observed-edge] (dh) -- (b1);
+    \draw[observed-edge] (b1) -- (b2);
+    \draw[counterfactual-edge] (rh.north) -- ++(0,0.45) -| node[above, pos=0.25, font=\scriptsize] {tail} (a3.north);
+    \draw[counterfactual-edge] (dh.south) -- ++(0,-0.45) -| node[below, pos=0.25, font=\scriptsize] {tail} (b2.south);
+    \node[font=\scriptsize, text=neutral] at (4.6,0.9) {next = nil};
+    \node[font=\scriptsize, text=neutral] at (2.2,-0.9) {next = nil};
+  \end{tikzpicture}
+  \vspace{0.2cm}
+
+  \muted{After Silberschatz et al., Ch.~3 \S3.2, pp.~105--110. A PCB
+  sits on exactly one of these queues at a time.}
+\end{frame}
+
+\begin{frame}{The Queueing Diagram}
+  \centering
+  % Coordinate map (P2):
+  %   ready queue (-3.2,1.6) 3.0x0.7, CPU (1.6,1.6) 1.6x0.7, exit text (4.6,1.6)
+  %   four return rows at x from -0.4 to 3.0: I/O (y=0.5), time slice (y=-0.3),
+  %   fork (y=-1.1), interrupt (y=-1.9). Each row: event box at (1.0,y),
+  %   line from CPU bottom down a spine at x=3.6, left along row, up a spine
+  %   at x=-5.4 into the ready-queue tail.
+  \begin{tikzpicture}[every node/.style={font=\scriptsize},
+      bx/.style={dag-node, minimum height=0.6cm, font=\scriptsize}]
+    \node[bx, minimum width=3.0cm] (rq) at (-3.2,1.6) {ready queue};
+    \node[bx, minimum width=1.6cm, draw=primary-gold] (cpu) at (1.6,1.6) {CPU};
+    \draw[observed-edge] (rq) -- (cpu);
+    \draw[observed-edge] (cpu) -- (3.9,1.6) node[right] {\texttt{terminated}};
+    \node[bx, minimum width=2.4cm] (io)  at (0.4,0.6)  {I/O queue $\to$ I/O};
+    \node[bx, minimum width=2.4cm] (ts)  at (0.4,-0.2) {time slice expired};
+    \node[bx, minimum width=2.4cm] (fk)  at (0.4,-1.0) {child created, runs};
+    \node[bx, minimum width=2.4cm] (it)  at (0.4,-1.8) {wait for an interrupt};
+    \foreach \b in {io, ts, fk, it} {
+      \draw[thick, draw=jet] (3.0,1.6) |- (\b.east);
+      \draw[observed-edge] (\b.west) -- (-5.4,0|-\b.west) |- (rq.west);
+    }
+  \end{tikzpicture}
+  \vspace{0.15cm}
+
+  \muted{After Silberschatz et al., Ch.~3 \S3.2, pp.~105--110. Every
+  path out of the CPU, except termination, leads back to the ready queue.}
+\end{frame}
+
+\begin{frame}{Four Ways to Leave the CPU}
+  A running process stops running for exactly one of these reasons:
+  \vspace{0.15cm}
+  \begin{enumerate}
+    \item It issues an \key{I/O request} and is placed on a device queue.
+    \item Its \key{time slice expires}; a timer interrupt returns it to the
+      ready queue.
+    \item It \key{creates a child} and may wait for the child to terminate.
+    \item It is \key{removed by an interrupt} or waits for an event.
+  \end{enumerate}
+  \vspace{0.2cm}
+  \begin{exampleblock}{The three processes}
+    \texttt{P2} (editor) leaves by route 1 almost every burst.
+    \texttt{P1} (\texttt{gcc}) leaves mostly by route 2. A shell running
+    \texttt{gcc} leaves by route 3.
+  \end{exampleblock}
+  \muted{Silberschatz et al., Ch.~3 \S3.2, pp.~105--110.}
+\end{frame}
+
+\begin{frame}{Worked Trace: Queue Membership Over Time}
+  \small
+  \renewcommand{\arraystretch}{1.2}
+  \begin{tabular}{@{}lllll@{}}
+    \textbf{Time} & \textbf{Event} & \textbf{Running} & \textbf{Ready queue} & \textbf{Keyboard queue} \\
+    \hline
+    $t_0$ & start & \texttt{P1} & \texttt{P2} & --- \\
+    $t_1$ & \texttt{P1}'s time slice expires & \texttt{P2} & \texttt{P1} & --- \\
+    $t_2$ & \texttt{P2} calls \texttt{read} & \texttt{P1} & --- & \texttt{P2} \\
+    $t_3$ & key pressed (interrupt) & \texttt{P1} & \texttt{P2} & --- \\
+    $t_4$ & \texttt{P1}'s time slice expires & \texttt{P2} & \texttt{P1} & --- \\
+    $t_5$ & \texttt{P3} admitted & \texttt{P2} & \texttt{P1}, \texttt{P3} & --- \\
+  \end{tabular}
+  \vspace{0.25cm}
+  \begin{itemize}
+    \item Every row has exactly one running process; each PCB appears in
+      exactly one place.
+    \item At $t_3$ the interrupt moves \texttt{P2} to the ready queue
+      \emph{behind} nothing --- but \texttt{P1} keeps the CPU until $t_4$.
+  \end{itemize}
+\end{frame}
+
+\transitionslide{Queues hold the processes. Schedulers decide who moves between them --- and an OS has up to three of them, working on very different timescales.}
+
+% =============================================================================
+% ACT 3 --- SCHEDULERS
+% =============================================================================
+\section{Schedulers}
+
+\begin{frame}{Three Schedulers, Three Timescales}
+  \centering
+  \small
+  \renewcommand{\arraystretch}{1.3}
+  \begin{tabular}{@{}p{0.2\textwidth}p{0.24\textwidth}p{0.22\textwidth}p{0.24\textwidth}@{}}
+    \textbf{Scheduler} & \textbf{Moves a process} & \textbf{Runs} & \textbf{Controls} \\
+    \hline
+    Long-term (job) & job pool $\to$ ready queue (\texttt{new} $\to$ \texttt{ready}) &
+      seconds to minutes & degree of multiprogramming \\
+    Short-term (CPU) & ready queue $\to$ CPU (\texttt{ready} $\to$ \texttt{running}) &
+      every few ms & who runs next \\
+    Medium-term & memory $\leftrightarrow$ disk (swap out / swap in) &
+      occasionally & memory pressure, mix \\
+  \end{tabular}
+  \vspace{0.3cm}
+  \muted{Silberschatz et al., Ch.~3 \S3.2, pp.~105--110.}
+\end{frame}
+
+\begin{frame}{The Long-Term Scheduler}
+  \begin{itemize}
+    \item Selects processes from the job pool (on disk) and loads them into
+      memory for execution.
+    \item Controls the \key{degree of multiprogramming} $n$ --- the number of
+      processes in memory.
+    \item In a stable system, the average admission rate equals the average
+      departure rate.
+    \item Runs rarely, so it can afford a careful choice.
+  \end{itemize}
+  \vspace{0.2cm}
+  \begin{alertblock}{Where it exists}
+    Batch systems have one. Time-sharing systems such as UNIX and Windows
+    often have \emph{none}: every new process goes straight to the
+    short-term scheduler.
+  \end{alertblock}
+  \muted{Silberschatz et al., Ch.~3 \S3.2, pp.~105--110.}
+\end{frame}
+
+\begin{frame}{I/O-Bound vs.\ CPU-Bound Processes}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{block}{I/O-bound}
+        Spends more time doing I/O than computing; many short CPU bursts.
+        \emph{Example:} \texttt{P2}, the editor.
+      \end{block}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{block}{CPU-bound}
+        Spends most time computing; few, long CPU bursts.
+        \emph{Example:} \texttt{P1}, \texttt{gcc}.
+      \end{block}
+    \end{column}
+  \end{columns}
+  \vspace{0.3cm}
+  \begin{itemize}
+    \item All I/O-bound: the ready queue is almost always empty; the CPU idles.
+    \item All CPU-bound: device queues are empty; devices idle.
+    \item The long-term scheduler aims for a good \key{process mix} so both
+      CPU and devices stay busy.
+  \end{itemize}
+  \muted{Silberschatz et al., Ch.~3 \S3.2, pp.~105--110.}
+\end{frame}
+
+\begin{frame}{The Short-Term Scheduler}
+  \begin{itemize}
+    \item Selects one process from the ready queue and allocates the CPU to
+      it.
+    \item Runs very often --- at least once every time slice (typically every
+      few tens of milliseconds) and after every block.
+    \item Must therefore be \key{fast}: its own running time is pure
+      overhead.
+  \end{itemize}
+  \vspace{0.2cm}
+  \begin{exampleblock}{The overhead arithmetic}
+    The scheduler takes $1$\,ms to decide, then lets a process run for
+    $10$\,ms. Fraction of CPU spent scheduling:
+    \[
+      \frac{1}{10 + 1} \approx 9\%.
+    \]
+  \end{exampleblock}
+  \muted{Silberschatz et al., Ch.~3 \S3.2, pp.~105--110. How it chooses
+  (FCFS, SJF, RR, \ldots) is Lectures 8--9.}
+\end{frame}
+
+\begin{frame}{The Medium-Term Scheduler: Swapping}
+  \centering
+  % Coordinate map (P2):
+  %   ready queue (-3.0,0.6) 2.6x0.7; CPU (1.4,0.6) 1.4x0.7; end text (3.8,0.6)
+  %   partially executed swapped-out processes (-1.3,-1.4) 4.2x0.7
+  %   swap in: from swapped box west, left to x=-5.2, up into ready-queue west
+  %   swap out: from CPU south, down to y=-1.4, into swapped box east
+  \begin{tikzpicture}[every node/.style={font=\scriptsize},
+      bx/.style={dag-node, minimum height=0.7cm, font=\scriptsize}]
+    \node[bx, minimum width=2.6cm] (rq) at (-3.0,0.6) {ready queue};
+    \node[bx, minimum width=1.4cm, draw=primary-gold] (cpu) at (1.4,0.6) {CPU};
+    \node[bx, minimum width=3.6cm, text width=3.4cm, align=center]
+      (sw) at (-1.3,-1.4) {partially executed,\\swapped-out processes};
+    \draw[observed-edge] (rq) -- (cpu);
+    \draw[observed-edge] (cpu) -- (3.4,0.6) node[right] {end};
+    \draw[observed-edge] (sw.west) -- (-5.2,-1.4) |- node[left, pos=0.25] {swap in} (rq.west);
+    \draw[observed-edge] (cpu.south) |- node[right, pos=0.3] {swap out} (sw.east);
+  \end{tikzpicture}
+  \vspace{0.2cm}
+  \begin{itemize}
+    \item Removes a process from memory to reduce $n$, and later reintroduces
+      it where it left off.
+    \item Used to improve the process mix or to free memory when demand
+      exceeds supply.
+  \end{itemize}
+  \muted{After Silberschatz et al., Ch.~3 \S3.2, pp.~105--110.}
+\end{frame}
+
+\begin{frame}{Schedulers on the State Diagram}
+  \small
+  \renewcommand{\arraystretch}{1.3}
+  \begin{tabular}{@{}p{0.25\textwidth}p{0.65\textwidth}@{}}
+    \textbf{Scheduler} & \textbf{Transitions it drives} \\
+    \hline
+    Long-term & \texttt{new} $\to$ \texttt{ready} (admit) \\
+    Short-term & \texttt{ready} $\to$ \texttt{running} (dispatch); with
+      preemption, also decides \texttt{running} $\to$ \texttt{ready} \\
+    Medium-term & \texttt{ready} $\leftrightarrow$ \texttt{ready/suspend},
+      \texttt{blocked} $\leftrightarrow$ \texttt{blocked/suspend} \\
+  \end{tabular}
+  \vspace{0.3cm}
+  \begin{block}{Not a scheduler's decision}
+    \texttt{running} $\to$ \texttt{waiting} is caused by the process's own
+    request; \texttt{waiting} $\to$ \texttt{ready} is caused by the
+    completion interrupt. No scheduler chooses those.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Socratic Check 2}
+  \begin{block}{Question}
+    Your laptop runs Linux. Students open dozens of browser tabs until the
+    machine slows to a crawl. Which scheduler should have stopped this, and
+    why did none of them?
+  \end{block}
+  \vspace{0.25cm}
+  \begin{itemize}
+    \item Admission control is the long-term scheduler's job, but a
+      time-sharing system typically has \emph{no} long-term scheduler.
+    \item Every new process goes straight to the ready queue; stability
+      depends on the users noticing and quitting programs.
+    \item Memory pressure is instead handled by swapping/paging --- a
+      medium-term mechanism --- which is why the machine slows rather than
+      refuses.
+  \end{itemize}
+\end{frame}
+
+\transitionslide{The short-term scheduler picks the next process. Handing it the CPU means saving one process's context and restoring another's --- the context switch.}
+
+% =============================================================================
+% ACT 4 --- CONTEXT SWITCH
+% =============================================================================
+\section{The Context Switch}
+
+\begin{frame}{What Is the Context?}
+  \begin{block}{Definition}
+    The \key{context} of a process is the CPU and kernel state needed to
+    resume it: register values, \texttt{PC}, process state, and
+    memory-management information --- all represented in its PCB.
+    A \key{context switch} saves the context of the current process into its
+    PCB and restores the saved context of the process scheduled to run next.
+  \end{block}
+  \begin{itemize}
+    \item Two halves: \key{state save} and \key{state restore}.
+    \item The switch is triggered by an interrupt, a trap, or a system call
+      that blocks.
+  \end{itemize}
+  \muted{Silberschatz et al., Ch.~3 \S3.2, p.~110.}
+\end{frame}
+
+\begin{frame}{The Context Switch on a Timeline}
+  \centering
+  % Coordinate map (P2):
+  %   P0 lane y=1.2, OS lane y=0, P1 lane y=-1.2; labels at x=-6.3.
+  %   time x: P0 executing [-5,-2.6]; OS save PCB0/reload PCB1 [-2.4,-0.4];
+  %   P1 executing [-0.2,2.2]; OS save PCB1/reload PCB0 [2.4,4.4];
+  %   P0 executing [4.6,6.0]. Idle segments are dashed on the other lane.
+  \begin{tikzpicture}[every node/.style={font=\scriptsize}]
+    \node[anchor=east] at (-5.2,1.2) {\texttt{P0}};
+    \node[anchor=east] at (-5.2,0) {OS};
+    \node[anchor=east] at (-5.2,-1.2) {\texttt{P1}};
+    % P0 executing / idle
+    \draw[line width=3pt, draw=primary-blue] (-5,1.2) -- (-2.6,1.2);
+    \node[above] at (-3.8,1.3) {executing};
+    \draw[thick, dashed, draw=neutral] (-2.6,1.2) -- (4.6,1.2);
+    \node[above] at (1.0,1.3) {idle};
+    \draw[line width=3pt, draw=primary-blue] (4.6,1.2) -- (6.0,1.2);
+    \node[above] at (5.3,1.3) {executing};
+    % OS work
+    \node[dag-node, minimum width=2.0cm, minimum height=0.7cm, font=\scriptsize,
+      draw=primary-gold, align=center] (s1) at (-1.4,0) {save PCB$_0$\\reload PCB$_1$};
+    \node[dag-node, minimum width=2.0cm, minimum height=0.7cm, font=\scriptsize,
+      draw=primary-gold, align=center] (s2) at (3.4,0) {save PCB$_1$\\reload PCB$_0$};
+    % P1 idle / executing / idle
+    \draw[thick, dashed, draw=neutral] (-5,-1.2) -- (-0.2,-1.2);
+    \node[below] at (-2.6,-1.3) {idle};
+    \draw[line width=3pt, draw=primary-blue] (-0.2,-1.2) -- (2.2,-1.2);
+    \node[below] at (1.0,-1.3) {executing};
+    \draw[thick, dashed, draw=neutral] (2.2,-1.2) -- (6.0,-1.2);
+    \node[below] at (4.6,-1.3) {idle};
+    % trigger arrows
+    \draw[observed-edge] (-2.6,1.05) -- node[left, pos=0.45] {interrupt} (s1.north west);
+    \draw[observed-edge] (s1.south east) -- (-0.2,-1.05);
+    \draw[observed-edge] (2.2,-1.05) -- node[left, pos=0.4] {system call} (s2.south west);
+    \draw[observed-edge] (s2.north east) -- (4.6,1.05);
+  \end{tikzpicture}
+  \vspace{0.15cm}
+
+  \muted{After Silberschatz et al., Ch.~3, pp.~103--110. The gold boxes are pure overhead.}
+\end{frame}
+
+\begin{frame}{The Steps of a Context Switch}
+  \begin{enumerate}
+    \item An interrupt or trap enters the kernel; hardware saves the user
+      \texttt{PC} and flags.
+    \item The kernel saves the remaining registers of \texttt{P0} into
+      PCB$_0$.
+    \item It updates PCB$_0$'s state (\texttt{ready} or \texttt{waiting})
+      and links PCB$_0$ onto the right queue.
+    \item The short-term scheduler selects \texttt{P1}.
+    \item The kernel sets PCB$_1$'s state to \texttt{running} and switches
+      memory-management state (page-table base, TLB as needed).
+    \item It restores \texttt{P1}'s registers from PCB$_1$ and returns to
+      user mode at \texttt{P1}'s saved \texttt{PC}.
+  \end{enumerate}
+  \vspace{0.1cm}
+  \muted{Stallings, Ch.~3 \S3.4, p.~135 (the full list of process-switch
+  steps); Bovet \& Cesati, Ch.~3, pp.~79--130 (Linux's process switch).}
+\end{frame}
+
+\begin{frame}{The Dispatcher}
+  \begin{itemize}
+    \item The \key{dispatcher} is the kernel module that gives the CPU to the
+      process the short-term scheduler selected.
+    \item Its jobs: switch context, switch to user mode, jump to the right
+      location in the user program.
+    \item \key{Dispatch latency}: the time it takes to stop one process and
+      start another.
+  \end{itemize}
+  \vspace{0.2cm}
+  \begin{block}{Scheduler vs.\ dispatcher}
+    The scheduler is the \emph{policy} (which process?). The dispatcher is
+    the \emph{mechanism} (make it run). Every dispatch involves a context
+    switch.
+  \end{block}
+  \muted{Silberschatz et al., Ch.~5 \S5.1 (from p.~183) --- previewed here,
+  developed in Lecture 8.}
+\end{frame}
+
+\begin{frame}{Mode Switch Is Not a Context Switch}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{block}{Mode switch}
+        User $\to$ kernel $\to$ user for the \emph{same} process (e.g.\ a
+        \texttt{getpid} system call). Save/restore a few registers; no PCB
+        state change.
+      \end{block}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{block}{Context (process) switch}
+        The CPU moves to a \emph{different} process. Full register save,
+        PCB state update, queue move, memory-map switch.
+      \end{block}
+    \end{column}
+  \end{columns}
+  \vspace{0.3cm}
+  \begin{itemize}
+    \item Every context switch includes mode switches; most mode switches
+      cause no context switch.
+    \item An interrupt can be handled and return to the interrupted process
+      with no process switch at all.
+  \end{itemize}
+  \muted{Stallings, Ch.~3 \S3.4, p.~135.}
+\end{frame}
+
+\begin{frame}{Context-Switch Cost Is Pure Overhead}
+  \begin{itemize}
+    \item The system does no useful work while switching.
+    \item Speed depends on the hardware: memory speed, number of registers,
+      and special instructions (e.g.\ load/store all registers).
+    \item Typical cost: a few microseconds --- plus indirect cost from cold
+      caches and TLB.
+    \item Some processors provide multiple register sets: a switch just
+      changes a pointer to the current set.
+  \end{itemize}
+  \vspace{0.2cm}
+  \begin{alertblock}{The rule}
+    The more complex the OS and its memory management, the more context must
+    be saved --- and the more each switch costs.
+  \end{alertblock}
+  \muted{Silberschatz et al., Ch.~3 \S3.2, p.~110.}
+\end{frame}
+
+\begin{frame}{Worked Example: Overhead of Switching}
+  \begin{exampleblock}{Setup}
+    A context switch takes $s = 5\ \mu\text{s}$. Each process runs for a time
+    slice of $q$ before being switched out.
+  \end{exampleblock}
+  \[
+    \text{overhead fraction} = \frac{s}{q + s}
+  \]
+  \small
+  \renewcommand{\arraystretch}{1.2}
+  \begin{tabular}{@{}lll@{}}
+    \textbf{Slice} $q$ & \textbf{Switches per second} $\approx 1/(q+s)$ & \textbf{Overhead} \\
+    \hline
+    $10$\,ms & $\approx 99.95$ & $5/10005 \approx 0.05\%$ \\
+    $1$\,ms & $\approx 995$ & $5/1005 \approx 0.50\%$ \\
+    $100\ \mu\text{s}$ & $\approx 9524$ & $5/105 \approx 4.76\%$ \\
+    $10\ \mu\text{s}$ & $\approx 66667$ & $5/15 \approx 33.3\%$ \\
+  \end{tabular}
+  \vspace{0.15cm}
+
+  \muted{Shrink the slice and the CPU spends more of its life switching than
+  working.}
+\end{frame}
+
+\begin{frame}{Worked Trace: \texttt{P1} and \texttt{P2} on One Core}
+  \begin{enumerate}
+    \item $t=0$: \texttt{P1} (\texttt{gcc}) running; \texttt{P2} waiting on
+      the keyboard.
+    \item $t=3$\,ms: key pressed. Interrupt; \texttt{P2} $\to$ \texttt{ready}.
+      Mode switch only: \texttt{P1} resumes.
+    \item $t=10$\,ms: \texttt{P1}'s slice expires. Context switch
+      \#1: save PCB$_1$, \texttt{P1} $\to$ \texttt{ready}; restore PCB$_2$,
+      \texttt{P2} $\to$ \texttt{running}.
+    \item $t=10.2$\,ms: \texttt{P2} echoes the key, calls \texttt{read}.
+      Context switch \#2: \texttt{P2} $\to$ \texttt{waiting};
+      \texttt{P1} $\to$ \texttt{running}.
+  \end{enumerate}
+  \vspace{0.15cm}
+  \begin{exampleblock}{Count}
+    Two context switches and three kernel entries (interrupt, timer, system
+    call) in $10.2$\,ms. With $s = 5\ \mu\text{s}$, switching cost
+    $10\ \mu\text{s}$, about $0.1\%$ of the interval.
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}{Socratic Check 3}
+  \begin{block}{Question}
+    A process calls \texttt{getpid}, and later calls \texttt{read} on a pipe
+    that is empty. Which of the two calls causes a context switch?
+  \end{block}
+  \vspace{0.25cm}
+  \begin{itemize}
+    \item \texttt{getpid}: a mode switch only --- the kernel answers and
+      returns to the same process.
+    \item \texttt{read} on an empty pipe: the process must block
+      (\texttt{running} $\to$ \texttt{waiting}), so the kernel switches to
+      another process.
+    \item The test: does the \emph{caller} keep the CPU when the kernel
+      returns?
+  \end{itemize}
+\end{frame}
+
+% =============================================================================
+% ACT 5 --- PUTTING IT TOGETHER
+% =============================================================================
+\section{Putting It Together}
+
+\transitionslide{States, queues, schedulers, and the context switch are one machine. Follow one process through all of them.}
+
+\begin{frame}{\texttt{P3}'s Life, End to End}
+  \begin{enumerate}
+    \item Submitted to the batch queue: \texttt{new}, in the job queue.
+    \item Long-term scheduler admits it at night: \texttt{new} $\to$
+      \texttt{ready}, PCB on the ready queue.
+    \item Short-term scheduler picks it; dispatcher context-switches:
+      \texttt{ready} $\to$ \texttt{running}.
+    \item It writes to the backup disk: \texttt{running} $\to$
+      \texttt{waiting}, on the disk queue; context switch away.
+    \item Memory is short; the medium-term scheduler swaps it out:
+      \texttt{blocked} $\to$ \texttt{blocked/suspend}.
+    \item The write completes: \texttt{blocked/suspend} $\to$
+      \texttt{ready/suspend}; later swapped in: $\to$ \texttt{ready}.
+    \item Dispatched again, finishes, calls \texttt{exit}: \texttt{running}
+      $\to$ \texttt{terminated}.
+  \end{enumerate}
+  \muted{All three schedulers and both diagrams appear in one life.}
+\end{frame}
+
+\begin{frame}{Common Misconceptions}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{block}{Wrong}
+        \begin{itemize}
+          \item ``A woken process starts running immediately.''
+          \item ``Every system call is a context switch.''
+          \item ``Every OS has a long-term scheduler.''
+          \item ``The ready queue holds waiting processes.''
+        \end{itemize}
+      \end{block}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{block}{Right}
+        \begin{itemize}
+          \item It goes \texttt{waiting} $\to$ \texttt{ready} and queues.
+          \item Most are mode switches; only blocking or preemption switches
+            process.
+          \item Time-sharing systems often have none.
+          \item Waiting processes are on device queues.
+        \end{itemize}
+      \end{block}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Takeaways}
+  \begin{itemize}
+    \item A process is in one of five states: \texttt{new}, \texttt{ready},
+      \texttt{running}, \texttt{waiting}, \texttt{terminated}; six transitions
+      are legal. Suspension adds two more states.
+    \item The kernel keeps PCBs on a \key{job queue}, a \key{ready queue},
+      and \key{device queues}; the queueing diagram shows every path.
+    \item The \key{long-term} scheduler sets the degree of multiprogramming;
+      the \key{short-term} scheduler picks the next process every few ms; the
+      \key{medium-term} scheduler swaps.
+    \item A \key{context switch} saves one PCB and restores another; it is
+      pure overhead, $s/(q+s)$ of the CPU.
+    \item A mode switch is not a context switch.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Next: Operations on Processes}
+  \begin{itemize}
+    \item Today: how the kernel labels, queues, schedules, and switches
+      processes that already exist.
+    \item Next lecture: how processes come to exist and how they end ---
+      \texttt{fork}, \texttt{exec}, \texttt{wait}, \texttt{exit}, and the
+      process tree.
+  \end{itemize}
+  \vspace{0.3cm}
+  \begin{block}{Reading}
+    Silberschatz et al., \emph{Operating System Concepts}, Ch.~3 \S3.3
+    \cite{SilberschatzOSC_operating_system_concepts}; Stallings,
+    \emph{Operating Systems: Internals and Design Principles}, Ch.~3 \S3.4
+    \cite{StallingsOS_internals_design_principles}; Bovet \& Cesati, Ch.~3
+    \cite{BovetCesati_understanding_linux_kernel}.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Further Reading (Page-Cited)}
+  \footnotesize
+  \begin{itemize}
+    \item A.~Silberschatz, P.~B.~Galvin, G.~Gagne, \emph{Operating System
+      Concepts}, 8e --- Ch.~3 \S3.1 (process states, p.~103), \S3.2
+      (process scheduling: queues, schedulers, context switch, pp.~105--110).
+    \item W.~Stallings, \emph{Operating Systems: Internals and Design
+      Principles}, 6e --- Ch.~3 \S3.2 (process states, two-, five-, and
+      seven-state models, p.~111), \S3.4 (process control, mode and process
+      switching, p.~135).
+    \item D.~P.~Bovet \& M.~Cesati, \emph{Understanding the Linux Kernel}, 3e
+      --- Ch.~3 (processes and the process switch, pp.~79--130).
+  \end{itemize}
+  \vspace{0.2cm}
+  \muted{Page-verified via each book's \texttt{index.md} under
+  \texttt{master\_supporting\_docs/CS502/supporting\_books/}.}
+\end{frame}
+
+\begin{frame}[allowframebreaks]{References}
+  \footnotesize
+  \bibliographystyle{plain}
+  \bibliography{../../Bibliography_base}
+\end{frame}
+
+\end{document}

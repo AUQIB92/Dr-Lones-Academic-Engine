@@ -1,0 +1,55 @@
+% =============================================================================
+% CompetitiveExam/CS502/04-system-programs-os-structure-answers.tex
+% Competitive Exam Practice 4 --- ANSWER KEY
+% System Programs and Operating-System Structures
+%
+% Provenance: ALL questions are Original (GATE-pattern). No item in this set is
+% attributed to a past GATE paper, and no year/question number is claimed.
+% This follows the course's provenance policy for OS practice sets: a question
+% ships with a past-year tag only after independent verification, which no item
+% here asserts. See .claude/skills/competitive-exam-questions/SKILL.md.
+%
+% Source of truth: Slides/CS502/04-system-programs-os-structure.tex and
+% Notes/CS502/04-system-programs-os-structure-notes.tex.
+%
+% Compile with: cd CompetitiveExam/CS502 &&
+%   TEXINPUTS=../../Preambles:$TEXINPUTS xelatex -interaction=nonstopmode 04-system-programs-os-structure-answers.tex
+% =============================================================================
+
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\input{../../Preambles/header}
+\coursecode{CS502}
+\renewcommand{\thesection}{4.\arabic{section}}
+
+\title{Answer Key --- Competitive Exam Practice 4: System Programs and OS Structures\\\large GATE (Computer Science) Pattern}
+\author{Auqib Hamid Lone\\[0.3em]
+  \emph{Department of Computer Science \& Engineering}, \emph{GCET Ganderbal}}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{enumerate}
+\item[\textbf{Q1}] \textbf{(C).} The CPU scheduler is part of the kernel. The shell, compilers, and linkage editors are system programs that run in user mode and use system calls (categories: programming-language support; program loading and execution).
+
+\item[\textbf{Q2}] \textbf{(B).} A separate \texttt{cd} would run in a child created by \texttt{fork}; its \texttt{chdir} changes only the child's directory, and the child exits. The shell's own directory would not change, so the shell must call \texttt{chdir} itself.
+
+\item[\textbf{Q3}] \textbf{(B).} A mechanism determines \emph{how} (the timer interrupt); a policy determines \emph{what} (how long the interval is for each class). The interval can change without changing the timer.
+
+\item[\textbf{Q4}] \textbf{(C).} Only in the microkernel does the driver run as a user process: the fault is an ordinary page fault, and the kernel kills only that process and can restart it. In (A), (B), and (D) the driver runs in kernel mode, so the fault can crash the whole kernel.
+
+\item[\textbf{Q5}] \textbf{(B).} Layering organizes code but does not change privilege, so S1 is false. A module is linked into the running kernel and runs in kernel mode, so S2 is true.
+
+\item[\textbf{Q6}] \textbf{(B).} Services exchange messages through the kernel, adding traps, crossings, and copies. (D) describes the monolithic case, the opposite of the microkernel's isolation; (A) and (C) are false --- portability is a microkernel benefit.
+
+\item[\textbf{Q7}] \textbf{12.} With $k=3$ servers there are $2k = 6$ message traps (3 out, 3 replies), each causing 2 crossings: $6 \times 2 = 12$.
+
+\item[\textbf{Q8}] \textbf{28.6.} Calls $6\to5,\dots,1\to0$ give 6 calls and 6 returns, 12 transitions; overhead $= 12 \times 40 = 480$~ns $= 0.48~\mu$s. Total $= 0.48 + 1.2 = 1.68~\mu$s. Percentage $= 0.48/1.68 = 28.57\% \approx 28.6$ (accept 28.5--28.6).
+
+\item[\textbf{Q9}] \textbf{1.} The constraints are $M<F$, $D<F$, $D<M$, $S<D$, which chain into $S < D < M < F$, a total order. Exactly one ordering is valid.
+
+\item[\textbf{Q10}] \textbf{300.} Monolithic: 1 trap = 2 crossings = $1~\mu$s per read. Microkernel with $k=2$: $2k=4$ traps = 8 crossings = $4~\mu$s per read. Additional cost $= 3~\mu$s per read; $100{,}000 \times 3~\mu$s $= 300{,}000~\mu$s $= 300$~ms per second.
+\end{enumerate}
+
+\end{document}

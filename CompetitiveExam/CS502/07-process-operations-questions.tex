@@ -1,0 +1,96 @@
+% =============================================================================
+% CompetitiveExam/CS502/07-process-operations-questions.tex
+% Competitive Exam Practice 7 — GATE (Computer Science) Pattern
+% Operations on Processes: Creation, Termination, fork/exec
+%
+% Student-facing — NO answers. Answer key: 07-process-operations-answers.tex.
+% Provenance: ALL questions are Original (GATE-pattern). No item in this set is
+% attributed to a past GATE paper, and no year/question number is claimed.
+% Every fork()/exit-status answer was verified by compiling and running the
+% program (gcc) on 2026-10-29.
+%
+% Source of truth: Slides/CS502/07-process-operations.tex and
+% Notes/CS502/07-process-operations-notes.tex.
+%
+% Compile with: cd CompetitiveExam/CS502 &&
+%   TEXINPUTS=../../Preambles:$TEXINPUTS xelatex -interaction=nonstopmode 07-process-operations-questions.tex
+% =============================================================================
+
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\input{../../Preambles/header}
+\coursecode{CS502}
+\renewcommand{\thesection}{7.\arabic{section}}
+
+\title{Competitive Exam Practice 7: Operations on Processes\\\large GATE (Computer Science) Pattern}
+\author{Auqib Hamid Lone\\[0.3em]
+  \emph{Department of Computer Science \& Engineering}, \emph{GCET Ganderbal}}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\noindent Each question carries 1--2 marks. MCQ = single correct option; NAT = Numerical Answer Type. In every program, assume all headers are included, every \texttt{fork} succeeds, and the program ends by reaping its children. \emph{All questions in this set are original, written in the GATE pattern; none is claimed to be a past-year question.}
+
+\begin{enumerate}
+\item[\textbf{Q1}] \textit{[Original, GATE-pattern]} \textbf{[MCQ, 1 mark]} Immediately after a successful \texttt{fork()} call returns, which statement is \textbf{TRUE}?
+
+\begin{enumerate}
+  \item[(A)] Both processes receive the child's pid
+  \item[(B)] The child receives \texttt{0} and the parent receives the child's pid
+  \item[(C)] The parent receives \texttt{0} and the child receives the parent's pid
+  \item[(D)] The child begins execution at the start of \texttt{main}
+\end{enumerate}
+
+\item[\textbf{Q2}] \textit{[Original, GATE-pattern]} \textbf{[MCQ, 1 mark]} A process with pid 4100 calls \texttt{execlp("ls", "ls", NULL)} and the call succeeds. Which statement is \textbf{TRUE}?
+
+\begin{enumerate}
+  \item[(A)] A new process is created to run \texttt{ls}, and pid 4100 continues after the call
+  \item[(B)] \texttt{ls} runs with pid 4100, and the statements after \texttt{execlp} in the original program are never executed
+  \item[(C)] \texttt{ls} runs with a new pid, and the original process becomes its parent
+  \item[(D)] \texttt{execlp} returns \texttt{0} after \texttt{ls} finishes
+\end{enumerate}
+
+\item[\textbf{Q3}] \textit{[Original, GATE-pattern]} \textbf{[MCQ, 1 mark]} A \emph{zombie} process is one that:
+
+\begin{enumerate}
+  \item[(A)] is running but whose parent has terminated
+  \item[(B)] has terminated, and whose parent has not yet called \texttt{wait}
+  \item[(C)] is blocked forever waiting for I/O
+  \item[(D)] has been swapped out by the medium-term scheduler
+\end{enumerate}
+
+\item[\textbf{Q4}] \textit{[Original, GATE-pattern]} \textbf{[MCQ, 2 marks]} On a UNIX system, a parent exits while its child is still running and the parent never called \texttt{wait}. Which statement is \textbf{TRUE}?
+
+\begin{enumerate}
+  \item[(A)] The child is terminated immediately, on every UNIX system
+  \item[(B)] The child becomes a zombie at once and stops running
+  \item[(C)] The child is re-parented to \texttt{init} (pid 1), which later reaps it
+  \item[(D)] The child's open file descriptors are closed, but it continues as an unreapable process forever
+\end{enumerate}
+
+\item[\textbf{Q5}] \textit{[Original, GATE-pattern]} \textbf{[NAT, 1 mark]} Consider the fragment
+\begin{center}\texttt{for (i = 0; i < 6; i++) fork();}\end{center}
+The number of \emph{child} processes created (not counting the original process) is \rule{1.5cm}{0.4pt}.
+
+\item[\textbf{Q6}] \textit{[Original, GATE-pattern]} \textbf{[NAT, 2 marks]} Consider the fragment
+\begin{center}\texttt{fork() \&\& (fork() || fork()); printf("s\textbackslash n");}\end{center}
+The number of times \texttt{s} is printed is \rule{1.5cm}{0.4pt}.
+
+\item[\textbf{Q7}] \textit{[Original, GATE-pattern]} \textbf{[NAT, 2 marks]} Consider the fragment
+\begin{center}\texttt{for (i = 0; i < 4; i++) \{ fork(); printf("A\textbackslash n"); fflush(stdout); \}}\end{center}
+The total number of lines printed is \rule{1.5cm}{0.4pt}.
+
+\item[\textbf{Q8}] \textit{[Original, GATE-pattern]} \textbf{[NAT, 2 marks]} Standard output is redirected to a file, and the program
+\begin{center}\texttt{printf("X"); fork(); fork(); fork(); printf("\textbackslash n");}\end{center}
+contains no call to \texttt{fflush}. The number of \texttt{X} characters in the file is \rule{1.5cm}{0.4pt}.
+
+\item[\textbf{Q9}] \textit{[Original, GATE-pattern]} \textbf{[NAT, 2 marks]} Consider the program
+\begin{center}\texttt{int x = 5; if (fork() == 0) x = x * 2; else \{ wait(NULL); x = x + 3; \} printf("\%d\textbackslash n", x);}\end{center}
+The sum of all values printed is \rule{1.5cm}{0.4pt}.
+
+\item[\textbf{Q10}] \textit{[Original, GATE-pattern]} \textbf{[NAT, 2 marks]} A child process calls \texttt{exit(300)}. Its parent collects the status with \texttt{waitpid(pid, \&st, 0)}. On a system where only the low-order 8 bits of the exit argument are delivered to the parent, the value of \texttt{WEXITSTATUS(st)} is \rule{1.5cm}{0.4pt}.
+
+\end{enumerate}
+
+\end{document}

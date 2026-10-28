@@ -1,0 +1,44 @@
+% =============================================================================
+% CompetitiveExam/CS502/05-process-concept-pcb-answers.tex
+% ANSWER KEY — Competitive Exam Practice 5: Process Concept and the PCB
+% Provenance: ALL questions are Original (GATE-pattern). Every answer was
+% re-derived from Slides/CS502/05-process-concept-pcb.tex and its Notes.
+% =============================================================================
+
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\input{../../Preambles/header}
+\coursecode{CS502}
+\renewcommand{\thesection}{5.\arabic{section}}
+
+\title{Answer Key --- Competitive Exam Practice 5: Process Concept and the PCB\\\large GATE (Computer Science) Pattern}
+\author{Auqib Hamid Lone\\[0.3em]
+  \emph{Department of Computer Science \& Engineering}, \emph{GCET Ganderbal}}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{enumerate}
+\item[\textbf{Q1}] \textbf{(C).} Processes running one program share the code but each has its own data, heap, and stack. (A) confuses a passive file with an active execution; (B) is false --- one PCB per process; (D) is false --- a process is created, runs, and terminates independently of the file.
+
+\item[\textbf{Q2}] \textbf{(B).} A waiting process whose event occurs becomes ready; only the scheduler moves a process to running. The other three are legal transitions.
+
+\item[\textbf{Q3}] \textbf{(B).} Locals live on the stack; run-time allocations live on the heap (the pointer variable itself is on the stack).
+
+\item[\textbf{Q4}] \textbf{(C).} The code is in the text section of the address space, not in the PCB. PC, memory-management information, and open files are PCB categories.
+
+\item[\textbf{Q5}] \textbf{(C).} The blocking call moves it to waiting; I/O completion makes it ready; a later dispatch makes it running.
+
+\item[\textbf{Q6}] \textbf{5.} Non-waiting processes: $15-6=9$, each running or ready. At most 4 run, so at least $9-4=5$ are ready.
+
+\item[\textbf{Q7}] \textbf{10.} Transitions: admitted (new$\to$ready), dispatch, timer (running$\to$ready), dispatch, block (running$\to$waiting), completion (waiting$\to$ready), dispatch, timer, dispatch, exit. Count: 10. (``Created'' is entry into new, not a transition.)
+
+\item[\textbf{Q8}] \textbf{280.} $8 + 32\times 8 + 8 + 8 = 8+256+16 = 280$ bytes.
+
+\item[\textbf{Q9}] \textbf{3.} After the first event: run \texttt{P2}, ready \{\texttt{P3}, \texttt{P1}\}. After the second: run \texttt{P3}, ready \{\texttt{P1}\}, waiting \{\texttt{P4}, \texttt{P5}, \texttt{P6}, \texttt{P2}\}. After the completions: ready \{\texttt{P1}, \texttt{P4}, \texttt{P5}\} = 3.
+
+\item[\textbf{Q10}] \textbf{(B).} Protection (the process must not edit its own control data) and availability (the kernel reads the PCB while the process is not running and may be swapped out). (A), (C), (D) are not the reason.
+\end{enumerate}
+
+\end{document}

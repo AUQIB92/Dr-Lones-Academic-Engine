@@ -1,0 +1,107 @@
+% =============================================================================
+% Assignments/CS502/06-process-states-schedulers-assignment.tex
+% Assignment 6: Process State Diagram, Schedulers, and Context Switch
+%
+% Student set — NO answers. Solution key: 06-process-states-schedulers-solutions.tex
+% (never published). Sourced from Slides/CS502/06-process-states-schedulers.tex;
+% every problem reuses the deck's notation (five/seven states, queues,
+% long/short/medium-term schedulers, s/(q+s)) and extends its worked examples
+% to new traces, parameters, and designs.
+%
+% Compile with: cd Assignments/CS502 &&
+%   TEXINPUTS=../../Preambles:$TEXINPUTS xelatex -interaction=nonstopmode 06-process-states-schedulers-assignment.tex
+%   BIBINPUTS=../..:$BIBINPUTS bibtex 06-process-states-schedulers-assignment
+%   TEXINPUTS=../../Preambles:$TEXINPUTS xelatex -interaction=nonstopmode 06-process-states-schedulers-assignment.tex (x2)
+%   (Windows/MiKTeX uses ; not : as the path separator)
+% =============================================================================
+
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\input{../../Preambles/header}
+\coursecode{CS502}
+\renewcommand{\thesection}{6.\arabic{section}}
+
+\setlength{\emergencystretch}{2.5em}
+
+\title{Assignment 6: Process State Diagram, Schedulers, and Context Switch}
+\author{Auqib Hamid Lone\\[0.3em]
+  \emph{Department of Computer Science \& Engineering}, \emph{GCET Ganderbal}}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\noindent\textbf{Deadline:} \key{two weeks from the date of issue} --- there is no automatic late penalty; if you need more time, ask before the deadline and an extension will be granted (see the course policy in the syllabus).
+
+\noindent Answer every question. Show all working for Numerical and Design questions --- a bare final answer without the derivation earns partial credit only.
+
+\noindent\textbf{Reading:} Silberschatz et al., \emph{Operating System Concepts}, Ch.~3 \S3.1, p.~103 and \S3.2, pp.~105--110 \cite{SilberschatzOSC_operating_system_concepts}; Stallings, \emph{Operating Systems: Internals and Design Principles}, Ch.~3 \S3.2, p.~111 and \S3.4, p.~135 \cite{StallingsOS_internals_design_principles}.
+
+\section{Conceptual}
+
+\textbf{Q1.} A classmate claims: ``When the disk interrupt arrives, the waiting process starts running at once; and since a ready process might also want to read the disk, \texttt{ready} $\to$ \texttt{waiting} is a perfectly good transition'' \cite{SilberschatzOSC_operating_system_concepts}.
+\begin{enumerate}
+  \item[(a)] Draw the five-state diagram and label every arrow with its triggering event.
+  \item[(b)] For each of the six legal transitions, name the agent that carries it out (a scheduler, the dispatcher, an interrupt handler, or the process itself through a system call).
+  \item[(c)] Refute both parts of the classmate's claim. Explain why separating ``wake up'' from ``get the CPU'' is what lets a scheduler enforce a policy.
+  \item[(d)] Explain why a process on a device queue is never on the ready queue at the same instant, using the linked-list implementation of the queues.
+\end{enumerate}
+
+\textbf{Q2.} The three schedulers work on different timescales \cite{SilberschatzOSC_operating_system_concepts,StallingsOS_internals_design_principles}.
+\begin{enumerate}
+  \item[(a)] For each of the long-term, short-term, and medium-term schedulers, state what it moves, how often it runs, and what it controls.
+  \item[(b)] A batch centre admits only I/O-bound jobs for a week, then only CPU-bound jobs the next week. Describe the state of the ready queue, the device queues, the CPU, and the devices in each week, and state which scheduler should have prevented it.
+  \item[(c)] A Linux workstation has no long-term scheduler. Explain what happens when users start far more programs than memory can hold, and which mechanism takes over.
+  \item[(d)] Distinguish a mode switch from a context switch. For each of \texttt{getpid}, a timer interrupt at the end of a time slice, a keyboard interrupt that wakes a waiting process, and \texttt{read} on an empty pipe, state which occurs and why.
+\end{enumerate}
+
+\section{Numerical}
+
+\textbf{Q3.} A context switch costs $s = 4\ \mu\text{s}$ and each process runs for a slice $q$ before it is switched out.
+\begin{enumerate}
+  \item[(a)] Compute the overhead fraction $s/(q+s)$ for $q = 2$\,ms, $q = 200\ \mu$s, and $q = 40\ \mu$s, as percentages to two decimal places.
+  \item[(b)] For $q = 2$\,ms, compute the approximate number of context switches per second.
+  \item[(c)] Find the smallest slice $q$ for which the overhead is at most $1\%$.
+  \item[(d)] A short-term scheduler additionally needs $d = 16\ \mu$s to make each decision, and the decision is made once per slice. Write the combined overhead fraction and evaluate it for $q = 200\ \mu$s.
+\end{enumerate}
+
+\textbf{Q4.} A one-core machine runs three processes with a $5$\,ms time slice and negligible switch cost. Ready-queue order is first-in, first-out; a preempted or woken process joins the tail. At $t = 0$, \texttt{P1} is running and the ready queue is \texttt{P2}, \texttt{P3}. The following events occur:
+\begin{center}
+\begin{tabular}{@{}ll@{}}
+$t = 5$ & \texttt{P1}'s slice expires \\
+$t = 6$ & the running process issues a disk read \\
+$t = 9$ & the running process issues a keyboard read \\
+$t = 11$ & the disk read completes \\
+$t = 14$ & the running process's slice expires \\
+$t = 15$ & the running process calls \texttt{exit} \\
+\end{tabular}
+\end{center}
+\begin{enumerate}
+  \item[(a)] Give a table with one row per event showing the running process, the ready queue, the disk queue, and the keyboard queue \emph{after} the event.
+  \item[(b)] List every state transition of every process, with its time.
+  \item[(c)] How many context switches occur? Which event causes a kernel entry but no context switch?
+  \item[(d)] Give the state of each process at $t = 15.5$.
+\end{enumerate}
+
+\section{Design}
+
+\textbf{Q5.} A system can hold three process images in memory. At one instant: \texttt{P1} is \texttt{running}, \texttt{P2} is \texttt{blocked} on the disk (expected to finish in $8$\,ms), \texttt{P3} is \texttt{blocked} on the keyboard (a human may take seconds), and \texttt{P4} is \texttt{ready/suspend} on disk \cite{StallingsOS_internals_design_principles}.
+\begin{enumerate}
+  \item[(a)] \texttt{P1} now blocks on the network. Explain why the CPU idles even though \texttt{P4} could run.
+  \item[(b)] Design the medium-term scheduler's response: which process do you swap out to make room for \texttt{P4}, and why? Give the exact seven-state transitions for the swapped-out process and for \texttt{P4}.
+  \item[(c)] While the process you chose is suspended, its awaited event occurs. Give its transition, and explain why it does not move straight to \texttt{ready}.
+  \item[(d)] State one cost of swapping that the medium-term scheduler must weigh against the benefit in (b).
+\end{enumerate}
+
+\textbf{Q6.} You are designing the context-save area of a PCB for a 64-bit CPU with 16 general-purpose registers (8 bytes each), a \texttt{PC} (8 bytes), a flags register (8 bytes), a page-table base register (8 bytes), and 32 floating-point registers (16 bytes each) \cite{BovetCesati_understanding_linux_kernel}.
+\begin{enumerate}
+  \item[(a)] Give a table of the fields, their sizes, and the total size of the save area in bytes.
+  \item[(b)] Each 8-byte load or store costs $1$\,ns. Compute the time to save one context and restore another.
+  \item[(c)] Design a ``lazy floating-point'' variant that saves the floating-point registers only for processes that used them. Recompute (b) for a switch between two processes that never use floating point.
+  \item[(d)] With the full save/restore of (b) and a $1$\,ms slice, compute the direct switching overhead $s/(q+s)$. Explain why the real cost is higher than this figure.
+  \item[(e)] A CPU offers four hardware register sets. Explain how a switch changes when the next process's context is already in one of the sets, and what must happen when it is not.
+\end{enumerate}
+
+\bibliography{../../Bibliography_base}
+\bibliographystyle{plain}
+\end{document}

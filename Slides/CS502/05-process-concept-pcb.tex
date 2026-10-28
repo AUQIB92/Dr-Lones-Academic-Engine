@@ -1,0 +1,727 @@
+% =============================================================================
+% 05-process-concept-pcb.tex — Lecture 5:
+% Process Concept and the Process Control Block
+%
+% Course: Operating Systems (PCC CS-502)
+% Anchor reading: Silberschatz, Galvin & Gagne, Operating System Concepts,
+%                 8th ed. — Ch. 3 §3.1 (process concept, pp. 101-105: the
+%                 process p.101, process state p.103, PCB p.103); page-verified
+%                 via master_supporting_docs/CS502/supporting_books/SilberschatzOSC/index.md.
+%                 Stallings, Operating Systems: Internals and Design
+%                 Principles, 6th ed. — Ch. 3 §3.1 (what is a process, p.108),
+%                 §3.2 (process states, p.111), §3.3 (process description /
+%                 PCB, p.126); page-verified via .../StallingsOS/index.md.
+%                 Bovet & Cesati, Understanding the Linux Kernel, 3rd ed. —
+%                 Ch. 3 (processes, process descriptor, pp. 79-130);
+%                 page-verified via .../LinuxKernel/index.md.
+%
+% Running application: one program file, ./counter, launched twice from two
+% terminals — one program, two processes (P1, P2), each with its own PCB.
+%
+% Compile with: /compile-latex CS502/05-process-concept-pcb
+% =============================================================================
+
+\documentclass[aspectratio=169]{beamer}
+\input{header}
+\coursecode{CS502}
+
+\title{Process Concept and the Process Control Block}
+\subtitle{Lecture 5 --- What Is a Running Program?}
+\author[Dr. Auqib Hamid Lone]{%
+  \textbf{Dr. Auqib Hamid Lone}\\
+  \small Assistant Professor in Computer Science \& Engineering
+}
+\institute[GCET Ganderbal]{%
+  \small\textbf{PCC CS-502: Operating Systems}\\[0.3em]
+  Department of Computer Science \& Engineering\\
+  Government College of Engineering \& Technology (GCET), Ganderbal
+}
+\date[\today]{\small\today}
+
+\begin{document}
+
+\frame{\titlepage}
+
+% =============================================================================
+% ACT 0 --- ONE FILE, TWO RUNS
+% =============================================================================
+\section{One File, Two Runs}
+
+\begin{frame}{Welcome: One Program, Two Terminals}
+  \begin{block}{The big question}
+    You compile \texttt{counter.c} into one file, \texttt{./counter}. You run
+    it in two terminals at the same time. Each copy counts from 1 upward at its
+    own pace. There is \emph{one} file on disk --- so what are the \emph{two}
+    things the operating system is running?
+  \end{block}
+  \begin{itemize}
+    \item The file on disk does not change while it runs; it is just bytes.
+    \item Each run has its own counter value, its own position in the code,
+      its own stack.
+    \item The OS must remember all of this for each run separately.
+  \end{itemize}
+  \vspace{0.1cm}
+  \begin{alertblock}{Running thread for today}
+    We follow \texttt{./counter} launched twice --- \texttt{P1} and
+    \texttt{P2} --- and ask what the kernel must record about each.
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}{Roadmap: Four Questions About a Running Program}
+  \begin{enumerate}
+    \item \key{What is a process?} --- a program in execution, not the program
+      file.
+    \item \key{What does a process look like in memory?} --- text, data, heap,
+      and stack.
+    \item \key{What states can a process be in?} --- new, ready, running,
+      waiting, terminated.
+    \item \key{How does the kernel remember a process?} --- the process control
+      block (PCB).
+  \end{enumerate}
+  \vspace{0.2cm}
+  \muted{Last lecture organized the kernel itself. Today we name the unit of
+  work that the kernel manages; next lecture we watch it move between queues.}
+\end{frame}
+
+\transitionslide{A program is a recipe written down. A process is somebody cooking it --- with the oven on, ingredients half-mixed, and a finger on line 7.}
+
+% =============================================================================
+% ACT 1 --- PROGRAM VS. PROCESS
+% =============================================================================
+\section{Program vs.\ Process}
+
+\begin{frame}{Passive vs.\ Active}
+  \centering
+  \renewcommand{\arraystretch}{1.35}
+  \begin{tabular}{p{0.42\textwidth}p{0.42\textwidth}}
+    \textbf{Program} & \textbf{Process} \\
+    \hline
+    A file on disk (an executable) & A program in execution \\
+    \emph{Passive}: a list of instructions & \emph{Active}: has a program
+    counter and live resources \\
+    One copy, however many runs & One per run, each independent \\
+    Exists until deleted & Created, runs, and terminates \\
+  \end{tabular}
+  \vspace{0.35cm}
+  \begin{itemize}
+    \item A program becomes a process when its executable is \key{loaded into
+      memory}.
+    \item Two processes may run the same program; they are still two separate
+      execution sequences.
+  \end{itemize}
+  \muted{Silberschatz et al., Ch.~3 \S3.1, pp.~101--103.}
+\end{frame}
+
+\begin{frame}{What Exactly Is a Process?}
+  \begin{block}{Definition}
+    A \key{process} is a program in execution: the unit of work in a modern
+    time-sharing system. It consists of the program code together with its
+    current activity --- the value of the program counter, the contents of the
+    processor's registers, and its memory.
+  \end{block}
+  \begin{itemize}
+    \item Batch systems called the same thing a \key{job}; the textbook uses
+      \emph{job} and \emph{process} almost interchangeably.
+    \item Stallings lists equivalent views: a program in execution, an
+      instance of a program running on a computer, the entity that can be
+      assigned to and executed on a processor.
+  \end{itemize}
+  \muted{Silberschatz et al., Ch.~3 \S3.1, p.~101; Stallings, Ch.~3 \S3.1,
+  p.~108.}
+\end{frame}
+
+\begin{frame}{Worked Example: \texttt{./counter} Launched Twice}
+  \begin{enumerate}
+    \item Terminal A runs \texttt{./counter}. The OS creates \texttt{P1}:
+      loads the code, allocates a stack, sets the program counter to the entry
+      point.
+    \item Terminal B runs \texttt{./counter}. The OS creates \texttt{P2}
+      from the \emph{same} file, with a \emph{separate} stack and data.
+    \item After a few seconds, \texttt{P1} has printed 812 and \texttt{P2}
+      has printed 305.
+    \item The variable \texttt{count} has two values at once --- one in each
+      process's data.
+    \item Both program counters may point into the same loop, at different
+      instructions.
+  \end{enumerate}
+  \vspace{0.1cm}
+  \begin{exampleblock}{Conclusion}
+    Same text section, different activity. The OS tracks \texttt{P1} and
+    \texttt{P2} as two processes.
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}{Socratic Check 1}
+  \begin{block}{Question}
+    You open three browser windows of the same browser program. Is that one
+    process or three? What would you need to know to decide?
+  \end{block}
+  \vspace{0.25cm}
+  \begin{itemize}
+    \item The number of \emph{windows} does not decide it; the number of
+      \emph{execution sequences} the OS tracks does.
+    \item One process can draw many windows; a program can also start several
+      processes.
+    \item The question to ask the OS is: how many PCBs exist for this program?
+  \end{itemize}
+\end{frame}
+
+% =============================================================================
+% ACT 2 --- PROCESS IN MEMORY
+% =============================================================================
+\section{A Process in Memory}
+
+\transitionslide{Before the kernel can record a process, the process needs a place to live. Its address space has four regions, each with a job.}
+
+% Coordinate map (P2): column x in [0,3.2]; regions bottom->top:
+%   text  y[0,0.8]   data y[0.8,1.6]   heap y[1.6,2.4]
+%   free  y[2.4,3.6] (dashed, arrows: heap grows up from 2.4, stack grows
+%   down from 3.6)   stack y[3.6,4.4].
+%   Address labels at x=-0.25 (anchor east): "max" at y=4.4, "0" at y=0.
+%   Region notes at x=3.55 (anchor west), same y as each region's centre.
+%   Arrows sit inside the free band at x=0.8 (up) and x=2.4 (down);
+%   no label is placed on an arrow.
+\begin{frame}{The Four Regions of an Address Space}
+  \begin{columns}[c]
+    \begin{column}{0.54\textwidth}
+      \centering
+      \begin{tikzpicture}[every node/.style={font=\small}]
+        \draw[draw=primary-blue, fill=light-bg] (0,3.6) rectangle (3.2,4.4);
+        \node at (1.6,4.0) {stack};
+        \draw[draw=neutral, dashed] (0,2.4) rectangle (3.2,3.6);
+        \draw[draw=primary-blue, fill=light-bg] (0,1.6) rectangle (3.2,2.4);
+        \node at (1.6,2.0) {heap};
+        \draw[draw=primary-blue, fill=light-bg] (0,0.8) rectangle (3.2,1.6);
+        \node at (1.6,1.2) {data};
+        \draw[draw=primary-blue, fill=light-bg] (0,0) rectangle (3.2,0.8);
+        \node at (1.6,0.4) {text};
+        \draw[observed-edge] (0.8,2.5) -- (0.8,3.0);
+        \draw[observed-edge] (2.4,3.5) -- (2.4,3.0);
+        \node[anchor=east, text=neutral] at (-0.25,4.4) {max};
+        \node[anchor=east, text=neutral] at (-0.25,0) {0};
+        \node[anchor=west, text=primary-gold, font=\footnotesize] at (3.55,4.0) {locals, returns};
+        \node[anchor=west, text=primary-gold, font=\footnotesize] at (3.55,3.0) {free};
+        \node[anchor=west, text=primary-gold, font=\footnotesize] at (3.55,2.0) {\texttt{malloc}};
+        \node[anchor=west, text=primary-gold, font=\footnotesize] at (3.55,1.2) {globals};
+        \node[anchor=west, text=primary-gold, font=\footnotesize] at (3.55,0.4) {code};
+      \end{tikzpicture}
+    \end{column}
+    \begin{column}{0.42\textwidth}
+      \begin{itemize}
+        \item \key{Text}: the program code.
+        \item \key{Data}: global variables.
+        \item \key{Heap}: memory allocated at run time; grows upward.
+        \item \key{Stack}: function parameters, return addresses, local
+          variables; grows downward.
+      \end{itemize}
+      \vspace{0.1cm}
+      \muted{Silberschatz et al., Ch.~3 \S3.1, pp.~101--102.}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}[fragile]{Worked Example: Where Does Each Variable Live?}
+  \small
+  \begin{columns}[T]
+    \begin{column}{0.46\textwidth}
+\begin{verbatim}
+int count = 0;  /* (a) */
+int main(void) {
+  int step = 1;  /* (b) */
+  int *log =
+    malloc(64);  /* (c) */
+  while (1) {
+    count += step; /* (d) */
+    print(count);
+  }
+}
+\end{verbatim}
+    \end{column}
+    \begin{column}{0.50\textwidth}
+      \begin{enumerate}
+        \item[(a)] \texttt{count} is global --- \key{data}.
+        \item[(b)] \texttt{step} is a local of \texttt{main} --- \key{stack}.
+        \item[(c)] the 64 bytes \texttt{log} points to --- \key{heap};
+          the pointer \texttt{log} itself --- \key{stack}.
+        \item[(d)] the instructions of the loop --- \key{text}.
+      \end{enumerate}
+      \vspace{0.1cm}
+      \begin{exampleblock}{For \texttt{P1} and \texttt{P2}}
+        Same text; separate data, heap, and stack. \texttt{count} is 812 in
+        one and 305 in the other.
+      \end{exampleblock}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Process Image (Stallings' View)}
+  \begin{itemize}
+    \item Stallings calls the whole collection a \key{process image}:
+    \begin{itemize}
+      \item user program (text),
+      \item user data (data and heap),
+      \item stack,
+      \item and the process's \key{control block}, the kernel's record of it.
+    \end{itemize}
+    \item The first three are what the process uses. The last is what the
+      \emph{kernel} uses to manage it.
+  \end{itemize}
+  \vspace{0.2cm}
+  \begin{block}{Key point}
+    The memory regions describe what the process \emph{is doing}; the control
+    block describes what the kernel \emph{knows about it}.
+  \end{block}
+  \muted{Stallings, Ch.~3 \S3.3, p.~126.}
+\end{frame}
+
+% =============================================================================
+% ACT 3 --- PROCESS STATES
+% =============================================================================
+\section{Process States}
+
+\transitionslide{A process is not always running. Most of the time it is waiting --- for the CPU or for the outside world --- and the kernel must know which.}
+
+\begin{frame}{The Five States}
+  \centering
+  \footnotesize
+  \renewcommand{\arraystretch}{1.3}
+  \begin{tabular}{p{0.18\textwidth}p{0.66\textwidth}}
+    \textbf{State} & \textbf{Meaning} \\
+    \hline
+    \key{new} & The process is being created. \\
+    \key{ready} & The process is waiting to be assigned to a processor. \\
+    \key{running} & Instructions are being executed. \\
+    \key{waiting} & The process is waiting for some event (I/O completion,
+    a signal). Stallings: \emph{blocked}. \\
+    \key{terminated} & The process has finished execution. Stallings:
+    \emph{exit}. \\
+  \end{tabular}
+  \vspace{0.3cm}
+  \begin{alertblock}{The counting rule}
+    On one processor, \textbf{at most one} process is running at any instant;
+    many may be ready or waiting.
+  \end{alertblock}
+  \muted{Silberschatz et al., Ch.~3 \S3.1, p.~103; Stallings, Ch.~3 \S3.2,
+  p.~111.}
+\end{frame}
+
+% Coordinate map (P2): nodes 2.3cm x 0.8cm.
+%   new (-5.2,1.6)  ready (-2.0,0)  running (2.0,0)  terminated (5.2,1.6)
+%   waiting (0,-2.2)
+% Edges: new->ready (label above-left of midpoint, sloped);
+%   ready->running bend left (arc above, label above arc);
+%   running->ready bend left (arc below, label below arc);
+%   running->waiting from running.south to waiting.east (label right);
+%   waiting->ready from waiting.west to ready.south (label left);
+%   running->terminated (label above, sloped).
+% The two ready/running arcs leave the boxes at their east/west faces and stay
+% between x=-0.85 and 0.85; no edge crosses a box.
+\begin{frame}{The Process-State Diagram}
+  \centering
+  \begin{tikzpicture}[every node/.style={font=\small},
+      st/.style={dag-node, minimum width=2.3cm, minimum height=0.8cm}]
+    \node[st] (new) at (-5.2,1.6) {new};
+    \node[st] (ready) at (-2.0,0) {ready};
+    \node[st] (run) at (2.0,0) {running};
+    \node[st] (term) at (5.2,1.6) {terminated};
+    \node[st] (wait) at (0,-2.2) {waiting};
+    \draw[observed-edge] (new) -- node[above, sloped, font=\footnotesize] {admitted} (ready);
+    \draw[observed-edge] (ready.north east) to[bend left=30]
+      node[above, font=\footnotesize] {scheduler dispatch} (run.north west);
+    \draw[observed-edge] (run.south west) to[bend left=30]
+      node[below, font=\footnotesize] {interrupt} (ready.south east);
+    \draw[observed-edge] (run.south) |- node[pos=0.25, right, font=\footnotesize] {I/O or event wait} (wait.east);
+    \draw[observed-edge] (wait.west) -| node[pos=0.75, left, font=\footnotesize] {I/O or event completion} (ready.south);
+    \draw[observed-edge] (run) -- node[above, sloped, font=\footnotesize] {exit} (term);
+  \end{tikzpicture}
+  \vspace{0.15cm}
+  \muted{After Silberschatz et al., Ch.~3 \S3.1, p.~103. Six transitions; each
+  is caused by a specific event.}
+\end{frame}
+
+\begin{frame}{Reading the Diagram: What Causes Each Arrow?}
+  \footnotesize
+  \renewcommand{\arraystretch}{1.25}
+  \begin{tabular}{p{0.27\textwidth}p{0.62\textwidth}}
+    \textbf{Transition} & \textbf{Caused by} \\
+    \hline
+    new $\to$ ready & the OS admits the process (resources allocated) \\
+    ready $\to$ running & the scheduler dispatches it to the CPU \\
+    running $\to$ ready & an interrupt, e.g.\ the timer: its time is up \\
+    running $\to$ waiting & it requests I/O or waits for an event (a blocking
+    system call such as \texttt{read}) \\
+    waiting $\to$ ready & the I/O completes or the event occurs \\
+    running $\to$ terminated & it calls \texttt{exit} (or is killed) \\
+  \end{tabular}
+  \vspace{0.3cm}
+  \begin{block}{Arrows that do not exist}
+    waiting $\to$ running and ready $\to$ waiting. A waiting process must
+    first become ready; a ready process is not executing, so it cannot request
+    I/O.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Worked Trace: \texttt{P1} Reads a Key}
+  \begin{enumerate}
+    \item \texttt{P1} is created: \key{new}.
+    \item The OS admits it: \key{ready}.
+    \item The scheduler dispatches it: \key{running}; it increments
+      \texttt{count}.
+    \item The timer interrupt fires: back to \key{ready}; \texttt{P2} runs.
+    \item \texttt{P1} is dispatched again: \key{running}. It calls
+      \texttt{read} on the keyboard: \key{waiting}.
+    \item The user presses a key; the interrupt completes the I/O:
+      \key{ready}.
+    \item \texttt{P1} is dispatched: \key{running}. It calls \texttt{exit}:
+      \key{terminated}.
+  \end{enumerate}
+  \vspace{0.1cm}
+  \muted{Seven states visited, six transitions taken; the blocking
+  \texttt{read} is the system call from Lecture~3 seen from the process's side.}
+\end{frame}
+
+\begin{frame}{Worked Example: Counting States on One CPU}
+  \begin{itemize}
+    \item Five processes exist. \texttt{P1} is running; \texttt{P2} and
+      \texttt{P3} wait for the disk; \texttt{P4} and \texttt{P5} are ready.
+    \item \texttt{P1}'s time slice expires.
+  \end{itemize}
+  \vspace{0.15cm}
+  \begin{exampleblock}{After the interrupt and one dispatch}
+    \texttt{P1} $\to$ ready. The scheduler picks \texttt{P4} $\to$ running.\\
+    Running: 1 (\texttt{P4}) \quad Ready: 2 (\texttt{P5}, \texttt{P1}) \quad
+    Waiting: 2 (\texttt{P2}, \texttt{P3}).
+  \end{exampleblock}
+  \vspace{0.1cm}
+  \begin{itemize}
+    \item The total is still five: transitions move processes, they do not
+      create them.
+    \item With $k$ CPUs, at most $k$ processes run; the rest are ready or
+      waiting.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Two-State and Five-State Models}
+  \begin{itemize}
+    \item Stallings starts from a \key{two-state} model: \emph{running} and
+      \emph{not running}.
+    \item It is too coarse: a not-running process might be ready to go, or
+      blocked on I/O --- dispatching a blocked process wastes the CPU.
+    \item Splitting \emph{not running} into \emph{ready} and \emph{blocked},
+      and adding \emph{new} and \emph{exit}, gives the \key{five-state} model.
+    \item Stallings later adds \emph{suspended} states for swapped-out
+      processes (a seven-state model); we return to these with the
+      medium-term scheduler.
+  \end{itemize}
+  \vspace{0.2cm}
+  \muted{Stallings, Ch.~3 \S3.2, p.~111.}
+\end{frame}
+
+\begin{frame}{Socratic Check 2}
+  \begin{block}{Question}
+    A process in the waiting state receives the I/O it asked for. Why does it
+    go to \emph{ready} instead of straight to \emph{running}?
+  \end{block}
+  \vspace{0.25cm}
+  \begin{itemize}
+    \item Another process is probably running on the CPU right now.
+    \item Only the scheduler decides who runs next; the I/O completion only
+      makes the process \emph{eligible}.
+    \item Keeping ``eligible'' and ``chosen'' separate is what lets the OS
+      apply a scheduling policy at all.
+  \end{itemize}
+\end{frame}
+
+% =============================================================================
+% ACT 4 --- THE PCB
+% =============================================================================
+\section{The Process Control Block}
+
+\transitionslide{When P1 stops running, everything it was doing must be written down somewhere --- or it can never be resumed. That somewhere is the PCB.}
+
+\begin{frame}{What Exactly Is a PCB?}
+  \begin{block}{Definition}
+    The \key{process control block} (PCB), also called a \key{task control
+    block}, is the kernel data structure that represents one process. It is
+    the repository for any information that may vary from process to process.
+  \end{block}
+  \begin{itemize}
+    \item One PCB per process: \texttt{P1} and \texttt{P2} have two PCBs,
+      even though they share one program file.
+    \item The PCB lives in \emph{kernel} memory; the process cannot read or
+      write it directly.
+    \item Creating a process means creating a PCB; terminating it means
+      eventually freeing the PCB.
+  \end{itemize}
+  \muted{Silberschatz et al., Ch.~3 \S3.1, p.~103.}
+\end{frame}
+
+% Coordinate map (P2): seven field boxes, each 4.6cm x 0.6cm, centred at x=0,
+%   stacked downward from y=0 in steps of 0.6 (y = 0, -0.6, ..., -3.6), so
+%   adjacent boxes share an edge and nothing overlaps. Title "PCB of P1"
+%   at (0,0.6). No arrows; no labels outside the boxes.
+\begin{frame}{Inside the PCB}
+  \begin{columns}[c]
+    \begin{column}{0.42\textwidth}
+      \centering
+      \begin{tikzpicture}[every node/.style={font=\small},
+          fld/.style={draw=primary-blue, fill=light-bg, minimum width=4.6cm,
+            minimum height=0.6cm, inner sep=1pt}]
+        \node[text=primary-gold, font=\small\bfseries] at (0,0.6) {PCB of \texttt{P1}};
+        \node[fld] at (0,0) {process state};
+        \node[fld] at (0,-0.6) {process number (PID)};
+        \node[fld] at (0,-1.2) {program counter};
+        \node[fld] at (0,-1.8) {registers};
+        \node[fld] at (0,-2.4) {memory limits};
+        \node[fld] at (0,-3.0) {list of open files};
+        \node[fld] at (0,-3.6) {$\cdots$};
+      \end{tikzpicture}
+    \end{column}
+    \begin{column}{0.54\textwidth}
+      \begin{itemize}
+        \item \key{State}: new, ready, running, waiting, terminated.
+        \item \key{PID}: the unique process number.
+        \item \key{Program counter}: the next instruction to execute.
+        \item \key{Registers}: accumulators, index registers, stack pointer,
+          general-purpose registers, condition codes.
+        \item \key{Memory limits}: where its regions are.
+        \item \key{Open files}: what it is using.
+      \end{itemize}
+      \muted{After Silberschatz et al., Ch.~3 \S3.1, p.~103.}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{The Seven Categories of PCB Information}
+  \footnotesize
+  \renewcommand{\arraystretch}{1.25}
+  \begin{tabular}{p{0.27\textwidth}p{0.62\textwidth}}
+    \textbf{Category} & \textbf{Examples} \\
+    \hline
+    Process state & new, ready, running, waiting, halted \\
+    Program counter & address of the next instruction \\
+    CPU registers & accumulators, index registers, stack pointers,
+    general-purpose registers, condition codes \\
+    CPU-scheduling information & priority, pointers to scheduling queues \\
+    Memory-management information & base and limit registers, page tables or
+    segment tables \\
+    Accounting information & CPU time used, time limits, job or process
+    numbers \\
+    I/O status information & I/O devices allocated, list of open files \\
+  \end{tabular}
+  \vspace{0.25cm}
+  \muted{Silberschatz et al., Ch.~3 \S3.1, pp.~103--104.}
+\end{frame}
+
+\begin{frame}{Why Save the PC and Registers?}
+  \begin{itemize}
+    \item When an interrupt takes the CPU away from \texttt{P1}, the CPU's
+      registers still hold \texttt{P1}'s values.
+    \item \texttt{P2} is about to overwrite them.
+    \item So the kernel copies \texttt{P1}'s PC and registers \emph{into
+      \texttt{P1}'s PCB} first.
+    \item Later, it copies them back, and \texttt{P1} continues as if nothing
+      happened.
+  \end{itemize}
+  \vspace{0.2cm}
+  \begin{alertblock}{The PCB is what makes interruption safe}
+    State information must be saved when an interrupt occurs, to allow the
+    process to be continued correctly afterward. Saving one and loading another
+    is the \key{context switch} --- the topic of the next lecture.
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}{Worked Example: Two PCBs, One Program}
+  \centering
+  \footnotesize
+  \renewcommand{\arraystretch}{1.25}
+  \begin{tabular}{p{0.28\textwidth}p{0.28\textwidth}p{0.28\textwidth}}
+    \textbf{Field} & \textbf{PCB of \texttt{P1}} & \textbf{PCB of \texttt{P2}} \\
+    \hline
+    state & waiting (keyboard) & running \\
+    PID & 4120 & 4127 \\
+    program counter & inside \texttt{read} wrapper & inside the loop \\
+    \texttt{count} (in data) & 812 & 305 \\
+    open files & terminal A & terminal B \\
+    text section & \multicolumn{2}{c}{shared: same \texttt{./counter} code} \\
+  \end{tabular}
+  \vspace{0.3cm}
+  \begin{exampleblock}{Reading the table}
+    Every row that differs is per-process information --- exactly what the PCB
+    exists to hold. The PIDs are illustrative; the OS picks them.
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}{Stallings' Three-Part View of the PCB}
+  \begin{columns}[T]
+    \begin{column}{0.32\textwidth}
+      \begin{block}{Identification}
+        PID, parent's PID, user ID.
+      \end{block}
+    \end{column}
+    \begin{column}{0.32\textwidth}
+      \begin{block}{Processor state}
+        User-visible registers, control and status registers (PC, flags),
+        stack pointers.
+      \end{block}
+    \end{column}
+    \begin{column}{0.32\textwidth}
+      \begin{block}{Process control}
+        Scheduling and state, links to other processes, privileges, memory and
+        resource ownership.
+      \end{block}
+    \end{column}
+  \end{columns}
+  \vspace{0.25cm}
+  \begin{itemize}
+    \item Same content as Silberschatz's seven categories, grouped by
+      \emph{purpose}.
+    \item Processor-state information is what a context switch saves and
+      restores.
+  \end{itemize}
+  \muted{Stallings, Ch.~3 \S3.3, p.~126.}
+\end{frame}
+
+\begin{frame}{A Real PCB: Linux \texttt{task\_struct}}
+  \begin{itemize}
+    \item In Linux the PCB is the \key{process descriptor}, a C structure
+      of type \texttt{task\_struct}.
+    \item It holds the state, the PID, scheduling information, a pointer to
+      the memory descriptor, the open-file table, parent and child links,
+      and much more.
+    \item Its \texttt{state} field records values such as
+      \texttt{TASK\_RUNNING}, \texttt{TASK\_INTERRUPTIBLE}, and
+      \texttt{TASK\_UNINTERRUPTIBLE}.
+    \item The kernel links all descriptors into a list so it can walk every
+      process.
+  \end{itemize}
+  \vspace{0.2cm}
+  \begin{block}{Note the naming}
+    Linux uses \texttt{TASK\_RUNNING} for both ready and running: the
+    textbook's two states map to one flag plus ``is it on a CPU right now?''
+  \end{block}
+  \muted{Bovet \& Cesati, Ch.~3, pp.~79--130.}
+\end{frame}
+
+\begin{frame}{Socratic Check 3}
+  \begin{block}{Question}
+    Why can the PCB not be stored in the process's own stack or heap, where it
+    would be cheaper to reach?
+  \end{block}
+  \vspace{0.25cm}
+  \begin{itemize}
+    \item The process could then overwrite its own state, PID, or memory
+      limits --- and break protection.
+    \item The kernel must read the PCB even when the process is not running
+      and its memory may be swapped out.
+    \item So PCBs live in kernel memory, reachable only in kernel mode.
+  \end{itemize}
+\end{frame}
+
+% =============================================================================
+% ACT 5 --- PUTTING IT TOGETHER
+% =============================================================================
+\section{Putting It Together}
+
+\transitionslide{A process is its address space plus its PCB. One more refinement --- threads --- and then the misconceptions.}
+
+\begin{frame}{Threads: A Preview}
+  \begin{itemize}
+    \item The model so far: a process performs a \emph{single thread of
+      execution} --- one program counter.
+    \item Modern systems let a process have \key{multiple threads}, each with
+      its own PC and registers, sharing the same address space.
+    \item Then the PCB is extended with per-thread information.
+  \end{itemize}
+  \vspace{0.2cm}
+  \begin{exampleblock}{Example}
+    A word processor with one thread cannot type characters and run the spell
+    checker at the same time; with two threads it can.
+  \end{exampleblock}
+  \muted{Silberschatz et al., Ch.~3 \S3.1, pp.~104--105; threads are treated
+  fully in Ch.~4.}
+\end{frame}
+
+\begin{frame}{Common Misconceptions}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{block}{Wrong}
+        \begin{itemize}
+          \item ``A process is the program file.''
+          \item ``Two runs of one program share one PCB.''
+          \item ``I/O completion puts a process back on the CPU.''
+          \item ``Many processes can be running on one CPU.''
+        \end{itemize}
+      \end{block}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{block}{Right}
+        \begin{itemize}
+          \item A process is a program \emph{in execution}.
+          \item One PCB per process, even for the same program.
+          \item It goes to \emph{ready}; the scheduler decides.
+          \item At most one at a time per CPU; others are ready or waiting.
+        \end{itemize}
+      \end{block}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Takeaways}
+  \begin{itemize}
+    \item A \key{process} is a program in execution; the program is passive,
+      the process is active.
+    \item Its address space has \key{text}, \key{data}, \key{heap}, and
+      \key{stack}; two processes running one program share text only.
+    \item It moves among five \key{states}: new, ready, running, waiting,
+      terminated --- six legal transitions, each caused by an event.
+    \item The \key{PCB} records everything per-process: state, PC,
+      registers, scheduling, memory, accounting, I/O status.
+    \item Saving the PC and registers into the PCB is what makes interruption
+      and resumption possible.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Next: Process States, Schedulers, and Context Switch}
+  \begin{itemize}
+    \item Today: what a process is, how it is laid out, which states it moves
+      through, and how the PCB records it.
+    \item Next lecture: the queues that hold PCBs, the long-, short-, and
+      medium-term schedulers that move them, and the context switch that saves
+      one PCB and loads another.
+  \end{itemize}
+  \vspace{0.3cm}
+  \begin{block}{Reading}
+    Silberschatz et al., \emph{Operating System Concepts}, Ch.~3 \S3.2
+    \cite{SilberschatzOSC_operating_system_concepts}; Stallings,
+    \emph{Operating Systems: Internals and Design Principles}, Ch.~3 \S3.2 and
+    \S3.4 \cite{StallingsOS_internals_design_principles}; Bovet \& Cesati,
+    Ch.~3 \cite{BovetCesati_understanding_linux_kernel}.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Further Reading (Page-Cited)}
+  \footnotesize
+  \begin{itemize}
+    \item A.~Silberschatz, P.~B.~Galvin, G.~Gagne, \emph{Operating System
+      Concepts}, 8e --- Ch.~3 \S3.1 (the process, p.~101; process state,
+      p.~103; process control block, p.~103; threads, pp.~104--105).
+    \item W.~Stallings, \emph{Operating Systems: Internals and Design
+      Principles}, 6e --- Ch.~3 \S3.1 (what is a process, p.~108), \S3.2
+      (process states, p.~111), \S3.3 (process description, p.~126).
+    \item D.~P.~Bovet \& M.~Cesati, \emph{Understanding the Linux Kernel}, 3e
+      --- Ch.~3 (processes and the process descriptor, pp.~79--130), for the
+      concrete Linux \texttt{task\_struct}.
+  \end{itemize}
+  \vspace{0.2cm}
+  \muted{Page-verified via each book's \texttt{index.md} under
+  \texttt{master\_supporting\_docs/CS502/supporting\_books/}.}
+\end{frame}
+
+\begin{frame}[allowframebreaks]{References}
+  \footnotesize
+  \bibliographystyle{plain}
+  \bibliography{../../Bibliography_base}
+\end{frame}
+
+\end{document}

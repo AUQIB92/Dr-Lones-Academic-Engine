@@ -1,0 +1,845 @@
+% =============================================================================
+% 04-system-programs-os-structure.tex — Lecture 4:
+% System Programs and Operating-System Structures
+%
+% Course: Operating Systems (PCC CS-502)
+% Anchor reading: Silberschatz, Galvin & Gagne, Operating System Concepts,
+%                 8th ed. — Ch. 2 §2.5 (system programs, p. 66), §2.6 (design
+%                 and implementation), §2.7 (OS structure: simple, layered,
+%                 microkernel, modular, pp. 70-76) and §2.8 (virtual machines,
+%                 p. 76); §2.5-2.8 span pp. 66-84. Page-verified via
+%                 master_supporting_docs/CS502/supporting_books/SilberschatzOSC/index.md.
+%                 Stallings, Operating Systems: Internals and Design
+%                 Principles, 6th ed. — Ch. 2 §2.3 (system structure, p. 64)
+%                 and Ch. 4 §4.3 (microkernels, p. 179); page-verified via
+%                 .../StallingsOS/index.md.
+%                 Bovet & Cesati, Understanding the Linux Kernel, 3rd ed. —
+%                 Ch. 1 (kernel architecture: monolithic with loadable
+%                 modules, pp. 1-34); page-verified via .../LinuxKernel/index.md.
+%
+% Running application: one buggy network-card driver that dereferences a NULL
+% pointer, dropped into each structure in turn.
+%
+% Compile with: /compile-latex CS502/04-system-programs-os-structure
+% =============================================================================
+
+\documentclass[aspectratio=169]{beamer}
+\input{header}
+\coursecode{CS502}
+\usepackage{array}
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+
+\title{System Programs and OS Structures}
+\subtitle{Lecture 4 --- Monolithic, Layered, Microkernel, Modular, Virtual Machine}
+\author[Dr. Auqib Hamid Lone]{%
+  \textbf{Dr. Auqib Hamid Lone}\\
+  \small Assistant Professor in Computer Science \& Engineering
+}
+\institute[GCET Ganderbal]{%
+  \small\textbf{PCC CS-502: Operating Systems}\\[0.3em]
+  Department of Computer Science \& Engineering\\
+  Government College of Engineering \& Technology (GCET), Ganderbal
+}
+\date[\today]{\small\today}
+
+\begin{document}
+
+\frame{\titlepage}
+
+% =============================================================================
+% ACT 0 --- ONE BAD DRIVER
+% =============================================================================
+\section{One Bad Driver}
+
+\begin{frame}{Welcome: Where Does a Driver Bug Land?}
+  \begin{block}{The big question}
+    A network-card driver has a bug: on a rare packet it dereferences a
+    \texttt{NULL} pointer. Does the whole machine crash, does only the network
+    stop, or does nobody notice?
+  \end{block}
+  \begin{itemize}
+    \item The answer is \emph{not} in the driver's code. It is in how the
+      operating system is \key{organized}.
+    \item Where the driver runs --- kernel mode or user mode, inside the kernel
+      or beside it --- decides how far the damage spreads.
+    \item Last lecture: the system-call doorway. Today: what sits on each side of
+      it.
+  \end{itemize}
+  \vspace{0.1cm}
+  \begin{alertblock}{Running thread for today}
+    We drop the same buggy driver into five structures and watch the blast
+    radius change.
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}{Roadmap: Above the Doorway, Below the Doorway}
+  \begin{enumerate}
+    \item \key{System programs} --- the user-level tools built on system calls.
+    \item \key{Design principles} --- goals, and separating mechanism from
+      policy.
+    \item \key{Kernel structures} --- simple, monolithic, layered,
+      microkernel, modular.
+    \item \key{Virtual machines} --- an operating system as a guest of another.
+    \item \key{Comparison} --- one table, one driver bug, five outcomes.
+  \end{enumerate}
+  \vspace{0.2cm}
+  \muted{Silberschatz et al., Ch.~2 \S2.5--2.8, pp.~66--84; Stallings, Ch.~2
+  and Ch.~4 \S4.3.}
+\end{frame}
+
+\transitionslide{Most of what a user calls ``the operating system'' is not the kernel at all. It is a set of ordinary programs that make system calls.}
+
+% =============================================================================
+% ACT 1 --- SYSTEM PROGRAMS
+% =============================================================================
+\section{System Programs}
+
+\begin{frame}{What Is a System Program?}
+  \begin{block}{Definition}
+    A \key{system program} (system utility) is a program shipped with the
+    operating system that gives users a convenient environment for program
+    development and execution. It runs in \emph{user mode} and obtains every
+    privileged service through system calls.
+  \end{block}
+  \begin{itemize}
+    \item \texttt{ls}, \texttt{cp}, \texttt{cc}, \texttt{vi}, the shell, the
+      login program --- all are system programs.
+    \item Some are thin wrappers around one system call; others are large
+      programs in their own right.
+    \item The user's view of the OS is defined by the system programs, not by
+      the system calls.
+  \end{itemize}
+  \muted{Silberschatz et al., Ch.~2 \S2.5, p.~66.}
+\end{frame}
+
+\begin{frame}{The Categories of System Programs}
+  \centering
+  \footnotesize
+  \renewcommand{\arraystretch}{1.25}
+  \begin{tabular}{p{0.27\textwidth}p{0.38\textwidth}p{0.25\textwidth}}
+    \textbf{Category} & \textbf{What it does} & \textbf{Examples} \\
+    \hline
+    File management & create, delete, copy, rename, list files and directories
+      & \texttt{cp}, \texttt{mv}, \texttt{rm}, \texttt{ls} \\
+    Status information & report date, time, memory, users, performance
+      & \texttt{date}, \texttt{who}, \texttt{df} \\
+    File modification & create and change file contents
+      & \texttt{vi}, \texttt{grep}, \texttt{sed} \\
+    Programming-language support & compilers, assemblers, interpreters,
+      debuggers & \texttt{cc}, \texttt{as}, \texttt{gdb} \\
+    Program loading and execution & loaders, linkage editors
+      & \texttt{ld}, the loader \\
+    Communications & connections between processes, users, and machines
+      & \texttt{ssh}, \texttt{mail}, \texttt{ftp} \\
+  \end{tabular}
+  \vspace{0.2cm}
+  \begin{itemize}
+    \item Beyond these, \key{application programs} (browsers, word processors,
+      databases) ship with many systems but are not part of the OS proper.
+  \end{itemize}
+  \muted{Categories per Silberschatz et al., Ch.~2 \S2.5, p.~66.}
+\end{frame}
+
+\begin{frame}{Worked Example: Classify Six Commands}
+  \begin{enumerate}
+    \item \texttt{ls -l} --- \textbf{file management}: lists a directory's
+      entries (uses \texttt{open}, \texttt{getdents}-style reads,
+      \texttt{stat}).
+    \item \texttt{date} --- \textbf{status information}: reads the clock
+      through an information-maintenance system call.
+    \item \texttt{vi notes.txt} --- \textbf{file modification}: edits contents
+      with \texttt{read} and \texttt{write}.
+    \item \texttt{cc prog.c} --- \textbf{programming-language support}:
+      compiles source into an object file.
+    \item \texttt{ld prog.o} --- \textbf{program loading and execution}: links
+      objects into an executable.
+    \item \texttt{ssh server} --- \textbf{communications}: opens a connection
+      with \texttt{socket}.
+  \end{enumerate}
+  \vspace{0.1cm}
+  \muted{Note the two taxonomies: a system \emph{program} category (above) is
+  not the same as a system \emph{call} category (Lecture 3). \texttt{date} is a
+  status-information program that makes an information-maintenance call.}
+\end{frame}
+
+\begin{frame}{The Command Interpreter: Two Designs}
+  \begin{itemize}
+    \item The \key{shell} reads a command and gets it executed. Two ways to
+      build it:
+  \end{itemize}
+  \vspace{0.1cm}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{block}{Built-in commands}
+        The interpreter itself contains the code for each command. Adding a
+        command means changing the interpreter. The interpreter grows with
+        every command.
+      \end{block}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{block}{Commands as system programs (UNIX)}
+        \texttt{rm file.txt} makes the shell find a \emph{file} named
+        \texttt{rm}, load it, and pass \texttt{file.txt} as an argument. New
+        commands are new files; the shell stays small.
+      \end{block}
+    \end{column}
+  \end{columns}
+  \vspace{0.2cm}
+  \muted{The UNIX shell uses the second design for most commands (and keeps a
+  few built-ins such as \texttt{cd}). Silberschatz et al., Ch.~2 \S2.2.}
+\end{frame}
+
+\begin{frame}{Socratic Check 1}
+  \begin{block}{Question}
+    \texttt{cd} must be a shell built-in, not a separate program. Why? (Hint:
+    which process's current directory would a separate \texttt{cd} change?)
+  \end{block}
+  \vspace{0.25cm}
+  \begin{itemize}
+    \item A separate program runs in a \emph{child} process created by
+      \texttt{fork}.
+    \item \texttt{chdir} in the child changes only the child's current
+      directory; the child then exits.
+    \item The shell's own directory is unchanged --- so the shell must call
+      \texttt{chdir} itself.
+  \end{itemize}
+\end{frame}
+
+\transitionslide{Before choosing a structure, decide what the system is for --- and keep the decisions about \emph{what} to do apart from the machinery for \emph{how} to do it.}
+
+% =============================================================================
+% ACT 2 --- DESIGN PRINCIPLES
+% =============================================================================
+\section{Design Principles}
+
+\begin{frame}{Design Goals, Mechanism, and Policy}
+  \begin{itemize}
+    \item \key{User goals}: convenient, easy to learn, reliable, safe, fast.
+    \item \key{System goals}: easy to design, implement, and maintain;
+      flexible, reliable, error-free, efficient.
+    \item The goals conflict; there is no single ``best'' OS, only a best fit
+      to a set of requirements.
+  \end{itemize}
+  \vspace{0.15cm}
+  \begin{block}{Definition: mechanism vs.\ policy}
+    A \key{mechanism} determines \emph{how} to do something; a \key{policy}
+    determines \emph{what} will be done. Separating them lets a policy change
+    without rewriting the mechanism.
+  \end{block}
+  \muted{Silberschatz et al., Ch.~2 \S2.6.}
+\end{frame}
+
+\begin{frame}{Worked Example: Separate the Mechanism From the Policy}
+  \footnotesize
+  \renewcommand{\arraystretch}{1.3}
+  \centering
+  \begin{tabular}{p{0.22\textwidth}p{0.33\textwidth}p{0.33\textwidth}}
+    \textbf{Situation} & \textbf{Mechanism (how)} & \textbf{Policy (what)} \\
+    \hline
+    CPU protection & the timer interrupts the CPU after a set interval
+      & how long the interval is for each user \\
+    Scheduling & a context switch from one process to another
+      & which process runs next \\
+    File protection & the kernel checks a permission bit before \texttt{open}
+      & who is granted which bits \\
+    Our driver & loading code into the kernel at run time
+      & which drivers are trusted enough to load \\
+  \end{tabular}
+  \vspace{0.25cm}
+  \begin{exampleblock}{Why the split pays}
+    The timer mechanism (Lecture 2) is unchanged whether the quantum is 10\,ms or
+    100\,ms; only a parameter changes. A microkernel pushes this idea to its
+    limit: the kernel keeps mechanisms, servers hold policy.
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}{Implementation: Which Language?}
+  \begin{itemize}
+    \item Early operating systems were written in \key{assembly language}.
+    \item Modern kernels (Linux, Windows) are written mostly in \key{C}, with
+      small parts in assembly: the trap entry, context switch, and
+      device-register access.
+    \item A high-level language: faster to write, easier to read and debug,
+      easier to \key{port} to new hardware.
+    \item The cost: possibly slower code --- but the bottlenecks are usually
+      algorithms and data structures, which can be tuned after profiling.
+  \end{itemize}
+  \vspace{0.2cm}
+  \begin{alertblock}{Takeaway}
+    The structure of the code matters more than its language: a
+    well-structured C kernel can be optimized where it counts.
+  \end{alertblock}
+  \muted{Silberschatz et al., Ch.~2 \S2.6.}
+\end{frame}
+
+\transitionslide{A kernel is millions of lines. How they are divided into parts --- and which parts share kernel mode --- is the structure.}
+
+% =============================================================================
+% ACT 3 --- SIMPLE AND MONOLITHIC
+% =============================================================================
+\section{Simple and Monolithic Structure}
+
+% Diagram: MS-DOS simple structure -- four stacked levels; a dashed arrow on
+% the right shows an application bypassing the middle levels to reach BIOS.
+% Coordinates: (x, y); every box is 6.4cm x 0.62cm, centred at x = 0
+%   app  at (0, 1.65)   -- application program (top)
+%   res  at (0, 0.85)   -- resident system program
+%   dos  at (0, 0.05)   -- MS-DOS device drivers
+%   bios at (0,-0.75)   -- ROM BIOS device drivers (bottom)
+%   bypass: app.east -> (4.0,1.65) |- bios.east, runs at x = 4.0 (0.8cm clear
+%   of every box's right edge at x = 3.2); label at (4.25, 0.45), left-anchored.
+\begin{frame}{Simple Structure: MS-DOS}
+  \centering
+  \begin{tikzpicture}[every node/.style={font=\small},
+      lvl/.style={draw=primary-blue, fill=light-bg, minimum width=6.4cm,
+                  minimum height=0.62cm, align=center}]
+    \node[lvl] (app)  at (0, 1.65) {Application program};
+    \node[lvl] (res)  at (0, 0.85) {Resident system program};
+    \node[lvl] (dos)  at (0, 0.05) {MS-DOS device drivers};
+    \node[lvl, draw=primary-gold, fill=white] (bios) at (0,-0.75)
+      {ROM BIOS device drivers};
+    \draw[confound-edge] (app.east) -- (4.0,1.65) |- (bios.east);
+    \node[anchor=west, text=negative, align=left, font=\footnotesize]
+      at (4.25,0.45) {direct access\\to hardware};
+  \end{tikzpicture}
+  \vspace{0.2cm}
+  \begin{itemize}
+    \item Written for small machines; levels are not well separated.
+    \item Applications can call BIOS routines and write to the display
+      directly --- the Intel 8088 had \key{no dual mode} and no hardware
+      protection.
+    \item \bad{One bad program can crash the whole system.}
+  \end{itemize}
+  \muted{Silberschatz et al., Ch.~2 \S2.7, pp.~70--76.}
+\end{frame}
+
+% Diagram: traditional UNIX -- users above, system programs, the system-call
+% interface (dashed red boundary), one large kernel, the hardware interface,
+% hardware. No arrows: the point is that everything between the two
+% interfaces is one program.
+% Coordinates: (x, y); all boxes 9.6cm wide, centred at x = 0
+%   usr at (0, 1.75)  h 0.50   -- users / shells
+%   sys at (0, 1.15)  h 0.50   -- system programs and libraries
+%   sci at (0, 0.58)  h 0.44   -- system-call interface (boundary)
+%   krn at (0,-0.25)  h 1.00   -- the monolithic kernel
+%   hwi at (0,-1.07)  h 0.44   -- kernel interface to the hardware
+%   hw  at (0,-1.64)  h 0.50   -- hardware
+%   gaps between consecutive boxes >= 0.08cm; no paths.
+\begin{frame}{Monolithic Structure: Traditional UNIX}
+  \centering
+  \begin{tikzpicture}[every node/.style={font=\footnotesize},
+      bx/.style={draw=primary-blue, fill=light-bg, minimum width=9.6cm,
+                 align=center},
+      bd/.style={draw=negative, dashed, fill=white, minimum width=9.6cm,
+                 align=center}]
+    \node[bx, minimum height=0.50cm] (usr) at (0, 1.75)
+      {Users \quad shells and commands};
+    \node[bx, minimum height=0.50cm] (sys) at (0, 1.15)
+      {System programs: compilers, interpreters, system libraries};
+    \node[bd, minimum height=0.44cm] (sci) at (0, 0.58)
+      {System-call interface to the kernel};
+    \node[bx, minimum height=1.00cm, fill=white, draw=primary-gold, text width=9.2cm] (krn) at (0,-0.25)
+      {\textbf{Kernel:} file system, CPU scheduling, memory management,
+      signals, terminal handling, \key{device drivers} --- one address space};
+    \node[bd, minimum height=0.44cm] (hwi) at (0,-1.07)
+      {Kernel interface to the hardware};
+    \node[bx, minimum height=0.50cm] (hw) at (0,-1.64)
+      {Hardware: terminal controllers, device controllers, memory};
+  \end{tikzpicture}
+  \vspace{0.15cm}
+  \begin{itemize}
+    \item Two parts: the \key{kernel} and the \key{system programs}.
+    \item Everything below the system-call interface is \emph{one} program in
+      kernel mode: fast (a function call between subsystems), hard to maintain.
+  \end{itemize}
+  \muted{Silberschatz et al., Ch.~2 \S2.7, pp.~70--76.}
+\end{frame}
+
+\begin{frame}{Running Example 1: The Bad Driver in a Monolithic Kernel}
+  \begin{enumerate}
+    \item The driver is compiled into the kernel and runs in \key{kernel mode}
+      in the kernel's address space.
+    \item The rare packet arrives; the driver dereferences \texttt{NULL}.
+    \item The fault happens in kernel mode --- there is no more-privileged
+      code to contain it.
+    \item The kernel cannot tell which of its data structures the driver
+      corrupted, so it halts (a \emph{kernel panic}).
+  \end{enumerate}
+  \vspace{0.15cm}
+  \begin{exampleblock}{Outcome}
+    \bad{Blast radius: the whole machine.} Every process, not just the network,
+    is lost.
+  \end{exampleblock}
+  \muted{The same speed that makes monolithic kernels attractive --- no
+  boundary between subsystems --- is what lets one bug reach everything.}
+\end{frame}
+
+% =============================================================================
+% ACT 4 --- LAYERED
+% =============================================================================
+\section{Layered Approach}
+
+% Diagram: layered OS as a vertical stack, layer 0 at the bottom. Short arrows
+% in the 0.25cm gaps show that each layer calls only the one beneath it.
+% Coordinates: (x, y); boxes 6.0cm x 0.50cm at x = 0
+%   L5 at (0, 1.80)  user interface (layer N)
+%   L4 at (0, 1.05)  user programs / I/O management
+%   L3 at (0, 0.30)  device drivers and console
+%   L2 at (0,-0.45)  memory management
+%   L1 at (0,-1.20)  CPU scheduling
+%   L0 at (0,-1.95)  hardware (layer 0)
+%   arrows: Lk.south -> Lk-1.north, length 0.25cm, centred at x = 0
+%   side label at (3.4, -0.08), left-anchored, 0.4cm clear of the boxes.
+\begin{frame}{Layered Approach}
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      \centering
+      \begin{tikzpicture}[every node/.style={font=\footnotesize},
+          ly/.style={draw=primary-blue, fill=light-bg, minimum width=4.6cm,
+                     minimum height=0.50cm, align=center}]
+        \node[ly] (L5) at (0, 1.80) {Layer $N$: user interface};
+        \node[ly] (L4) at (0, 1.05) {I/O management};
+        \node[ly] (L3) at (0, 0.30) {Device drivers, console};
+        \node[ly] (L2) at (0,-0.45) {Memory management};
+        \node[ly] (L1) at (0,-1.20) {CPU scheduling};
+        \node[ly, draw=primary-gold, fill=white] (L0) at (0,-1.95)
+          {Layer 0: hardware};
+        \foreach \a/\b in {L5/L4, L4/L3, L3/L2, L2/L1, L1/L0}
+          \draw[observed-edge] (\a.south) -- (\b.north);
+      \end{tikzpicture}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{itemize}
+        \item The OS is a stack of \key{layers}; layer $i$ uses only the
+          operations of layers below $i$.
+        \item \good{Debug bottom-up}: once layer $i-1$ is verified, a bug
+          found while testing layer $i$ must be in layer $i$.
+        \item Each layer hides its data structures from the layers above.
+      \end{itemize}
+      \vspace{0.1cm}
+      \muted{Silberschatz et al., Ch.~2 \S2.7, pp.~70--76; Stallings,
+      Ch.~2 \S2.3, p.~64.}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Worked Example: Where Does the Backing-Store Driver Go?}
+  \begin{itemize}
+    \item \key{Rule:} if A calls B, then B must be in a \emph{lower} layer than
+      A.
+  \end{itemize}
+  \vspace{0.1cm}
+  \begin{enumerate}
+    \item Memory management swaps pages to disk $\Rightarrow$ it calls the
+      backing-store driver $\Rightarrow$ \textbf{driver below memory
+      management}.
+    \item The driver waits for I/O, and the CPU should run someone else
+      meanwhile $\Rightarrow$ it calls the CPU scheduler $\Rightarrow$
+      \textbf{scheduler below driver}.
+    \item But on a large system the scheduler's tables may not fit in memory
+      and must be swapped $\Rightarrow$ the scheduler calls the driver
+      $\Rightarrow$ \textbf{driver below scheduler}.
+  \end{enumerate}
+  \vspace{0.1cm}
+  \begin{alertblock}{Result}
+    Steps 2 and 3 demand opposite orders. Choosing the layers requires careful
+    planning, and some dependencies have no clean order at all.
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}{Layered Approach: The Costs}
+  \begin{itemize}
+    \item \key{Defining the layers is hard} --- the previous slide's cycle is
+      typical.
+    \item \key{Each layer adds overhead}: a request from the top passes through
+      every layer below it, each adding a call and possibly copying
+      parameters.
+    \item A system call that needs I/O traverses I/O $\to$ memory $\to$
+      scheduling $\to$ hardware, even when a direct path would do.
+  \end{itemize}
+  \vspace{0.2cm}
+  \begin{exampleblock}{Running Example 2: the bad driver, layered}
+    Layering organizes code; it does not change privilege. The driver layer
+    still runs in kernel mode, so the \texttt{NULL} dereference still
+    \bad{crashes the whole kernel}. The win is finding the bug sooner, not
+    surviving it.
+  \end{exampleblock}
+  \muted{Modern systems use fewer, more functional layers to keep the benefits
+  without the cost.}
+\end{frame}
+
+\transitionslide{If kernel mode is where one bug becomes everyone's bug, put as little as possible in kernel mode.}
+
+% =============================================================================
+% ACT 5 --- MICROKERNEL
+% =============================================================================
+\section{Microkernels}
+
+% Diagram: microkernel. Three user-mode boxes on top; a dashed boundary line;
+% the microkernel box below; hardware at the bottom. Two arrows show one
+% message: application -> kernel (send), kernel -> file server (deliver).
+% Coordinates: (x, y)
+%   app at (-3.6, 1.30)  2.6cm x 0.70cm  -- application (user mode)
+%   fs  at ( 0.0, 1.30)  2.6cm x 0.70cm  -- file server (user mode)
+%   drv at ( 3.6, 1.30)  2.6cm x 0.70cm  -- device driver (user mode)
+%   boundary: dashed line y = 0.55 from x = -5.2 to 5.2; labels above/below
+%   it at x = -5.2 (left-anchored text sits left of app box? no: labels at
+%   x = 5.3, left-anchored, right of everything)
+%   mk  at (0,-0.25)  10.0cm x 0.80cm -- microkernel
+%   hw  at (0,-1.20)  10.0cm x 0.50cm -- hardware
+%   arrow 1: (-3.6,0.95) -> (-3.6,0.15)  app.south down into mk top
+%   arrow 2: (-0.6,0.15) -> (-0.6,0.95)  mk top up into fs.south (left part)
+%   labels "send" at (-3.35,0.55) left-anchored? -> placed at (-3.0,0.75),
+%   "deliver" at (-0.35,0.75): both 0.25cm right of their arrow, above the
+%   dashed line (y 0.55) by 0.2cm, below the boxes' bottom (0.95) by 0.2cm.
+\begin{frame}{Microkernel Structure}
+  \centering
+  \begin{tikzpicture}[every node/.style={font=\footnotesize},
+      us/.style={draw=primary-blue, fill=light-bg, minimum width=2.6cm,
+                 minimum height=0.70cm, align=center},
+      kb/.style={draw=primary-gold, fill=white, minimum width=10.0cm,
+                 align=center}]
+    \node[us] (app) at (-3.6, 1.30) {Application};
+    \node[us] (fs)  at ( 0.0, 1.30) {File server};
+    \node[us] (drv) at ( 3.6, 1.30) {Device driver};
+    \draw[dashed, draw=negative] (-5.0,0.55) -- (5.0,0.55);
+    \node[anchor=west, text=negative] at (5.1,0.75) {user mode};
+    \node[anchor=west, text=negative] at (5.1,0.35) {kernel mode};
+    \node[kb, minimum height=0.80cm] (mk) at (0,-0.25)
+      {\textbf{Microkernel:} message passing (IPC), basic memory management,
+      CPU scheduling};
+    \node[kb, minimum height=0.50cm, draw=primary-blue, fill=light-bg] (hw)
+      at (0,-1.20) {Hardware};
+    \draw[observed-edge] (-3.6,0.95) -- (-3.6,0.15);
+    \draw[observed-edge] (-0.6,0.15) -- (-0.6,0.95);
+    \node[anchor=west, text=primary-gold] at (-3.4,0.75) {send};
+    \node[anchor=west, text=primary-gold] at (-0.4,0.75) {deliver};
+  \end{tikzpicture}
+  \vspace{0.15cm}
+  \begin{itemize}
+    \item Move everything nonessential --- file systems, drivers, networking
+      --- into \key{user-level servers}.
+    \item Clients and servers never call each other directly: they exchange
+      \key{messages} through the microkernel.
+  \end{itemize}
+  \muted{Mach (CMU, mid-1980s), QNX. Silberschatz et al., Ch.~2 \S2.7;
+  Stallings, Ch.~4 \S4.3, p.~179.}
+\end{frame}
+
+\begin{frame}{Worked Example: Count the Boundary Crossings}
+  \small
+  \textbf{Task:} the application reads a file block. Count traps (each trap =
+  one user$\to$kernel entry + one kernel$\to$user return = 2 crossings).
+  \vspace{0.1cm}
+  \begin{enumerate}
+    \item \textbf{Monolithic:} one \texttt{read} trap; the file system and
+      driver are kernel functions. $\Rightarrow$ \textbf{1 trap, 2 crossings}.
+    \item \textbf{Microkernel, file server only:} app $\to$ server (send: 1
+      trap), server $\to$ app (reply: 1 trap). $\Rightarrow$ \textbf{2 traps,
+      4 crossings}.
+    \item \textbf{Microkernel, file server + driver server:} app$\to$fs,
+      fs$\to$drv, drv$\to$fs, fs$\to$app. $\Rightarrow$ \textbf{4 traps,
+      8 crossings}.
+  \end{enumerate}
+  \vspace{0.1cm}
+  \begin{exampleblock}{General pattern (our counting model)}
+    A request that passes through a chain of $k$ servers and back costs $2k$
+    message traps, i.e.\ $4k$ crossings, versus 2 crossings for a monolithic
+    call. With $k=2$ that is four times as many.
+  \end{exampleblock}
+  \muted{Each message may also be copied between address spaces --- the
+  ``system-function overhead'' that makes microkernels slower.}
+\end{frame}
+
+\begin{frame}{Microkernel: Benefits, Costs, and the Bad Driver}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \textbf{Benefits}
+      \begin{itemize}
+        \item \good{Extensible}: a new service is a new user-level server;
+          the kernel is untouched.
+        \item \good{Portable}: little hardware-specific code in the kernel.
+        \item \good{Reliable and secure}: most services run as user
+          processes.
+      \end{itemize}
+      \textbf{Cost}
+      \begin{itemize}
+        \item \bad{Performance}: messages and extra crossings for every
+          service request.
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{exampleblock}{Running Example 3}
+        The driver is a \emph{user process}. The \texttt{NULL} dereference
+        causes an ordinary page fault; the kernel terminates that process
+        only, and can restart it.\\[0.3em]
+        \good{Blast radius: the network driver.} Other processes keep
+        running.
+      \end{exampleblock}
+    \end{column}
+  \end{columns}
+  \vspace{0.15cm}
+  \muted{Stallings, Ch.~4 \S4.3, p.~179 lists further benefits (uniform
+  interfaces, flexibility, distributed-system support).}
+\end{frame}
+
+\begin{frame}{Socratic Check 2}
+  \begin{block}{Question}
+    Windows NT began with a layered microkernel design and later moved more
+    services back into the kernel. What problem were its designers most
+    likely solving?
+  \end{block}
+  \vspace{0.25cm}
+  \begin{itemize}
+    \item The cost of the microkernel design: every service request became
+      messages and extra mode switches.
+    \item Moving services into kernel space turns messages back into function
+      calls --- faster.
+    \item The price is the isolation the previous slide bought: a bug in a
+      moved service can again crash the kernel.
+  \end{itemize}
+  \muted{Silberschatz et al., Ch.~2 \S2.7 discusses this history.}
+\end{frame}
+
+% =============================================================================
+% ACT 6 --- MODULES AND HYBRIDS
+% =============================================================================
+\section{Modules and Hybrid Systems}
+
+\begin{frame}{Loadable Kernel Modules}
+  \begin{itemize}
+    \item A small \key{core kernel} plus \key{loadable modules} linked in at
+      boot time or at run time --- without recompiling the kernel.
+    \item Each module has a defined interface, like a layer --- but any module
+      may call any other, like a microkernel's servers --- yet no messages
+      are needed, because all run in kernel mode.
+  \end{itemize}
+  \vspace{0.1cm}
+  \begin{block}{Solaris: core kernel and seven module types}
+    scheduling classes \textbullet{} file systems \textbullet{} loadable
+    system calls \textbullet{} executable formats \textbullet{} STREAMS
+    modules \textbullet{} miscellaneous \textbullet{} device and bus drivers
+  \end{block}
+  \muted{Silberschatz et al., Ch.~2 \S2.7, pp.~70--76. Linux is monolithic
+  with loadable modules: Bovet \& Cesati, Ch.~1, pp.~1--34.}
+\end{frame}
+
+\begin{frame}{Hybrid Systems and the Bad Driver as a Module}
+  \begin{itemize}
+    \item Real kernels mix structures to balance speed against isolation:
+      \begin{itemize}
+        \item \key{Linux}: monolithic, plus loadable modules.
+        \item \key{Mac OS X}: a Mach microkernel combined with a BSD kernel
+          environment, plus loadable kernel extensions.
+        \item \key{Windows}: largely monolithic for performance, with
+          microkernel-style user-mode subsystems.
+      \end{itemize}
+  \end{itemize}
+  \vspace{0.1cm}
+  \begin{exampleblock}{Running Example 4: the bad driver as a module}
+    \texttt{insmod netdrv.ko} links the driver into the running kernel ---
+    in \key{kernel mode}. The \texttt{NULL} dereference \bad{crashes the
+    kernel}, exactly as in the monolithic case. Modules buy
+    \emph{flexibility} (load, unload, update without reboot), not
+    \emph{isolation}.
+  \end{exampleblock}
+\end{frame}
+
+\transitionslide{Push the isolation idea one level further: run the entire operating system as a guest, on hardware that is itself simulated.}
+
+% =============================================================================
+% ACT 7 --- VIRTUAL MACHINES
+% =============================================================================
+\section{Virtual Machines}
+
+% Diagram: virtual machines. Hardware at the bottom; the virtual-machine
+% manager above it; three guest columns, each a kernel box with a processes
+% box on top.
+% Coordinates: (x, y)
+%   hw  at (0,-1.55)  9.6cm x 0.50cm -- hardware
+%   vmm at (0,-0.85)  9.6cm x 0.55cm -- virtual-machine manager (hypervisor)
+%   k1/k2/k3 at (-3.25|0|3.25, -0.10)  3.0cm x 0.55cm -- guest kernels
+%   p1/p2/p3 at (-3.25|0|3.25,  0.60)  3.0cm x 0.55cm -- guest processes
+%   column centres 3.25 apart; 0.25cm horizontal gap between 3.0cm boxes;
+%   >= 0.15cm vertical gap between rows. No paths.
+\begin{frame}{The Virtual-Machine Idea}
+  \centering
+  \begin{tikzpicture}[every node/.style={font=\footnotesize},
+      gb/.style={draw=primary-blue, fill=light-bg, minimum width=3.0cm,
+                 minimum height=0.55cm, align=center},
+      wd/.style={draw=primary-gold, fill=white, minimum width=9.6cm,
+                 align=center}]
+    \node[gb] (p1) at (-3.25, 0.60) {processes};
+    \node[gb] (p2) at ( 0.00, 0.60) {processes};
+    \node[gb] (p3) at ( 3.25, 0.60) {processes};
+    \node[gb, fill=white] (k1) at (-3.25,-0.10) {kernel (VM 1)};
+    \node[gb, fill=white] (k2) at ( 0.00,-0.10) {kernel (VM 2)};
+    \node[gb, fill=white] (k3) at ( 3.25,-0.10) {kernel (VM 3)};
+    \node[wd, minimum height=0.55cm] (vmm) at (0,-0.85)
+      {Virtual-machine manager (hypervisor)};
+    \node[wd, minimum height=0.50cm, draw=primary-blue, fill=light-bg] (hw)
+      at (0,-1.55) {Hardware};
+  \end{tikzpicture}
+  \vspace{0.2cm}
+  \begin{itemize}
+    \item The \key{virtual-machine manager} gives each guest the illusion of
+      its own processor, memory, and devices.
+    \item Each guest runs a full, unmodified operating system --- possibly a
+      different one in each VM.
+  \end{itemize}
+  \muted{IBM VM/370 (1972), VMware, Java Virtual Machine. Silberschatz et al.,
+  Ch.~2 \S2.8, p.~76.}
+\end{frame}
+
+\begin{frame}{Virtual Machines: Benefits and the Bad Driver}
+  \begin{itemize}
+    \item \good{Isolation}: each VM is protected from the others; a virus in
+      one cannot reach another directly.
+    \item \good{System development}: test a new kernel in a VM without
+      disrupting normal work on the same machine.
+    \item \good{Consolidation}: several lightly used servers become VMs on one
+      physical machine.
+    \item \bad{Cost}: the guest kernel itself runs in a de-privileged mode, so
+      privileged operations must be trapped and emulated by the manager.
+  \end{itemize}
+  \vspace{0.15cm}
+  \begin{exampleblock}{Running Example 5}
+    The driver runs in the \emph{guest} kernel of VM 1. The guest panics ---
+    \bad{all of VM 1 is lost} --- but the manager and VMs 2 and 3
+    \good{keep running}. Blast radius: one virtual machine.
+  \end{exampleblock}
+  \muted{Silberschatz et al., Ch.~2 \S2.8, p.~76.}
+\end{frame}
+
+% =============================================================================
+% ACT 8 --- COMPARISON AND WRAP-UP
+% =============================================================================
+\section{Comparison}
+
+\begin{frame}{One Driver Bug, Five Structures}
+  \centering
+  \footnotesize
+  \renewcommand{\arraystretch}{1.3}
+  \begin{tabular}{L{0.14\textwidth}L{0.15\textwidth}L{0.16\textwidth}L{0.17\textwidth}L{0.18\textwidth}}
+    \textbf{Structure} & \textbf{Driver runs in} & \textbf{Bug's blast radius}
+      & \textbf{Speed} & \textbf{Main strength} \\
+    \hline
+    Monolithic & kernel mode & whole machine & fastest (calls)
+      & performance \\
+    Layered & kernel mode & whole machine & layer overhead
+      & bottom-up debugging \\
+    Microkernel & user mode & the driver only & messages, $4k$ crossings
+      & isolation, extensibility \\
+    Modular & kernel mode & whole machine & near monolithic
+      & load at run time \\
+    Virtual machine & guest kernel & one VM & trap-and-emulate
+      & isolates whole OSes \\
+  \end{tabular}
+  \vspace{0.3cm}
+  \begin{alertblock}{The pattern}
+    Isolation is bought with boundary crossings. Every structure picks a point
+    on that trade-off.
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}{Socratic Check 3}
+  \begin{block}{Question}
+    An aircraft flight-control computer must keep running even if its
+    network-logging driver fails. Which structure would you choose, and what
+    performance price do you accept?
+  \end{block}
+  \vspace{0.25cm}
+  \begin{itemize}
+    \item A \key{microkernel}: the logging driver runs as a user-level server,
+      so its failure cannot take down the control software.
+    \item The price: every driver request is a message --- with a chain of $k$
+      servers, $4k$ crossings instead of 2.
+    \item This is why microkernels such as QNX are common in embedded and
+      real-time systems.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Common Misconceptions}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{block}{Wrong}
+        \begin{itemize}
+          \item ``The shell is part of the kernel.''
+          \item ``Layered means the upper layers run in user mode.''
+          \item ``Loadable modules isolate drivers.''
+          \item ``Microkernels are faster because the kernel is small.''
+        \end{itemize}
+      \end{block}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{block}{Right}
+        \begin{itemize}
+          \item The shell is a system program in user mode.
+          \item Layering organizes code; privilege is unchanged.
+          \item Modules run in kernel mode; a bug crashes the kernel.
+          \item Messages add crossings; microkernels trade speed for
+            isolation.
+        \end{itemize}
+      \end{block}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Takeaways}
+  \begin{itemize}
+    \item \key{System programs} (file management, status, file modification,
+      language support, loading, communications) run in user mode on top of
+      system calls.
+    \item Separate \key{mechanism} (how) from \key{policy} (what).
+    \item \key{Monolithic}: fast, one address space, one bug crashes all.
+      \key{Layered}: clean debugging, hard layer ordering, overhead.
+    \item \key{Microkernel}: minimal kernel, services as user-level servers,
+      isolation paid for in message crossings.
+    \item \key{Modular}: run-time flexibility, still kernel mode.
+      \key{Virtual machine}: isolates entire operating systems.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Next: The Process}
+  \begin{itemize}
+    \item Today: what runs above the system-call interface, and how the kernel
+      below it is organized.
+    \item Next lecture: the unit every one of these structures manages --- the
+      \key{process}, and the kernel record that describes it, the
+      \key{process control block}.
+  \end{itemize}
+  \vspace{0.3cm}
+  \begin{block}{Reading}
+    Silberschatz et al., \emph{Operating System Concepts}, Ch.~3 \S3.1
+    \cite{SilberschatzOSC_operating_system_concepts}; Stallings,
+    \emph{Operating Systems: Internals and Design Principles}, Ch.~3
+    \S3.1--3.3 \cite{StallingsOS_internals_design_principles}.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Further Reading (Page-Cited)}
+  \footnotesize
+  \begin{itemize}
+    \item A.~Silberschatz, P.~B.~Galvin, G.~Gagne, \emph{Operating System
+      Concepts}, 8e --- Ch.~2 \S2.5 (system programs, p.~66), \S2.6 (design
+      and implementation), \S2.7 (OS structure, pp.~70--76), \S2.8 (virtual
+      machines, p.~76); \S2.5--2.8 span pp.~66--84.
+    \item W.~Stallings, \emph{Operating Systems: Internals and Design
+      Principles}, 6e --- Ch.~2 \S2.3 (system structure, p.~64) and Ch.~4
+      \S4.3 (microkernels, p.~179).
+    \item D.~P.~Bovet \& M.~Cesati, \emph{Understanding the Linux Kernel}, 3e
+      --- Ch.~1 (kernel architecture: monolithic with loadable modules,
+      pp.~1--34) \cite{BovetCesati_understanding_linux_kernel}.
+  \end{itemize}
+  \vspace{0.2cm}
+  \muted{Page-verified via each book's \texttt{index.md} under
+  \texttt{master\_supporting\_docs/CS502/supporting\_books/}.}
+\end{frame}
+
+\begin{frame}[allowframebreaks]{References}
+  \footnotesize\sloppy
+  \bibliographystyle{plain}
+  \bibliography{../../Bibliography_base}
+\end{frame}
+
+\end{document}
