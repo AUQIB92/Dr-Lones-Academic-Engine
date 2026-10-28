@@ -1,0 +1,75 @@
+% =============================================================================
+% CompetitiveExam/CS502/09-cpu-scheduling-advanced-questions.tex
+% Competitive Exam Practice 9 — GATE (Computer Science) Pattern
+% Priority, Round Robin, Multilevel Queues, and Multiprocessor Scheduling
+%
+% Student-facing — NO answers. Answer key: 09-cpu-scheduling-advanced-answers.tex.
+% Provenance: ALL questions are Original (GATE-pattern). No item is attributed
+% to a past GATE paper and no year/question number is claimed. Every numerical
+% answer was checked with a discrete-event scheduling simulator.
+%
+% Source of truth: Slides/CS502/09-cpu-scheduling-advanced.tex and
+% Notes/CS502/09-cpu-scheduling-advanced-notes.tex.
+%
+% Compile with: cd CompetitiveExam/CS502 &&
+%   TEXINPUTS=../../Preambles:$TEXINPUTS xelatex -interaction=nonstopmode 09-cpu-scheduling-advanced-questions.tex
+% =============================================================================
+
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\input{../../Preambles/header}
+\coursecode{CS502}
+\renewcommand{\thesection}{9.\arabic{section}}
+
+\title{Competitive Exam Practice 9: Priority, Round Robin,\\Multilevel Queues, and Multiprocessor Scheduling\\\large GATE (Computer Science) Pattern}
+\author{Auqib Hamid Lone\\[0.3em]
+  \emph{Department of Computer Science \& Engineering}, \emph{GCET Ganderbal}}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\noindent Each question carries 1--2 marks. MCQ = single correct option; NAT = Numerical Answer Type. Unless stated otherwise: times are in ms, a lower priority number means higher priority, ties go to the earlier arrival, context-switch time is zero, and in RR a process arriving at the instant a quantum expires joins the ready queue before the preempted process. \emph{All questions in this set are original, written in the GATE pattern; none is claimed to be a past-year question.}
+
+\begin{enumerate}
+\item[\textbf{Q1}] \textit{[Original, GATE-pattern]} \textbf{[MCQ, 1 mark]} If the time quantum of a Round Robin scheduler is made larger than the longest CPU burst of every process, the scheduler behaves exactly like:
+\begin{enumerate}
+  \item[(A)] SJF \quad (B) FCFS \quad (C) SRTF \quad (D) non-preemptive priority
+\end{enumerate}
+
+\item[\textbf{Q2}] \textit{[Original, GATE-pattern]} \textbf{[MCQ, 1 mark]} Which statement is \textbf{TRUE}?
+\begin{enumerate}
+  \item[(A)] In a multilevel queue scheduler, a process that uses its full quantum is moved to a lower queue
+  \item[(B)] Aging prevents starvation by gradually raising the priority of processes that wait a long time
+  \item[(C)] Preemptive priority scheduling cannot cause starvation
+  \item[(D)] Increasing the RR quantum always reduces the average waiting time
+\end{enumerate}
+
+\item[\textbf{Q3}] \textit{[Original, GATE-pattern]} \textbf{[NAT, 2 marks]} Four processes are scheduled with \emph{preemptive} priority scheduling:
+\begin{center}
+\begin{tabular}{lccc}
+Process & Arrival & Burst & Priority\\ \hline
+P1 & 0 & 5 & 2\\ P2 & 1 & 3 & 1\\ P3 & 2 & 8 & 4\\ P4 & 3 & 2 & 3\\
+\end{tabular}
+\end{center}
+The average waiting time (in ms, to two decimal places) is \underline{\hspace{2cm}}.
+
+\item[\textbf{Q4}] \textit{[Original, GATE-pattern]} \textbf{[NAT, 2 marks]} Four processes P1--P4 arrive at times 0, 1, 2, 3 with CPU bursts 5, 3, 1, 4 respectively and are scheduled by Round Robin with a quantum of 2. The average turnaround time (in ms, to two decimal places) is \underline{\hspace{2cm}}.
+
+\item[\textbf{Q5}] \textit{[Original, GATE-pattern]} \textbf{[NAT, 2 marks]} An MLFQ has three queues: $Q_0$ (RR, $q=2$), $Q_1$ (RR, $q=4$), $Q_2$ (FCFS). New processes enter $Q_0$; a process that uses its full quantum is demoted; a higher queue preempts a lower one, and a preempted process returns to the tail of its own queue. P1 (arrival 0, burst 7), P2 (arrival 2, burst 4), and P3 (arrival 5, burst 1) are scheduled. The completion time of P1 is \underline{\hspace{2cm}}.
+
+\item[\textbf{Q6}] \textit{[Original, GATE-pattern]} \textbf{[NAT, 1 mark]} Ten processes are in an RR ready queue with a time quantum of 20 ms. Ignoring context-switch time, the maximum time (in ms) a process may wait before its next quantum begins is \underline{\hspace{2cm}}.
+
+\item[\textbf{Q7}] \textit{[Original, GATE-pattern]} \textbf{[NAT, 1 mark]} An RR scheduler uses a quantum of 4 ms and every context switch costs 1 ms. For CPU-bound processes whose bursts all exceed the quantum, the percentage of CPU time spent on useful work is \underline{\hspace{2cm}}.
+
+\item[\textbf{Q8}] \textit{[Original, GATE-pattern]} \textbf{[NAT, 2 marks]} Six jobs with CPU times 8, 3, 6, 2, 5, 4 ms (in this order) are all ready at time 0 on a two-CPU SMP system with a common ready queue: whenever a CPU becomes free it takes the next job in order (the lower-numbered CPU on ties). The time at which all jobs complete is \underline{\hspace{2cm}}.
+
+\item[\textbf{Q9}] \textit{[Original, GATE-pattern]} \textbf{[MCQ, 1 mark]} Which statement about multiprocessor scheduling is \textbf{FALSE}?
+\begin{enumerate}
+  \item[(A)] Processor affinity exists because migrating a process loses its warm cache contents
+  \item[(B)] In pull migration an idle CPU takes a waiting process from a busy CPU's queue
+  \item[(C)] In asymmetric multiprocessing every CPU runs its own scheduler on shared kernel data
+  \item[(D)] Per-CPU ready queues avoid contention for a single shared queue lock
+\end{enumerate}
+\end{enumerate}
+\end{document}

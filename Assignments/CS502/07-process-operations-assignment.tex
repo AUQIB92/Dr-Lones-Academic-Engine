@@ -1,0 +1,92 @@
+% =============================================================================
+% Assignments/CS502/07-process-operations-assignment.tex
+% Assignment 7: Operations on Processes
+%
+% Student set — NO answers. Solution key: 07-process-operations-solutions.tex
+% (gitignored, never published). Sourced from Slides/CS502/07-process-operations.tex
+% and Notes/CS502/07-process-operations-notes.tex; every problem reuses the
+% deck's notation and extends its worked examples to new programs and traces.
+% All fork() counts in the key were verified by compiling and running the
+% programs (gcc) on 2026-10-29.
+%
+% Compile with: cd Assignments/CS502 &&
+%   TEXINPUTS=../../Preambles:$TEXINPUTS xelatex -interaction=nonstopmode 07-process-operations-assignment.tex
+%   BIBINPUTS=../..:$BIBINPUTS bibtex 07-process-operations-assignment
+%   TEXINPUTS=../../Preambles:$TEXINPUTS xelatex -interaction=nonstopmode 07-process-operations-assignment.tex (x2)
+%   (Windows/MiKTeX uses ; not : as the path separator)
+% =============================================================================
+
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\input{../../Preambles/header}
+\coursecode{CS502}
+\renewcommand{\thesection}{7.\arabic{section}}
+
+\setlength{\emergencystretch}{2.5em}
+
+\title{Assignment 7: Operations on Processes}
+\author{Auqib Hamid Lone\\[0.3em]
+  \emph{Department of Computer Science \& Engineering}, \emph{GCET Ganderbal}}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\noindent\textbf{Deadline:} \key{two weeks from the date of issue} --- there is no automatic late penalty; if you need more time, ask before the deadline and an extension will be granted (see the course policy in the syllabus).
+
+\noindent Answer every question. Show all working for Numerical and Design questions --- a bare final answer without the derivation (for a \texttt{fork} count: without the process tree) earns partial credit only. Assume every \texttt{fork} succeeds, every \texttt{printf} is followed by a flush unless the question says otherwise, and all headers are included.
+
+\noindent\textbf{Reading:} Silberschatz et al., \emph{Operating System Concepts}, Ch.~3 \S3.3, pp.~110--116 \cite{SilberschatzOSC_operating_system_concepts}; Bovet \& Cesati, \emph{Understanding the Linux Kernel}, Ch.~3, pp.~79--130 and Ch.~20, pp.~808--834 \cite{BovetCesati_understanding_linux_kernel}.
+
+\section{Conceptual}
+
+\textbf{Q1.} Every operating system must decide three things when a parent creates a child \cite{SilberschatzOSC_operating_system_concepts}.
+\begin{enumerate}
+  \item[(a)] Name the three decisions and state, for each, the options available.
+  \item[(b)] Explain how UNIX answers the address-space decision in two calls, and how Windows answers it in one. Where, in each design, does the program that the child will run get its customization (for example, a redirected standard input)?
+  \item[(c)] A shell must run \texttt{sort < data.txt}. List, in order, the calls the shell and the child make, and explain why the redirection must happen \emph{between} \texttt{fork} and \texttt{exec} and not before the \texttt{fork} or after the \texttt{exec}.
+  \item[(d)] \texttt{fork} appears to copy the entire address space only for \texttt{exec} to discard it. Explain why this is not expensive on a modern kernel.
+\end{enumerate}
+
+\textbf{Q2.} A parent P creates a child C at time $t = 0$. C calls \texttt{exit(3)} at $t = 2$\,s. P sleeps until $t = 10$\,s and then calls \texttt{waitpid} on C.
+\begin{enumerate}
+  \item[(a)] State C's condition at $t = 1$\,s, $t = 5$\,s, and $t = 11$\,s. At $t = 5$\,s, which of C's resources have been released and which kernel record remains, and why?
+  \item[(b)] What value does \texttt{WEXITSTATUS} report to P, and what does \texttt{waitpid} return?
+  \item[(c)] Now suppose P instead exits at $t = 1$\,s without waiting, and C runs until $t = 2$\,s. Name C's condition at $t = 1.5$\,s, state who its parent is, and who reaps it.
+  \item[(d)] On a system that enforces cascading termination, what would have happened to C in part (c)?
+\end{enumerate}
+
+\section{Numerical}
+
+\textbf{Q3.} For each fragment, give the number of lines printed and the total number of processes (including the original), and draw the process tree. Each fragment is the entire body of \texttt{main}, followed by code that reaps all children.
+\begin{enumerate}
+  \item[(a)] \texttt{for (i = 0; i < 5; i++) fork(); printf("p\textbackslash n");} \quad Also state the number of new children.
+  \item[(b)] \texttt{for (i = 0; i < 2; i++) \{ if (fork()) printf("P\textbackslash n"); else printf("C\textbackslash n"); \}} \quad Give the counts of \texttt{P} and \texttt{C} lines separately.
+  \item[(c)] \texttt{fork() || fork(); printf("q\textbackslash n");}
+  \item[(d)] \texttt{fork(); fork() \&\& fork(); printf("r\textbackslash n");}
+\end{enumerate}
+
+\textbf{Q4.} Buffering and bookkeeping change the numbers.
+\begin{enumerate}
+  \item[(a)] With \emph{no} flush anywhere, the fragment \texttt{printf("A"); fork(); fork(); printf("B\textbackslash n");} runs with standard output redirected to a file. How many \texttt{A} characters and how many \texttt{B} characters does the file contain? Explain, and give the change that makes exactly one \texttt{A} appear.
+  \item[(b)] A server forks one child per request at a steady 50 requests per second and never calls \texttt{wait}. Each child exits within 10\,ms. The system allows at most 32{,}768 processes (zombies included), and 300 entries are already in use when the server starts. Assuming no other processes are created or reaped, after how many whole seconds does \texttt{fork} first fail? How much memory do the accumulated zombies hold in their address spaces at that point?
+\end{enumerate}
+
+\section{Design}
+
+\textbf{Q5.} You must create three child processes in two different shapes.
+\begin{enumerate}
+  \item[(a)] \emph{Fan:} write a loop in C in which one parent creates exactly three children, each child prints its pid and exits immediately, and the parent then reaps all three. Draw the tree and explain what goes wrong if the child does \emph{not} call \texttt{exit} inside the loop body (give the resulting process count).
+  \item[(b)] \emph{Chain:} write a loop in which each new process creates exactly one child, so that the result is a chain of four processes (original plus three descendants). Draw the tree, and state which process each process waits for.
+\end{enumerate}
+
+\textbf{Q6.} A parent must run three workers and combine their results.
+\begin{enumerate}
+  \item[(a)] Worker $i$ ($i = 0, 1, 2$) computes a small result and must report it to the parent. Explain why the worker cannot store the result in a global variable for the parent to read, and which mechanism from this lecture it can use instead. State the range of values that mechanism can carry.
+  \item[(b)] Write the C code: the parent forks the three workers, worker $i$ terminates with status $i+1$, and the parent loops on \texttt{wait} until no children remain, summing \texttt{WEXITSTATUS} for every child that exited normally. State the printed sum.
+  \item[(c)] Modify the design so that the parent prints the results in the order $i = 0, 1, 2$ regardless of which worker finishes first. Which call do you use, and what must the parent record when it forks?
+\end{enumerate}
+
+\bibliography{../../Bibliography_base}
+\bibliographystyle{plain}
+\end{document}

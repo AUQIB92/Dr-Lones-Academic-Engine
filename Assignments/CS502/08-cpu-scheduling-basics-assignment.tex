@@ -1,0 +1,95 @@
+% =============================================================================
+% Assignments/CS502/08-cpu-scheduling-basics-assignment.tex
+% Assignment 8: CPU Scheduling --- Concepts, Criteria, FCFS and SJF
+%
+% Student set — NO answers. Solution key: 08-cpu-scheduling-basics-solutions.tex (never published).
+% Sourced from Slides/CS502/08-cpu-scheduling-basics.tex; every problem reuses
+% the deck's notation (AT, tau, CT, TAT, WT, RT; hat-tau for a prediction) and
+% extends its worked examples to new workloads. Every schedule and number was
+% verified with a simulator (FCFS, non-preemptive SJF, SRTF; no ties occur).
+%
+% Compile with: cd Assignments/CS502 &&
+%   TEXINPUTS=../../Preambles:$TEXINPUTS xelatex -interaction=nonstopmode 08-cpu-scheduling-basics-assignment.tex
+%   BIBINPUTS=../..:$BIBINPUTS bibtex 08-cpu-scheduling-basics-assignment
+%   TEXINPUTS=../../Preambles:$TEXINPUTS xelatex -interaction=nonstopmode 08-cpu-scheduling-basics-assignment.tex (x2)
+%   (Windows/MiKTeX uses ; not : as the path separator)
+% =============================================================================
+
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\input{../../Preambles/header}
+\coursecode{CS502}
+\renewcommand{\thesection}{8.\arabic{section}}
+
+\setlength{\emergencystretch}{2.5em}
+
+\title{Assignment 8: CPU Scheduling --- Concepts, Criteria, FCFS and SJF}
+\author{Auqib Hamid Lone\\[0.3em]
+  \emph{Department of Computer Science \& Engineering}, \emph{GCET Ganderbal}}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\noindent\textbf{Deadline:} \key{two weeks from the date of issue} --- there is no automatic late penalty; if you need more time, ask before the deadline and an extension will be granted (see the course policy in the syllabus).
+
+\noindent Answer every question. Show all working for Numerical and Design questions --- a bare final answer without the Gantt chart and the derivation earns partial credit only. All times are in milliseconds. Use $\mathrm{TAT} = \mathrm{CT} - \mathrm{AT}$, $\mathrm{WT} = \mathrm{TAT} - \tau$, $\mathrm{RT} = \mathrm{ST} - \mathrm{AT}$.
+
+\noindent\textbf{Reading:} Silberschatz et al., \emph{Operating System Concepts}, Ch.~5 \S5.1--5.3.2, pp.~183--192 \cite{SilberschatzOSC_operating_system_concepts}; Stallings, \emph{Operating Systems: Internals and Design Principles}, Ch.~9 \S9.1--9.2, pp.~406ff.\ \cite{StallingsOS_internals_design_principles}.
+
+\section{Conceptual}
+
+\textbf{Q1.} Scheduling decisions, preemption, and the dispatcher \cite{SilberschatzOSC_operating_system_concepts}.
+\begin{enumerate}
+  \item[(a)] List the four circumstances under which a CPU-scheduling decision may be needed. For each, say whether a non-preemptive scheduler must make a decision there.
+  \item[(b)] A process is running when (i) it calls \texttt{wait} for a child, (ii) a timer interrupt fires, (iii) a disk read issued earlier by another process completes, (iv) it calls \texttt{exit}. For each event, name the state transition and state whether FCFS, non-preemptive SJF, and SRTF may change the running process at that moment.
+  \item[(c)] Name the three things the dispatcher does, and explain why a policy that switches more often lowers CPU utilization even when every process is ready all the time.
+  \item[(d)] Explain why preemption creates a problem that non-preemptive scheduling avoids, with reference to shared data.
+\end{enumerate}
+
+\textbf{Q2.} FCFS, SJF, and their failure modes.
+\begin{enumerate}
+  \item[(a)] Describe the convoy effect in terms of one CPU-bound and several I/O-bound processes. Explain why both the CPU and the I/O devices end up under-utilized.
+  \item[(b)] For $n$ processes all ready at time 0 run in the order $\tau_{(1)}, \ldots, \tau_{(n)}$, derive $\sum_i \mathrm{WT}_i = \sum_{k=1}^{n}(n-k)\tau_{(k)}$. Then show that swapping an adjacent long--short pair ($L$ then $S$, $L > S$) into short--long order lowers the sum by exactly $L - S$, and conclude that SJF minimizes average WT.
+  \item[(c)] Explain why SJF cannot be implemented exactly at the level of short-term scheduling, and what the scheduler uses instead.
+  \item[(d)] Explain starvation under SJF and SRTF, and why FCFS cannot starve a process.
+\end{enumerate}
+
+\section{Numerical}
+
+\textbf{Q3.} Five processes have (AT, $\tau$) in ms: \texttt{P1} $(0,4)$, \texttt{P2} $(1,2)$, \texttt{P3} $(3,1)$, \texttt{P4} $(10,2)$, \texttt{P5} $(11,5)$. Ties (if any) are broken by earlier arrival, and SRTF preempts only for a strictly shorter remaining time.
+\begin{enumerate}
+  \item[(a)] Draw the Gantt chart under FCFS, non-preemptive SJF, and SRTF. Mark idle intervals and arrivals.
+  \item[(b)] For each policy, tabulate CT, TAT, WT, and RT per process and give the averages.
+  \item[(c)] Compute the CPU utilization over $[0, \text{last completion}]$, ignoring dispatch latency. Why is it the same for all three policies?
+  \item[(d)] Count the dispatches made by each policy. With a dispatch latency of 0.5~ms per dispatch, how much CPU time does SRTF spend dispatching?
+\end{enumerate}
+
+\textbf{Q4.} Burst prediction and dispatch cost.
+\begin{enumerate}
+  \item[(a)] A process has $\hat{\tau}_0 = 6$~ms and $\alpha = 0.75$. Its first three measured CPU bursts are 10, 2, and 8~ms. Compute $\hat{\tau}_1$, $\hat{\tau}_2$, $\hat{\tau}_3$, showing each step.
+  \item[(b)] Repeat (a) with $\alpha = 0$ and with $\alpha = 1$, and state in one sentence what each extreme means.
+  \item[(c)] Expand $\hat{\tau}_3$ in terms of $\tau_0, \tau_1, \tau_2, \hat{\tau}_0$ for general $\alpha$ and verify that the weights sum to 1.
+\end{enumerate}
+
+\section{Design}
+
+\textbf{Q5.} The lab server receives five jobs, (AT, $\tau$) in ms: \texttt{P1} $(0,9)$, \texttt{P2} $(1,4)$, \texttt{P3} $(2,2)$, \texttt{P4} $(4,1)$, \texttt{P5} $(6,3)$. You must recommend a policy for this server.
+\begin{enumerate}
+  \item[(a)] Produce the FCFS, non-preemptive SJF, and SRTF schedules (Gantt charts and per-process tables).
+  \item[(b)] Build a comparison table of average WT, average TAT, average RT, and number of dispatches.
+  \item[(c)] With a dispatch latency of 0.5~ms, compute the CPU utilization of FCFS and of SRTF over the whole run.
+  \item[(d)] Identify which process is hurt most by SRTF relative to FCFS, explain why, and describe an arrival stream that would starve it.
+  \item[(e)] Recommend a policy for students who mostly submit short compile jobs but occasionally a long simulation. Justify your choice against the criteria of the lecture.
+\end{enumerate}
+
+\textbf{Q6.} SJF is only as good as its prediction.
+\begin{enumerate}
+  \item[(a)] Two processes are ready at time 0. The exponential average predicts 9~ms for \texttt{X} and 5~ms for \texttt{Y}; their actual next bursts are 3~ms and 7~ms. Give the order SJF chooses, the resulting average WT, and the average WT of the ideal order.
+  \item[(b)] Design a three-process workload, all arriving at different times, for which FCFS and non-preemptive SJF produce identical schedules. State the general condition that makes this happen.
+  \item[(c)] For the workload of Q5, design one additional process (give its AT and $\tau$) whose arrival makes SRTF preempt \texttt{P5}. Justify with the remaining times at the arrival instant.
+\end{enumerate}
+
+\bibliography{../../Bibliography_base}
+\bibliographystyle{plain}
+\end{document}

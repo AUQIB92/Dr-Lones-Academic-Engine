@@ -1,6 +1,6 @@
 course: CS502
 lab_mode: none            # source syllabus PCC CS-502 is L-T-P 3-0-0 — no practical component
-last_updated: 2026-10-17
+last_updated: 2026-10-29
 weeks:
   "01":
     deck: "01-intro-os-structure"
@@ -35,63 +35,63 @@ weeks:
   "04":
     deck: "04-system-programs-os-structure"
     stages:
-      slides:     { status: absent, score: null, note: "" }
-      notes:      { status: absent, score: null, note: "" }
-      assignment: { status: absent, score: null, note: "" }
+      slides:     { status: deployed, score: 100, note: "37 pp; XeLaTeX 3-pass clean; no overfull boxes or undefined citations; quality score 100/100" }
+      notes:      { status: deployed, score: null, note: "10 pp; derived from the deck; manual parity check (notes-critic agent unavailable)" }
+      assignment: { status: deployed, score: null, note: "assignment + solutions key present; solutions gitignored and excluded from docs/" }
       lab:        { status: skipped, score: null, note: "lab_mode: none" }
-      gate:       { status: absent, score: null, note: "" }
-      handout:    { status: absent, score: null, note: "" }
-      hub:        { status: absent, score: null, note: "" }
+      gate:       { status: deployed, score: null, note: "10 original GATE-pattern questions (6 MCQ, 4 NAT) + worked answers; no unverified PYQ claims" }
+      handout:    { status: built, score: null, note: "InstructorHandouts/CS502/04-system-programs-os-structure-instructor-handout.tex, 9 pp; instructor-only, never deployed to docs/" }
+      hub:        { status: deployed, score: null, note: "docs/courses/cs502/index.html updated: 9/39 published; tag + link checks pass" }
   "05":
     deck: "05-process-concept-pcb"
     stages:
-      slides:     { status: absent, score: null, note: "" }
-      notes:      { status: absent, score: null, note: "" }
-      assignment: { status: absent, score: null, note: "" }
+      slides:     { status: deployed, score: 100, note: "36 pp; XeLaTeX 3-pass clean; no overfull boxes or undefined citations; quality score 100/100" }
+      notes:      { status: deployed, score: null, note: "8 pp; derived from the deck; manual parity check (notes-critic agent unavailable)" }
+      assignment: { status: deployed, score: null, note: "assignment + solutions key present; solutions gitignored and excluded from docs/" }
       lab:        { status: skipped, score: null, note: "lab_mode: none" }
-      gate:       { status: absent, score: null, note: "" }
-      handout:    { status: absent, score: null, note: "" }
-      hub:        { status: absent, score: null, note: "" }
+      gate:       { status: deployed, score: null, note: "10 original GATE-pattern questions + worked answers; no unverified PYQ claims" }
+      handout:    { status: built, score: null, note: "InstructorHandouts/CS502/05-process-concept-pcb-instructor-handout.tex, 6 pp; instructor-only, never deployed to docs/" }
+      hub:        { status: deployed, score: null, note: "docs/courses/cs502/index.html updated: 9/39 published; tag + link checks pass" }
   "06":
     deck: "06-process-states-schedulers"
     stages:
-      slides:     { status: absent, score: null, note: "" }
-      notes:      { status: absent, score: null, note: "" }
-      assignment: { status: absent, score: null, note: "" }
+      slides:     { status: deployed, score: 100, note: "44 pp; XeLaTeX 3-pass clean; no overfull boxes or undefined citations; quality score 100/100" }
+      notes:      { status: deployed, score: null, note: "12 pp; derived from the deck; manual parity check (notes-critic agent unavailable)" }
+      assignment: { status: deployed, score: null, note: "assignment + solutions key present; solutions gitignored and excluded from docs/" }
       lab:        { status: skipped, score: null, note: "lab_mode: none" }
-      gate:       { status: absent, score: null, note: "" }
-      handout:    { status: absent, score: null, note: "" }
-      hub:        { status: absent, score: null, note: "" }
+      gate:       { status: deployed, score: null, note: "10 original GATE-pattern questions (5 MCQ, 5 NAT) + worked answers; no unverified PYQ claims" }
+      handout:    { status: built, score: null, note: "InstructorHandouts/CS502/06-process-states-schedulers-instructor-handout.tex, 8 pp; instructor-only, never deployed to docs/" }
+      hub:        { status: deployed, score: null, note: "docs/courses/cs502/index.html updated: 9/39 published; tag + link checks pass" }
   "07":
     deck: "07-process-operations"
     stages:
-      slides:     { status: absent, score: null, note: "" }
-      notes:      { status: absent, score: null, note: "" }
-      assignment: { status: absent, score: null, note: "" }
+      slides:     { status: deployed, score: 100, note: "36 pp; XeLaTeX 3-pass clean; no overfull boxes or undefined citations; quality score 100/100" }
+      notes:      { status: deployed, score: null, note: "11 pp; derived from the deck; manual parity check (notes-critic agent unavailable)" }
+      assignment: { status: deployed, score: null, note: "assignment + solutions key present; solutions gitignored and excluded from docs/" }
       lab:        { status: skipped, score: null, note: "lab_mode: none" }
-      gate:       { status: absent, score: null, note: "" }
-      handout:    { status: absent, score: null, note: "" }
-      hub:        { status: absent, score: null, note: "" }
+      gate:       { status: deployed, score: null, note: "10 original GATE-pattern questions; fork counts verified by running C + worked answers; no unverified PYQ claims" }
+      handout:    { status: built, score: null, note: "InstructorHandouts/CS502/07-process-operations-instructor-handout.tex, 7 pp; instructor-only, never deployed to docs/" }
+      hub:        { status: deployed, score: null, note: "docs/courses/cs502/index.html updated: 9/39 published; tag + link checks pass" }
   "08":
     deck: "08-cpu-scheduling-basics"
     stages:
-      slides:     { status: absent, score: null, note: "" }
-      notes:      { status: absent, score: null, note: "" }
-      assignment: { status: absent, score: null, note: "" }
+      slides:     { status: deployed, score: 100, note: "40 pp; XeLaTeX 3-pass clean; no overfull boxes or undefined citations; quality score 100/100" }
+      notes:      { status: deployed, score: null, note: "12 pp; derived from the deck; manual parity check (notes-critic agent unavailable)" }
+      assignment: { status: deployed, score: null, note: "assignment + solutions key present; solutions gitignored and excluded from docs/" }
       lab:        { status: skipped, score: null, note: "lab_mode: none" }
-      gate:       { status: absent, score: null, note: "" }
-      handout:    { status: absent, score: null, note: "" }
-      hub:        { status: absent, score: null, note: "" }
+      gate:       { status: deployed, score: null, note: "10 original GATE-pattern questions (4 MCQ, 6 NAT); schedules simulator-verified + worked answers; no unverified PYQ claims" }
+      handout:    { status: built, score: null, note: "InstructorHandouts/CS502/08-cpu-scheduling-basics-instructor-handout.tex, 8 pp; instructor-only, never deployed to docs/" }
+      hub:        { status: deployed, score: null, note: "docs/courses/cs502/index.html updated: 9/39 published; tag + link checks pass" }
   "09":
     deck: "09-cpu-scheduling-advanced"
     stages:
-      slides:     { status: absent, score: null, note: "" }
-      notes:      { status: absent, score: null, note: "" }
-      assignment: { status: absent, score: null, note: "" }
+      slides:     { status: deployed, score: 100, note: "44 pp; XeLaTeX 3-pass clean; no overfull boxes or undefined citations; quality score 100/100" }
+      notes:      { status: deployed, score: null, note: "12 pp; derived from the deck; manual parity check (notes-critic agent unavailable)" }
+      assignment: { status: deployed, score: null, note: "assignment + solutions key present; solutions gitignored and excluded from docs/" }
       lab:        { status: skipped, score: null, note: "lab_mode: none" }
-      gate:       { status: absent, score: null, note: "" }
-      handout:    { status: absent, score: null, note: "" }
-      hub:        { status: absent, score: null, note: "" }
+      gate:       { status: deployed, score: null, note: "9 original GATE-pattern questions; schedules simulator-verified + worked answers; no unverified PYQ claims" }
+      handout:    { status: built, score: null, note: "InstructorHandouts/CS502/09-cpu-scheduling-advanced-instructor-handout.tex, 8 pp; instructor-only, never deployed to docs/" }
+      hub:        { status: deployed, score: null, note: "docs/courses/cs502/index.html updated: 9/39 published; tag + link checks pass" }
   "10":
     deck: "10-concurrency-critical-section"
     stages:

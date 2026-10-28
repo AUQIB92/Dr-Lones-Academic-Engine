@@ -1,0 +1,353 @@
+% =============================================================================
+% InstructorHandouts/CS502/07-process-operations-instructor-handout.tex
+% Instructor Handout 7: Operations on Processes
+%
+% INSTRUCTOR-ONLY. Complete, self-contained teaching guide -- explanation,
+% embedded diagrams, presentation guidance, and delivery commentary are woven
+% together per topic, so an instructor can teach directly from this file with
+% no slides or Notes open. Explanations/diagrams/examples trace to
+% Slides/CS502/07-process-operations.tex and
+% Notes/CS502/07-process-operations-notes.tex; "Teaching note" asides are
+% instructor judgment, visually distinguished but not a separate section.
+% Every fork() count (including the extra board examples) was verified by
+% compiling and running the program (gcc) on 2026-10-29.
+%
+% Anchor readings: Silberschatz et al., OSC 8e, Ch. 3 §3.3 (pp. 110-116);
+%   Stallings 6e, Ch. 3 §3.4 (p. 135); Bovet & Cesati 3e, Ch. 3 (pp. 79-130)
+%   and Ch. 20 (pp. 808-834).
+%
+% Compile with: cd InstructorHandouts/CS502 &&
+%   TEXINPUTS=../../Preambles:$TEXINPUTS xelatex -interaction=nonstopmode 07-process-operations-instructor-handout.tex (x3)
+% =============================================================================
+
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{array}
+\input{../../Preambles/header}
+\coursecode{CS502}
+\renewcommand{\thesection}{7.\arabic{section}}
+\renewcommand{\thefigure}{7.\arabic{figure}}
+\renewcommand{\thetable}{7.\arabic{table}}
+\newtheorem{example}{Example}
+\renewcommand{\theexample}{7.\arabic{example}}
+\newenvironment{definitionbox}[1]{%
+  \par\noindent\textbf{Definition (#1).}\ \itshape
+}{\par\vspace{0.3em}}
+\newenvironment{teachingaside}{\begin{quote}\small\color{primary-gold}\textbf{Teaching note:}\ }{\end{quote}}
+
+\setlength{\emergencystretch}{2.5em}
+
+\title{Instructor Handout 7: Operations on Processes\\[0.3em]
+  \large Lecture 7 --- Creation, Termination, \texttt{fork}/\texttt{exec}}
+\author{Auqib Hamid Lone\\[0.3em]
+  \emph{Department of Computer Science \& Engineering}, \emph{GCET Ganderbal}}
+\date{\today}
+
+\begin{document}
+\maketitle
+{\centering\large\color{negative}\textbf{Instructor Copy --- Not for Student Distribution}\par}
+\vspace{0.5cm}
+
+\section{Before You Teach This Lecture}
+
+\begin{itemize}
+  \item \textbf{Silberschatz, Galvin \& Gagne, \textit{Operating System Concepts}, 8e} --- Ch.~3 \S3.3, operations on processes (pp.~110--116): the process tree, the three parental decisions (resources, execution, address space), \texttt{fork}/\texttt{exec}/\texttt{wait}, the Windows \texttt{CreateProcess} contrast, termination reasons, and cascading termination. Primary anchor. \emph{Page-verified} via the course index.
+  \item \textbf{Stallings, \textit{Operating Systems: Internals and Design Principles}, 6e} --- Ch.~3 \S3.4, process control (p.~135), for the mode-switch and PCB context around creation. \emph{Page-verified.}
+  \item \textbf{Bovet \& Cesati, \textit{Understanding the Linux Kernel}, 3e} --- Ch.~3 (pp.~79--130) for \texttt{fork}, \texttt{clone}, \texttt{vfork}, copy-on-write, and destroying processes (the zombie state); Ch.~20 (pp.~808--834) for \texttt{execve}. Use it for concrete Linux detail only. \emph{Page-verified.}
+  \item \textbf{Bach, \textit{The Design of the UNIX Operating System}} --- chapter-level reference for the classical UNIX process view. \emph{Not indexed; no page numbers.}
+  \item \textbf{Run the programs before class.} Every count in this handout was verified by compiling and running it. Re-run the four you will demo (three forks; \texttt{(fork() \&\& fork()) || fork()}; the \texttt{"hello "} buffer trap; \texttt{exit(7)}) so you can show live output. Run the buffer trap piped through \texttt{cat} --- the duplicated \texttt{hello} is unmistakable.
+  \item \textbf{Prerequisites.} Lecture~3 (\texttt{printf} buffers before \texttt{write}; the process-control category) and Lectures~5--6 (PCB, process states). Remind students of the stdio buffer before Section~7.3; the trap depends on it.
+\end{itemize}
+
+\begin{teachingaside}
+The thesis to keep on the board all hour: \emph{\texttt{fork} copies, \texttt{exec} replaces, \texttt{exit} reports, \texttt{wait} collects.} Every section adds detail to one of those four verbs.
+\end{teachingaside}
+
+\section{Opening: Who Actually Runs \texttt{ls}?}
+
+Type \texttt{ls} at a prompt. A listing appears and the prompt returns. The shell did not turn into \texttt{ls} --- it is still there --- and \texttt{ls} did not exist as a process a moment earlier. So a process was born, ran, and vanished, and the shell knew exactly when it finished. Every process except the first is created by another process: the shell creates a \key{child}, the child becomes \texttt{ls}, and the shell \key{waits}. \texttt{fork}, \texttt{exec}, and \texttt{wait} do the work, and \texttt{exit} ends the child. The lecture follows this one command from creation to termination, through four questions: how a process is created; what \texttt{fork} returns and how many processes we get; how a child becomes a different program; and how a process ends and who cleans up. Lecture~5 gave the PCB and Lecture~6 moved it between states; today we create and destroy it.
+
+\textbf{Board:} the four verbs. \emph{On the board, in order:} (i) write \texttt{fork}, \texttt{exec}, \texttt{exit}, \texttt{wait} in a column on the left; (ii) beside each, ask the class who calls it --- shell or child --- and write the answer only after hands go up (shell, child, child, shell); (iii) circle the two \emph{child} calls. \emph{Say:} ``The shell does two things and the child does two things. Today is about why the work is divided exactly that way.''
+
+\textbf{Board:} what students already see. \emph{On the board, in order:} (i) write \texttt{ps -f} and its typical columns \texttt{PID PPID CMD}; (ii) write one row for the shell and one row for \texttt{ps} itself; (iii) draw an arrow from the \texttt{ps} row's PPID to the shell's PID. \emph{Say:} ``Every row has a parent column. That column is today's lecture.''
+
+\begin{teachingaside}
+Ask ``Did the shell run \texttt{ls}?'' before anything else. Most students say yes. The correction --- the shell \emph{made a copy of itself} that became \texttt{ls} --- is the first surprise and sets up \texttt{fork}.
+\end{teachingaside}
+
+\section{Process Creation}
+
+\subsection*{The process tree}
+
+\begin{definitionbox}{Parent, child, process tree}
+A \key{parent process} is a process that issues a creation call; the new process is its \key{child}. Repeated creation forms a \key{process tree} rooted at the first process.
+\end{definitionbox}
+
+Each process has a unique integer \key{process identifier} (pid). Figure~\ref{fig:tree} is an illustrative tree: \texttt{init} (pid 1) at the root, a login program, an SSH daemon, and \texttt{cron} below it, a shell under each login path, and \texttt{ls} and \texttt{vim} under one shell.
+
+\begin{figure}[h]
+\centering
+  % Coordinate map (P2): level y=0: init (0,0)
+  %   level y=-1.5: login (-4,-1.5), sshd (0,-1.5), cron (4,-1.5)
+  %   level y=-3.0: bash (-4,-3.0), bash (0,-3.0)
+  %   level y=-4.5: ls (-5.6,-4.5), vim (-2.4,-4.5)
+  % Boxes 2.2cm x 0.7cm; nearest horizontal gap 3.2-2.2 = 1.0cm (clear).
+  % Edges run box-bottom to box-top only; no edge crosses a box.
+  \begin{tikzpicture}[every node/.style={font=\small},
+      pnode/.style={dag-node, minimum width=2.2cm, minimum height=0.7cm}]
+    \node[pnode] (init) at (0,0) {\texttt{init} (1)};
+    \node[pnode] (login) at (-4,-1.5) {\texttt{login} (812)};
+    \node[pnode] (sshd) at (0,-1.5) {\texttt{sshd} (640)};
+    \node[pnode] (cron) at (4,-1.5) {\texttt{cron} (701)};
+    \node[pnode] (bash1) at (-4,-3.0) {\texttt{bash} (905)};
+    \node[pnode] (bash2) at (0,-3.0) {\texttt{bash} (1220)};
+    \node[pnode] (ls) at (-5.6,-4.5) {\texttt{ls} (1310)};
+    \node[pnode] (vim) at (-2.4,-4.5) {\texttt{vim} (1288)};
+    \draw[observed-edge] (init.south) -- (login.north);
+    \draw[observed-edge] (init.south) -- (sshd.north);
+    \draw[observed-edge] (init.south) -- (cron.north);
+    \draw[observed-edge] (login.south) -- (bash1.north);
+    \draw[observed-edge] (sshd.south) -- (bash2.north);
+    \draw[observed-edge] (bash1.south) -- (ls.north);
+    \draw[observed-edge] (bash1.south) -- (vim.north);
+  \end{tikzpicture}
+\caption{A process tree; pids are illustrative --- cf.\ Silberschatz et al., Ch.~3 \S3.3, pp.~110--116.}
+\label{fig:tree}
+\end{figure}
+
+\emph{How to present it.} Follow the coordinate map's levels: draw \texttt{init} first, then the three level-1 boxes with their arrows, then the two shells, then \texttt{ls} and \texttt{vim}. Narrate each level as ``these were created by the box above.'' Write pids last, and say they are illustrative.
+
+\subsection*{The three parental decisions}
+
+Creating a child forces three choices: \textbf{resources} (the child shares all, a subset, or none of the parent's open files and memory); \textbf{execution} (the parent runs concurrently with the child, or waits for some or all children); \textbf{address space} (the child duplicates the parent, or has a new program loaded). UNIX answers the third in two steps: \texttt{fork} duplicates, \texttt{exec} loads.
+
+\subsection*{\texttt{fork}: one call, two returns}
+
+\begin{definitionbox}{\texttt{fork}}
+\texttt{fork()} creates a new process whose address space is a copy of the caller's. Both processes continue at the instruction after the call.
+\end{definitionbox}
+
+The child receives \texttt{0}; the parent receives the child's pid (positive); on failure the parent receives \texttt{-1} and no child exists. The return value is the \emph{only} way the two copies can tell themselves apart. A child learns its own pid with \texttt{getpid()} and its parent's with \texttt{getppid()}.
+
+\begin{example}[The canonical program]
+\begin{verbatim}
+pid_t pid = fork();
+if (pid < 0) {            /* error  */
+    perror("fork");
+    exit(1);
+} else if (pid == 0) {    /* child  */
+    execlp("ls", "ls", NULL);
+    perror("exec");  /* on failure */
+    exit(1);
+} else {                  /* parent */
+    wait(NULL);
+    printf("Child complete\n");
+}
+\end{verbatim}
+\texttt{fork} returns twice. The child takes the \texttt{pid == 0} branch and replaces itself with \texttt{ls}; the \texttt{perror}/\texttt{exit(1)} run only if \texttt{exec} fails. The parent takes the \texttt{else} branch and blocks in \texttt{wait}. When \texttt{ls} finishes, \texttt{wait} returns and the parent prints \texttt{Child complete}. Same structure as Silberschatz et al., Ch.~3 \S3.3.
+\end{example}
+
+\begin{figure}[h]
+\centering
+  % Coordinate map (P2):
+  %   parent line y=0 from x=-6.5 to x=6.5; child line y=-1.8 from x=-3.5 to x=3.5
+  %   fork point (-3.5,0) -> child start (-3.5,-1.8)
+  %   exec box centered (-1.2,-1.8), 2.2cm x 0.6cm
+  %   exit point (3.5,-1.8) -> resume point (3.5,0)
+  %   wait box centered (0.5,0), 3.0cm x 0.6cm (spans -1.0..2.0)
+  %   labels: "fork()" above (-3.5,0.45); "exit()" right of (3.5,-1.8) at x=4.4;
+  %           "parent" left at x=-6.9 y=0; "child" left at x=-4.2 y=-1.8
+  % Arrow segments start/end at box edges; no label sits on a line.
+  \begin{tikzpicture}[scale=0.92, transform shape, every node/.style={font=\small}]
+    \draw[observed-edge] (-6.5,0) -- (-1.5,0);
+    \node[dag-node, minimum width=3.0cm, minimum height=0.6cm] (wait) at (0.5,0) {\texttt{wait()}};
+    \draw[observed-edge] (2.0,0) -- (6.5,0);
+    \node[anchor=east] at (-6.6,0) {parent};
+    \node at (-3.5,0.45) {\texttt{fork()}};
+    \fill[primary-blue] (-3.5,0) circle (2.5pt);
+    \draw[observed-edge] (-3.5,0) -- (-3.5,-1.65);
+    \draw[thick, draw=jet] (-3.5,-1.8) -- (-2.3,-1.8);
+    \node[dag-node, minimum width=2.2cm, minimum height=0.6cm] (exec) at (-1.2,-1.8) {\texttt{exec("ls")}};
+    \draw[thick, draw=jet] (-0.1,-1.8) -- (3.5,-1.8);
+    \node[anchor=east] at (-3.7,-1.8) {child};
+    \node[anchor=west] at (3.65,-1.8) {\texttt{exit()}};
+    \draw[observed-edge] (3.5,-1.8) -- (3.5,-0.15);
+    \node[anchor=west, text=neutral] at (3.6,-0.9) {status};
+  \end{tikzpicture}
+\caption{The canonical program as a timeline. The parent is blocked in \texttt{wait} while the child runs; \texttt{exit} wakes it and delivers a status.}
+\label{fig:timeline}
+\end{figure}
+
+\emph{How to present Figure~\ref{fig:timeline}.} Draw the parent's horizontal line first and label it. Mark the \texttt{fork} dot and drop the vertical arrow to the child's line. Draw \texttt{exec("ls")} on the child's line, then \texttt{exit()} at its end. Only then draw the \texttt{wait} box on the parent's line \emph{above} the child's run, and finally the up-arrow labelled \emph{status}. Saying ``the parent is frozen here'' while drawing the box is the point of the figure.
+
+\subsection*{Two copies, two variables}
+
+After \texttt{fork} the address spaces are separate with identical contents; a write in one is invisible to the other. Only open file descriptors are shared (both refer to the same open-file entries).
+
+\textbf{Board:} the lecture's example. \emph{On the board, in order:} (i) write \texttt{int x = 10; pid = fork();}; (ii) draw two boxes, ``parent'' and ``child'', each with \texttt{x = 10}; (iii) in the child box write \texttt{x += 5} $\to$ \texttt{15}; (iv) in the parent box write \texttt{wait; x -= 5} $\to$ \texttt{5}; (v) write the output \texttt{child x=15}, \texttt{parent x=5} (verified). \emph{Say:} ``Same name, same virtual address, two physical copies.''
+
+\textbf{Board:} a second instance. \emph{On the board, in order:} (i) \texttt{int x = 5;} child does \texttt{x = x * 2}, parent waits then \texttt{x = x + 3}; (ii) ask for both printed values before revealing; (iii) write \texttt{10} (child) and \texttt{8} (parent) --- verified. A student who answers 13 is still thinking of one shared \texttt{x}; ask them to point to the box where the 10 lives.
+
+\begin{teachingaside}
+Pose the lecture's first Socratic question here, before the answer: ``Can the child report its answer in a global variable the parent reads after \texttt{wait}?'' The answer is no --- the global is in the child's copy. The child can return a small integer through \texttt{exit}; larger results need IPC (Lectures~14--15).
+\end{teachingaside}
+
+\section{Counting Forks}
+
+Every \texttt{fork} doubles the number of processes executing the next line. Counting is a tree, not a guess.
+
+\begin{figure}[h]
+\centering
+  % Coordinate map (P2): binary tree, levels at y=0, -1.1, -2.2, -3.3
+  %   level 0: P (0,0)
+  %   level 1: x = -3.2, 3.2
+  %   level 2: x = -4.8, -1.6, 1.6, 4.8
+  %   level 3: x = -5.6,-4.0,-2.4,-0.8,0.8,2.4,4.0,5.6 (circles r=0.32cm)
+  % Nearest leaf gap 1.6-0.64 = 0.96cm. Level labels at x=7.2, clear of x=5.92.
+  \begin{tikzpicture}[scale=0.9, transform shape, every node/.style={font=\footnotesize},
+      proc/.style={circle, draw=primary-blue, fill=light-bg, minimum size=0.64cm, inner sep=0pt}]
+    \node[proc] (a) at (0,0) {P};
+    \node[proc] (b1) at (-3.2,-1.1) {P};
+    \node[proc] (b2) at (3.2,-1.1) {C1};
+    \foreach \x/\n/\l in {-4.8/c1/P, -1.6/c2/C2, 1.6/c3/C1, 4.8/c4/C3}
+      \node[proc] (\n) at (\x,-2.2) {\l};
+    \foreach \x/\n/\l in {-5.6/d1/P, -4.0/d2/C4, -2.4/d3/C2, -0.8/d4/C5,
+                          0.8/d5/C1, 2.4/d6/C6, 4.0/d7/C3, 5.6/d8/C7}
+      \node[proc] (\n) at (\x,-3.3) {\l};
+    \draw[observed-edge] (a) -- (b1); \draw[observed-edge] (a) -- (b2);
+    \draw[observed-edge] (b1) -- (c1); \draw[observed-edge] (b1) -- (c2);
+    \draw[observed-edge] (b2) -- (c3); \draw[observed-edge] (b2) -- (c4);
+    \draw[observed-edge] (c1) -- (d1); \draw[observed-edge] (c1) -- (d2);
+    \draw[observed-edge] (c2) -- (d3); \draw[observed-edge] (c2) -- (d4);
+    \draw[observed-edge] (c3) -- (d5); \draw[observed-edge] (c3) -- (d6);
+    \draw[observed-edge] (c4) -- (d7); \draw[observed-edge] (c4) -- (d8);
+    \node[anchor=west, text=neutral] at (6.4,-1.1) {after 1st: 2};
+    \node[anchor=west, text=neutral] at (6.4,-2.2) {after 2nd: 4};
+    \node[anchor=west, text=neutral] at (6.4,-3.3) {after 3rd: 8};
+  \end{tikzpicture}
+\caption{Three sequential forks: 2, 4, then 8 processes.}
+\label{fig:forktree}
+\end{figure}
+
+\emph{How to present Figure~\ref{fig:forktree}.} Build it one level per \texttt{fork}, left to right, and write the running count (2, 4, 8) at the right edge after each level. The convention that matters: a process keeps its name when it forks (the left branch is the same process), and the right branch is the new child. \texttt{fork(); fork(); fork(); printf} prints 8 lines; $n$ sequential forks give $2^n$ processes and $2^n - 1$ new children (verified: 8 for $n=3$, 16 for $n=4$).
+
+\textbf{Board:} \texttt{printf} inside the loop. \emph{On the board, in order:} (i) write
+\begin{center}\texttt{for (i=0;i<3;i++) \{ fork(); printf("A\textbackslash n"); \}}\end{center} (ii) make a three-row table $i$ / processes after fork / lines; (iii) fill $0/2/2$, $1/4/4$, $2/8/8$; (iv) total $14$ (verified). \emph{Prediction trap:} ask for a guess first --- many say 8 (they count processes) or 6 (they add $2 \cdot 3$).
+
+\textbf{Board:} a second loop instance. Same table with \texttt{i < 4}: $2 + 4 + 8 + 16 = 30$ lines (verified). Ask a student to write the general form, $2^{n+1} - 2$.
+
+\subsection*{Short-circuit operators}
+
+In \texttt{a \&\& b}, \texttt{b} runs only if \texttt{a} is non-zero; in \texttt{a || b}, only if \texttt{a} is zero. \texttt{fork()} is non-zero in the parent and zero in the child, so the operators choose which copy forks again.
+
+\textbf{Board:} the expression
+\begin{center}\texttt{(fork() \&\& fork()) || fork(); printf("y\textbackslash n");}\end{center}
+\emph{On the board, in order:} (i) write P at the top; (ii) first fork: P (non-zero), C1 (zero) --- label each edge with the value it saw; (iii) P runs the second fork: P (non-zero), C2 (zero); P's \texttt{\&\&} is true, so P is done --- put a tick beside P; (iv) C1's \texttt{\&\&} is false, so it forks: C1, C3; (v) C2's \texttt{\&\&} is false, so it forks: C2, C4; (vi) count P, C1, C2, C3, C4: 5 lines (verified).
+
+\textbf{Board:} \texttt{if (fork() \&\& fork()) fork();} (the lecture's Socratic Check~2). C1 sees 0 and skips; P forks C2, which sees 0 and skips; P's condition is true and P forks C3. Four processes, 4 lines (verified). Pose it \emph{before} the solution and let the class vote 3, 4, or 5.
+
+\begin{teachingaside}
+Where students get stuck: they evaluate the whole expression once, for ``the program,'' instead of once \emph{per process}. Insist that every node in the tree carries its own copy of the partially evaluated expression. Labelling each edge with the value \texttt{fork} returned on that side (non-zero/0) fixes this almost immediately.
+\end{teachingaside}
+
+\subsection*{The buffer that gets copied}
+
+\texttt{printf} writes into a user-space buffer (Lecture~3); \texttt{fork} copies the whole address space, including bytes still in that buffer. \texttt{printf("hello "); fork(); printf("world\textbackslash n");} prints \texttt{hello world} twice (verified): the unflushed \texttt{"hello "} is duplicated and each copy flushes its own buffer. Fix: \texttt{fflush(stdout)} before \texttt{fork}. Lesson: \texttt{fork} copies \emph{state}, not just code.
+
+\textbf{Board:} draw two boxes after the fork, each containing a little buffer with \texttt{"hello "} in it, then append \texttt{"world\textbackslash n"} to each. \textbf{Board:} second instance --- \texttt{printf("X"); fork(); fork(); fork(); printf("\textbackslash n");} with output to a file and no flush gives 8 \texttt{X} characters (verified); ask for the count, then for the one-line fix.
+
+\section{The \texttt{exec} Family}
+
+\begin{definitionbox}{\texttt{exec}}
+An \texttt{exec} call replaces the calling process's memory image --- code, data, heap, stack --- with a new program loaded from an executable file, and starts it at its entry point.
+\end{definitionbox}
+
+The pid and the parent relationship stay the same; open descriptors stay open unless marked close-on-exec. On success \texttt{exec} never returns, because the code that called it no longer exists; on failure it returns \texttt{-1} and the old program continues (Bovet \& Cesati, Ch.~20, pp.~808--834). The name letters: \texttt{l} list of arguments, \texttt{v} vector, \texttt{p} search \texttt{PATH}, \texttt{e} explicit environment. All are library wrappers; on Linux the one system call underneath is \texttt{execve}. Argument lists end with \texttt{NULL}; \texttt{argv[0]} is the program's name by convention.
+
+\textbf{Board:} code after \texttt{exec}. \emph{On the board, in order:} (i) child:
+\begin{center}\texttt{execlp("echo","echo","from-exec",NULL); printf("never\textbackslash n");}\end{center}
+\noindent parent: \texttt{wait(NULL); printf("parent\textbackslash n");}; (ii) ask how many lines; (iii) cross out the \texttt{printf("never")} line with a single stroke while saying ``this code was in the old image''; (iv) write the output \texttt{from-exec}, \texttt{parent} --- two lines (verified).
+
+\textbf{Board:} \texttt{ls > out.txt}. \emph{On the board, in order:} (i) shell \texttt{fork}; (ii) child
+\begin{center}\texttt{fd = open("out.txt", O\_WRONLY|O\_CREAT|O\_TRUNC)};\end{center}
+\noindent (iii) child \texttt{dup2(fd, 1)}, \texttt{close(fd)}; (iv) child \texttt{execlp("ls","ls",NULL)}; (v) shell \texttt{wait}. Draw a small descriptor table for the child with slot 1 re-pointed from ``terminal'' to ``out.txt''. \emph{Say:} ``\texttt{ls} writes to descriptor 1 and never knows about the file. This gap between \texttt{fork} and \texttt{exec} is why UNIX splits creation in two.'' Redirection, pipes, and changed directories all happen in this gap.
+
+Copying the whole address space only to discard it would be wasteful; modern kernels use \key{copy-on-write}: pages are shared read-only and copied only on a write, so \texttt{fork} costs roughly a copy of the page tables and PCB. Linux also offers \texttt{vfork} and \texttt{clone} (Bovet \& Cesati, Ch.~3, pp.~79--130). Copy-on-write returns in Lecture~26.
+
+Windows uses one step: \texttt{CreateProcess} loads a named program into a new process, customization is passed as parameters, and the parent waits with \texttt{WaitForSingleObject}. Both designs answer the same three parental decisions; they differ in where the answers are supplied.
+
+\begin{teachingaside}
+Where students get stuck: ``\texttt{exec} creates a new process.'' Ask what \texttt{getpid()} returns before and after a successful \texttt{exec}. The answer --- the same number --- is the cleanest correction.
+\end{teachingaside}
+
+\section{Process Termination}
+
+A process terminates after its last statement or by calling \texttt{exit(status)}. The kernel releases its memory, open files, and other resources and keeps the small integer status for the parent, which collects it with \texttt{wait} (any child; returns the child's pid) or \texttt{waitpid} (one named child).
+
+\textbf{Board:} \texttt{exit(7)}. Child \texttt{exit(7)}; parent \texttt{waitpid(pid, \&st, 0)}; then \texttt{WIFEXITED(st)} is true and \texttt{WEXITSTATUS(st)} is 7 (verified). \textbf{Board:} second instance --- \texttt{exit(300)}: only the low 8 bits arrive, so the parent sees $300 - 256 = 44$ (verified). Use it to explain why the status is ``a small integer.''
+
+A parent may also end a child (\texttt{kill} on UNIX, \texttt{TerminateProcess} on Windows) --- only a parent or a suitably privileged user may --- because the child exceeded its resources, its task is no longer required, or the parent is exiting on a system that does not let children outlive parents. On such systems the OS performs \key{cascading termination}: ending a parent ends all its descendants (Silberschatz et al., Ch.~3 \S3.3).
+
+\begin{definitionbox}{Zombie}
+A process that has terminated but whose parent has not yet called \texttt{wait}; its resources are freed, but its PCB entry (pid, exit status) remains.
+\end{definitionbox}
+\begin{definitionbox}{Orphan}
+A process whose parent terminated without waiting for it; UNIX re-parents it to \texttt{init} (pid 1), which calls \texttt{wait} periodically.
+\end{definitionbox}
+
+Every child is briefly a zombie; the problem is a parent that never waits. Many zombies exhaust the pid table even though they use no memory. (Standard UNIX treatment; Bovet \& Cesati, Ch.~3, pp.~79--130.)
+
+\begin{figure}[h]
+\centering
+  % Coordinate map (P2): boxes 2.6cm x 0.8cm
+  %   created (-6,0), running (-2,0), zombie (2,0), reaped (6,0)
+  %   orphan (2,-2.2): adopted-by-init path from running
+  % Horizontal gaps 4.0-2.6 = 1.4cm; edge labels placed above the arrows
+  % (y=+0.65), never on the line. Orphan arrow: running.south -> orphan.west.
+  % "init waits" sits below the orphan->reaped horizontal leg (y=-2.2), at y=-2.45.
+  \begin{tikzpicture}[scale=0.88, transform shape, every node/.style={font=\small},
+      st/.style={dag-node, minimum width=2.6cm, minimum height=0.8cm}]
+    \node[st] (new) at (-6,0) {created};
+    \node[st] (run) at (-2,0) {running};
+    \node[st] (zom) at (2,0) {zombie};
+    \node[st] (gone) at (6,0) {reaped};
+    \node[st] (orph) at (2,-2.2) {orphan of \texttt{init}};
+    \draw[observed-edge] (new) -- (run);
+    \draw[observed-edge] (run) -- (zom);
+    \draw[observed-edge] (zom) -- (gone);
+    \node[text=primary-gold] at (-4,0.65) {\texttt{fork}};
+    \node[text=primary-gold] at (0,0.65) {\texttt{exit}};
+    \node[text=primary-gold] at (4,0.65) {parent \texttt{wait}};
+    \draw[counterfactual-edge] (run.south) |- (orph.west);
+    \node[text=neutral, anchor=east] at (-2.15,-1.3) {parent exits first};
+    \draw[counterfactual-edge] (orph.east) -| (gone.south);
+    \node[text=neutral, anchor=north] at (4.65,-2.45) {\texttt{init} waits};
+  \end{tikzpicture}
+\caption{The life cycle. Solid: the normal path. Dashed: the parent exits first.}
+\label{fig:lifecycle}
+\end{figure}
+
+\emph{How to present Figure~\ref{fig:lifecycle}.} Draw the four solid boxes left to right with their arrow labels (\texttt{fork}, \texttt{exit}, parent \texttt{wait}) \emph{above} each arrow. Only after the solid path is understood, draw the orphan box below and the two dashed legs. Say clearly that ``zombie'' is a bookkeeping state, not a running program.
+
+\textbf{Board:} timeline of a zombie. Child exits at $t=2$\,s, parent waits at $t=10$\,s: mark ``running'' on $[0,2)$, ``zombie'' on $[2,10)$, ``reaped'' after 10. \textbf{Board:} timeline of an orphan. Parent exits at $t=1$\,s, child exits at $t=2$\,s: ``running, parent = P'' on $[0,1)$, ``orphan, parent = \texttt{init}'' on $[1,2)$, then briefly a zombie until \texttt{init} reaps it.
+
+\textbf{Live hook (Socratic Check~3):} ``A server forks one child per request and never waits; children finish in milliseconds. What piles up?'' Zombies: pids and statuses stay in the process table; memory is released but pids run out. Fix: reap with \texttt{wait}/\texttt{waitpid}, for example in a loop with \texttt{WNOHANG}.
+
+\subsection*{The shell loop}
+
+Read a line (e.g.\ \texttt{ls -l}); \texttt{pid = fork()}; in the child set up redirection and \texttt{execvp("ls", argv)}, and if \texttt{exec} returns print an error and \texttt{exit(127)}; in the parent \texttt{waitpid(pid, \&status, 0)} unless the line ended with \texttt{\&}, in which case return to the prompt immediately; repeat. Per foreground command: \texttt{fork} (shell), \texttt{execvp} (child), \texttt{exit} (child), \texttt{wait} (shell) --- four process-control calls, the category from Lecture~3. Close the lecture by pointing back at the four verbs from the opening board.
+
+\section{Summary}
+
+\begin{itemize}
+  \item Processes form a tree; every process but the first has a parent.
+  \item \texttt{fork} returns twice: \texttt{0} to the child, the child's pid to the parent, \texttt{-1} on failure.
+  \item $n$ sequential forks give $2^n$ processes ($2^n - 1$ children); loops and short-circuit operators change the count --- draw the tree, one evaluation per process.
+  \item \texttt{fork} copies state, including unflushed stdio buffers.
+  \item \texttt{exec} keeps the pid and replaces the program; it returns only on failure.
+  \item \texttt{exit} delivers a status (low 8 bits); \texttt{wait}/\texttt{waitpid} collect it. Unreaped child = zombie; parentless child = orphan adopted by \texttt{init}.
+  \item Misconceptions to pre-empt: the child gets the child's pid; parent and child share variables; \texttt{exec} creates a process; code after a successful \texttt{exec} runs; a zombie uses CPU and memory.
+  \item Next lecture: CPU scheduling --- criteria (TAT, WT, RT), FCFS and SJF (Silberschatz Ch.~5 \S5.1--5.3; Stallings Ch.~9 \S9.1--9.2).
+\end{itemize}
+
+\end{document}

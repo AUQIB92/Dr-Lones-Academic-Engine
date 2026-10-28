@@ -1,0 +1,963 @@
+% =============================================================================
+% 08-cpu-scheduling-basics.tex — Lecture 8:
+% CPU Scheduling: Concepts, Criteria, FCFS and SJF
+%
+% Course: Operating Systems (PCC CS-502)
+% Anchor reading: Silberschatz, Galvin & Gagne, Operating System Concepts,
+%                 8th ed. — Ch. 5 §5.1 (basic concepts, p. 183), §5.2
+%                 (scheduling criteria, p. 187), §5.3.1 FCFS (p. 188) and
+%                 §5.3.2 SJF/SRTF (p. 189); page-verified via
+%                 master_supporting_docs/CS502/supporting_books/SilberschatzOSC/index.md.
+%                 Stallings, Operating Systems: Internals and Design
+%                 Principles, 6th ed. — Ch. 9 §9.1 (types of scheduling,
+%                 p. 406) and §9.2 (scheduling algorithms, p. 410);
+%                 page-verified via .../StallingsOS/index.md.
+%
+% Every Gantt chart and every CT/TAT/WT/RT table in this deck was generated
+% from a verified simulator (FCFS, non-preemptive SJF, SRTF; ties broken by
+% arrival order; SRTF preempts only on a strictly shorter remaining time).
+% None of the worked instances contains a tie.
+%
+% Compile with: /compile-latex CS502/08-cpu-scheduling-basics
+% =============================================================================
+
+\documentclass[aspectratio=169]{beamer}
+\input{header}
+\coursecode{CS502}
+
+\title{CPU Scheduling}
+\subtitle{Lecture 8 --- Concepts, Criteria, FCFS and SJF}
+\author[Dr. Auqib Hamid Lone]{%
+  \textbf{Dr. Auqib Hamid Lone}\\
+  \small Assistant Professor in Computer Science \& Engineering
+}
+\institute[GCET Ganderbal]{%
+  \small\textbf{PCC CS-502: Operating Systems}\\[0.3em]
+  Department of Computer Science \& Engineering\\
+  Government College of Engineering \& Technology (GCET), Ganderbal
+}
+\date[\today]{\small\today}
+
+\begin{document}
+
+\frame{\titlepage}
+
+% =============================================================================
+% ACT 0 --- FIVE JOBS, ONE CPU
+% =============================================================================
+\section{Five Jobs, One CPU}
+
+\begin{frame}{Welcome: Who Runs Next on the Lab Server?}
+  \begin{block}{The big question}
+    Five students submit compile jobs to the department's lab server within
+    five milliseconds. The server has one CPU. In what order should the jobs
+    run --- and how would you even decide that one order is better than
+    another?
+  \end{block}
+  \centering
+  \footnotesize
+  \begin{tabular}{lccccc}
+    \toprule
+    Process & \texttt{P1} & \texttt{P2} & \texttt{P3} & \texttt{P4} & \texttt{P5} \\
+    \midrule
+    Arrival time (ms) & 0 & 1 & 2 & 3 & 5 \\
+    CPU burst $\tau$ (ms) & 6 & 8 & 2 & 5 & 4 \\
+    \bottomrule
+  \end{tabular}
+  \vspace{0.2cm}
+  \begin{alertblock}{Running thread for today}
+    We schedule these five jobs three ways --- FCFS, SJF, SRTF --- and measure
+    each schedule with the same yardsticks.
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}{Roadmap: Four Questions About the Ready Queue}
+  \begin{enumerate}
+    \item \key{Why schedule at all?} --- the CPU--I/O burst cycle, the
+      scheduler, the dispatcher, and preemption.
+    \item \key{What makes a schedule good?} --- five criteria and the formulas
+      for TAT, WT, and RT.
+    \item \key{What does the simplest policy do?} --- FCFS and the convoy
+      effect.
+    \item \key{Can we do better?} --- SJF, its optimality, burst prediction,
+      and the preemptive form SRTF.
+  \end{enumerate}
+  \vspace{0.2cm}
+  \muted{Lecture 6 introduced the short-term scheduler as a box in the state
+  diagram. Today we open the box and ask what policy it should run.}
+\end{frame}
+
+\transitionslide{A process does not use the CPU continuously. It alternates between computing and waiting --- and the waiting is what makes scheduling worthwhile.}
+
+% =============================================================================
+% ACT 1 --- BASIC CONCEPTS
+% =============================================================================
+\section{Basic Concepts}
+
+\begin{frame}{The CPU--I/O Burst Cycle}
+  \centering
+  \begin{tikzpicture}[every node/.style={font=\small}]
+    % Coordinate map: six boxes on y=0, centres x = -5.5, -3.3, -1.1, 1.1, 3.3, 5.5;
+    % each box 1.9cm wide (gap 0.3cm), extent x = -6.45..6.45. CPU boxes use
+    % dag-node, I/O boxes dag-node with gold border, white fill. Time arrow on y=-0.9, x = -6.45..6.45.
+    \node[dag-node, minimum width=1.9cm, minimum height=0.8cm] (c1) at (-5.5,0) {CPU burst};
+    \node[dag-node, draw=primary-gold, fill=white, minimum width=1.9cm, minimum height=0.8cm] (i1) at (-3.3,0) {I/O burst};
+    \node[dag-node, minimum width=1.9cm, minimum height=0.8cm] (c2) at (-1.1,0) {CPU burst};
+    \node[dag-node, draw=primary-gold, fill=white, minimum width=1.9cm, minimum height=0.8cm] (i2) at (1.1,0) {I/O burst};
+    \node[dag-node, minimum width=1.9cm, minimum height=0.8cm] (c3) at (3.3,0) {CPU burst};
+    \node[dag-node, draw=primary-gold, fill=white, minimum width=1.9cm, minimum height=0.8cm] (i3) at (5.5,0) {\ldots};
+    \draw[observed-edge] (-6.45,-0.9) -- node[below, font=\scriptsize] {time} (6.45,-0.9);
+  \end{tikzpicture}
+  \vspace{0.25cm}
+  \begin{itemize}
+    \item Execution is a cycle: a \key{CPU burst}, then an \key{I/O burst},
+      then another CPU burst, until a final CPU burst ends in termination.
+    \item Measured burst lengths are dominated by many short bursts and a
+      few long ones.
+    \item An \key{I/O-bound} program has many short CPU bursts; a
+      \key{CPU-bound} program has a few long ones.
+  \end{itemize}
+  \muted{Silberschatz et al., Ch.~5 \S5.1, p.~183.}
+\end{frame}
+
+\begin{frame}{The CPU Scheduler and the Ready Queue}
+  \begin{block}{Definition}
+    The \key{CPU scheduler} (short-term scheduler) selects one process from
+    the processes in memory that are ready to execute and allocates the CPU
+    to it.
+  \end{block}
+  \begin{itemize}
+    \item The ready queue holds PCBs, not programs. It is \emph{not}
+      necessarily FIFO: it can be a FIFO queue, a priority queue, a tree, or
+      an unordered list.
+    \item The \emph{policy} is the rule that picks from it. FCFS, SJF, and
+      SRTF are three such rules.
+    \item While one process waits for I/O, the scheduler gives the CPU to
+      another --- that is how multiprogramming keeps the CPU busy.
+  \end{itemize}
+  \muted{The long-term and medium-term schedulers of Lecture 6 decide
+  \emph{who is in memory}; today's scheduler decides \emph{who runs}.}
+\end{frame}
+
+\begin{frame}{When Does the Scheduler Run? Preemptive vs.\ Non-preemptive}
+  \footnotesize
+  A scheduling decision may be needed when a process:
+  \begin{enumerate}
+    \item switches from running to waiting (an I/O request, \texttt{wait});
+    \item switches from running to ready (a timer interrupt);
+    \item switches from waiting to ready (I/O completion);
+    \item terminates.
+  \end{enumerate}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{block}{Non-preemptive (cooperative)}
+        Decisions only in cases 1 and 4. Once a process has the CPU, it keeps
+        it until it blocks or exits.
+      \end{block}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{alertblock}{Preemptive}
+        Decisions also in cases 2 and 3. The kernel may take the CPU away ---
+        and must then protect shared data from a half-finished update.
+      \end{alertblock}
+    \end{column}
+  \end{columns}
+  \muted{Silberschatz et al., Ch.~5 \S5.1, pp.~183--187.}
+\end{frame}
+
+\begin{frame}{The Dispatcher and Dispatch Latency}
+  \begin{block}{Definition}
+    The \key{dispatcher} is the module that gives control of the CPU to the
+    process the scheduler selected. The time it takes to stop one process and
+    start another is the \key{dispatch latency}.
+  \end{block}
+  \begin{itemize}
+    \item It switches context (saves one PCB, loads another --- Lecture 6).
+    \item It switches to user mode.
+    \item It jumps to the saved PC in the new process.
+  \end{itemize}
+  \vspace{0.1cm}
+  \begin{exampleblock}{Why it matters}
+    The dispatcher runs on \emph{every} switch. A policy that switches more
+    often pays the dispatch latency more often --- we will measure that cost
+    on the lab-server jobs.
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}{Socratic Check 1}
+  \begin{block}{Question}
+    A process finishes its CPU burst and issues a disk \texttt{read}. Under a
+    \emph{non-preemptive} scheduler, must a scheduling decision be made? What
+    about when that \texttt{read} later completes?
+  \end{block}
+  \vspace{0.25cm}
+  \begin{itemize}
+    \item Issuing the \texttt{read} is case 1 (running $\to$ waiting): the CPU
+      is free, so the scheduler must pick someone.
+    \item The completion is case 3 (waiting $\to$ ready): a non-preemptive
+      scheduler lets the current process keep the CPU.
+    \item Only a preemptive scheduler may reconsider at case 3.
+  \end{itemize}
+\end{frame}
+
+\transitionslide{Before comparing policies we need yardsticks. ``Better'' means nothing until we say better for whom, measured how.}
+
+% =============================================================================
+% ACT 2 --- SCHEDULING CRITERIA
+% =============================================================================
+\section{Scheduling Criteria}
+
+\begin{frame}{Five Criteria}
+  \centering
+  \footnotesize
+  \renewcommand{\arraystretch}{1.3}
+  \begin{tabular}{p{0.22\textwidth}p{0.50\textwidth}p{0.16\textwidth}}
+    \toprule
+    \textbf{Criterion} & \textbf{Meaning} & \textbf{Goal} \\
+    \midrule
+    CPU utilization & fraction of time the CPU does useful work & maximize \\
+    Throughput & processes completed per unit time & maximize \\
+    Turnaround time (TAT) & submission to completion, per process & minimize \\
+    Waiting time (WT) & total time spent in the ready queue & minimize \\
+    Response time (RT) & submission to the \emph{first} time on the CPU & minimize \\
+    \bottomrule
+  \end{tabular}
+  \vspace{0.25cm}
+  \begin{itemize}
+    \item The scheduling policy directly controls only \key{waiting time}; it
+      does not change how long a burst computes.
+    \item We usually optimize the \emph{average}; interactive systems also
+      care about the \emph{variance} of response time.
+  \end{itemize}
+  \muted{Silberschatz et al., Ch.~5 \S5.2, pp.~187--188.}
+\end{frame}
+
+\begin{frame}{The Three Per-Process Formulas}
+  \begin{block}{Definitions (one CPU burst per process)}
+    For process \texttt{Pi} with arrival time $\mathrm{AT}_i$, burst
+    $\tau_i$, first-dispatch time $\mathrm{ST}_i$, and completion time
+    $\mathrm{CT}_i$:
+    \[
+      \mathrm{TAT}_i = \mathrm{CT}_i - \mathrm{AT}_i, \qquad
+      \mathrm{WT}_i = \mathrm{TAT}_i - \tau_i, \qquad
+      \mathrm{RT}_i = \mathrm{ST}_i - \mathrm{AT}_i .
+    \]
+  \end{block}
+  \begin{itemize}
+    \item WT counts \emph{all} time ready but not running --- including time
+      after a preemption.
+    \item For a non-preemptive policy, the process runs once, so
+      $\mathrm{WT}_i = \mathrm{RT}_i$.
+    \item Idle CPU time is not anybody's waiting time: no process is ready.
+  \end{itemize}
+  \muted{TAT, WT, and RT are spelled out here and abbreviated from now on.}
+\end{frame}
+
+\begin{frame}{Worked Example: Metrics From a Schedule With an Idle Gap}
+  \centering
+  \footnotesize
+  Jobs: \texttt{P1} $(0, 3)$, \texttt{P2} $(5, 4)$, \texttt{P3} $(6, 2)$ as
+  (AT, $\tau$) in ms, scheduled FCFS.\\[0.2cm]
+  \begin{tikzpicture}[x=0.75cm,y=1cm]
+  % Gantt: I under FCFS (generated from the verified simulator); time axis left to right,
+  % bars y=0..0.6, time labels below y=0, arrival arrows y=-0.95..-0.5, arrival names below y=-0.95
+  \draw[draw=primary-blue, fill=light-bg] (0,0) rectangle (3,0.6);
+  \node[font=\scriptsize] at (1.5,0.3) {\texttt{P1}};
+  \draw[draw=neutral, fill=neutral!12] (3,0) rectangle (5,0.6);
+  \node[font=\tiny, text=neutral] at (4,0.3) {idle};
+  \draw[draw=primary-blue, fill=light-bg] (5,0) rectangle (9,0.6);
+  \node[font=\scriptsize] at (7,0.3) {\texttt{P2}};
+  \draw[draw=primary-blue, fill=light-bg] (9,0) rectangle (11,0.6);
+  \node[font=\scriptsize] at (10,0.3) {\texttt{P3}};
+  \node[font=\tiny, below] at (0,0) {0};
+  \node[font=\tiny, below] at (3,0) {3};
+  \node[font=\tiny, below] at (5,0) {5};
+  \node[font=\tiny, below] at (9,0) {9};
+  \node[font=\tiny, below] at (11,0) {11};
+  \draw[-{Latex[length=1.2mm]}, draw=primary-gold] (0,-0.95) -- (0,-0.5);
+  \node[font=\tiny, text=primary-gold, below] at (0,-0.95) {P1};
+  \draw[-{Latex[length=1.2mm]}, draw=primary-gold] (5,-0.95) -- (5,-0.5);
+  \node[font=\tiny, text=primary-gold, below] at (5,-0.95) {P2};
+  \draw[-{Latex[length=1.2mm]}, draw=primary-gold] (6,-0.95) -- (6,-0.5);
+  \node[font=\tiny, text=primary-gold, below] at (6,-0.95) {P3};
+\end{tikzpicture}
+  \\[0.15cm]
+  {\footnotesize\begin{tabular}{lrrrrrr}
+\toprule
+\textbf{Proc.} & \textbf{AT} & $\boldsymbol{\tau}$ & \textbf{CT} & \textbf{TAT} & \textbf{WT} & \textbf{RT} \\
+\midrule
+\texttt{P1} & 0 & 3 & 3 & 3 & 0 & 0 \\
+\texttt{P2} & 5 & 4 & 9 & 4 & 0 & 0 \\
+\texttt{P3} & 6 & 2 & 11 & 5 & 3 & 3 \\
+\midrule
+\multicolumn{4}{@{}l}{\textbf{Average}} & 4 & 1 & 1 \\
+\bottomrule
+\end{tabular}}
+  \vspace{0.15cm}
+  \begin{itemize}
+    \item The CPU idles from 3 to 5: nothing has arrived. \texttt{P2} starts
+      at its arrival, so $\mathrm{WT}_2 = 0$.
+    \item \texttt{P3}: $\mathrm{TAT}_3 = 11 - 6 = 5$, $\mathrm{WT}_3 = 5 - 2 = 3$.
+    \item Utilization over $[0, 11]$ is $9/11 \approx 81.8\%$.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Utilization and Throughput Include the Dispatcher}
+  \begin{itemize}
+    \item Lab-server jobs: total burst $6+8+2+5+4 = 25$~ms.
+    \item FCFS dispatches each job once: 5 dispatches.
+    \item With a dispatch latency of $0.5$~ms per dispatch, the CPU spends
+      $25 + 5 \times 0.5 = 27.5$~ms to finish all five.
+  \end{itemize}
+  \vspace{0.15cm}
+  \begin{exampleblock}{Worked numbers}
+    \[
+      \text{utilization} = \frac{25}{27.5} \approx 90.9\%, \qquad
+      \text{throughput} = \frac{5\ \text{jobs}}{27.5\ \text{ms}} \approx 0.18\ \text{jobs/ms}.
+    \]
+  \end{exampleblock}
+  \muted{With zero dispatch latency the same schedule gives $100\%$ and
+  $5/25 = 0.2$ jobs/ms. Every extra switch moves both numbers down.}
+\end{frame}
+
+\begin{frame}{Socratic Check 2}
+  \begin{block}{Question}
+    For a laptop running a text editor, a browser, and a long video export,
+    which criterion would you optimize first --- and why is ``maximize
+    throughput'' the wrong answer?
+  \end{block}
+  \vspace{0.25cm}
+  \begin{itemize}
+    \item The user feels \key{response time}: the editor must react to a
+      keystroke within milliseconds.
+    \item Maximizing throughput could run the export to completion first and
+      leave the editor frozen.
+    \item Criteria conflict; a policy is a choice of which one to favour.
+  \end{itemize}
+\end{frame}
+
+\transitionslide{The simplest rule is the one at every ticket counter: serve whoever arrived first. It is fair-sounding, easy to build --- and can be very slow.}
+
+% =============================================================================
+% ACT 3 --- FCFS
+% =============================================================================
+\section{First-Come, First-Served}
+
+\begin{frame}{FCFS: Definition}
+  \begin{block}{Definition}
+    \key{First-Come, First-Served} (FCFS) allocates the CPU to the process
+    that requested it first. The ready queue is a FIFO queue: an arriving
+    PCB joins the tail; the scheduler takes the head.
+  \end{block}
+  \begin{itemize}
+    \item FCFS is \key{non-preemptive}: the running process keeps the CPU
+      until it blocks or terminates.
+    \item The code is a linked list with a head and a tail pointer.
+    \item Its average waiting time is often long --- and depends heavily on
+      the order of arrival.
+  \end{itemize}
+  \muted{Silberschatz et al., Ch.~5 \S5.3.1, pp.~188--189; Stallings,
+  Ch.~9 \S9.2, p.~410.}
+\end{frame}
+
+\begin{frame}{Worked Example: One Long Job First}
+  \centering
+  \footnotesize
+  \texttt{P1}, \texttt{P2}, \texttt{P3} arrive at time 0 in that order, with
+  bursts 24, 3, 3~ms.\\[0.25cm]
+  \begin{tikzpicture}[x=0.4cm,y=1cm]
+  % Gantt: S1 under FCFS (generated from the verified simulator); time axis left to right,
+  % bars y=0..0.6, time labels below y=0, arrival arrows y=-0.95..-0.5, arrival names below y=-0.95
+  \draw[draw=primary-blue, fill=light-bg] (0,0) rectangle (24,0.6);
+  \node[font=\scriptsize] at (12,0.3) {\texttt{P1}};
+  \draw[draw=primary-blue, fill=light-bg] (24,0) rectangle (27,0.6);
+  \node[font=\scriptsize] at (25.5,0.3) {\texttt{P2}};
+  \draw[draw=primary-blue, fill=light-bg] (27,0) rectangle (30,0.6);
+  \node[font=\scriptsize] at (28.5,0.3) {\texttt{P3}};
+  \node[font=\tiny, below] at (0,0) {0};
+  \node[font=\tiny, below] at (24,0) {24};
+  \node[font=\tiny, below] at (27,0) {27};
+  \node[font=\tiny, below] at (30,0) {30};
+\end{tikzpicture}
+  \\[0.25cm]
+  \begin{tabular}{lccc}
+    \toprule
+    & \texttt{P1} & \texttt{P2} & \texttt{P3} \\
+    \midrule
+    WT (ms) & 0 & 24 & 27 \\
+    \bottomrule
+  \end{tabular}
+  \vspace{0.2cm}
+  \begin{alertblock}{Average WT}
+    $(0 + 24 + 27)/3 = 17$~ms. Two 3-ms jobs wait behind one 24-ms job.
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}{Same Jobs, Different Arrival Order}
+  \centering
+  \footnotesize
+  Now \texttt{P2}, \texttt{P3}, \texttt{P1} arrive at time 0 in that order.\\[0.25cm]
+  \begin{tikzpicture}[x=0.4cm,y=1cm]
+  % Gantt: S1b under FCFS (generated from the verified simulator); time axis left to right,
+  % bars y=0..0.6, time labels below y=0, arrival arrows y=-0.95..-0.5, arrival names below y=-0.95
+  \draw[draw=primary-blue, fill=light-bg] (0,0) rectangle (3,0.6);
+  \node[font=\scriptsize] at (1.5,0.3) {\texttt{P2}};
+  \draw[draw=primary-blue, fill=light-bg] (3,0) rectangle (6,0.6);
+  \node[font=\scriptsize] at (4.5,0.3) {\texttt{P3}};
+  \draw[draw=primary-blue, fill=light-bg] (6,0) rectangle (30,0.6);
+  \node[font=\scriptsize] at (18,0.3) {\texttt{P1}};
+  \node[font=\tiny, below] at (0,0) {0};
+  \node[font=\tiny, below] at (3,0) {3};
+  \node[font=\tiny, below] at (6,0) {6};
+  \node[font=\tiny, below] at (30,0) {30};
+\end{tikzpicture}
+  \\[0.25cm]
+  \begin{tabular}{lccc}
+    \toprule
+    & \texttt{P1} & \texttt{P2} & \texttt{P3} \\
+    \midrule
+    WT (ms) & 6 & 0 & 3 \\
+    \bottomrule
+  \end{tabular}
+  \vspace{0.2cm}
+  \begin{exampleblock}{Average WT}
+    $(6 + 0 + 3)/3 = 3$~ms --- a factor of $17/3 \approx 5.7$ better, with
+    the same work and the same finish time of 30~ms.
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}{The Convoy Effect}
+  \begin{itemize}
+    \item One \key{CPU-bound} process holds the CPU for a long burst.
+    \item Many \key{I/O-bound} processes finish their I/O and queue behind
+      it; the I/O devices sit idle.
+    \item The CPU-bound process finally blocks; the short jobs run quickly
+      and block on I/O; now the CPU sits idle.
+    \item The cycle repeats: everyone moves at the speed of the slowest.
+  \end{itemize}
+  \vspace{0.2cm}
+  \begin{alertblock}{Consequence}
+    FCFS gives lower CPU and device utilization than letting the short jobs
+    go first --- and, being non-preemptive, it is unsuitable for time-sharing
+    systems.
+  \end{alertblock}
+  \muted{Silberschatz et al., Ch.~5 \S5.3.1, pp.~188--189.}
+\end{frame}
+
+\begin{frame}{The Lab Server Under FCFS}
+  \centering
+  \begin{tikzpicture}[x=0.5cm,y=1cm]
+  % Gantt: R under FCFS (generated from the verified simulator); time axis left to right,
+  % bars y=0..0.6, time labels below y=0, arrival arrows y=-0.95..-0.5, arrival names below y=-0.95
+  \draw[draw=primary-blue, fill=light-bg] (0,0) rectangle (6,0.6);
+  \node[font=\scriptsize] at (3,0.3) {\texttt{P1}};
+  \draw[draw=primary-blue, fill=light-bg] (6,0) rectangle (14,0.6);
+  \node[font=\scriptsize] at (10,0.3) {\texttt{P2}};
+  \draw[draw=primary-blue, fill=light-bg] (14,0) rectangle (16,0.6);
+  \node[font=\scriptsize] at (15,0.3) {\texttt{P3}};
+  \draw[draw=primary-blue, fill=light-bg] (16,0) rectangle (21,0.6);
+  \node[font=\scriptsize] at (18.5,0.3) {\texttt{P4}};
+  \draw[draw=primary-blue, fill=light-bg] (21,0) rectangle (25,0.6);
+  \node[font=\scriptsize] at (23,0.3) {\texttt{P5}};
+  \node[font=\tiny, below] at (0,0) {0};
+  \node[font=\tiny, below] at (6,0) {6};
+  \node[font=\tiny, below] at (14,0) {14};
+  \node[font=\tiny, below] at (16,0) {16};
+  \node[font=\tiny, below] at (21,0) {21};
+  \node[font=\tiny, below] at (25,0) {25};
+  \draw[-{Latex[length=1.2mm]}, draw=primary-gold] (0,-0.95) -- (0,-0.5);
+  \node[font=\tiny, text=primary-gold, below] at (0,-0.95) {P1};
+  \draw[-{Latex[length=1.2mm]}, draw=primary-gold] (1,-0.95) -- (1,-0.5);
+  \node[font=\tiny, text=primary-gold, below] at (1,-0.95) {P2};
+  \draw[-{Latex[length=1.2mm]}, draw=primary-gold] (2,-0.95) -- (2,-0.5);
+  \node[font=\tiny, text=primary-gold, below] at (2,-0.95) {P3};
+  \draw[-{Latex[length=1.2mm]}, draw=primary-gold] (3,-0.95) -- (3,-0.5);
+  \node[font=\tiny, text=primary-gold, below] at (3,-0.95) {P4};
+  \draw[-{Latex[length=1.2mm]}, draw=primary-gold] (5,-0.95) -- (5,-0.5);
+  \node[font=\tiny, text=primary-gold, below] at (5,-0.95) {P5};
+\end{tikzpicture}
+  \\[0.2cm]
+  {\footnotesize\begin{tabular}{lrrrrrr}
+\toprule
+\textbf{Proc.} & \textbf{AT} & $\boldsymbol{\tau}$ & \textbf{CT} & \textbf{TAT} & \textbf{WT} & \textbf{RT} \\
+\midrule
+\texttt{P1} & 0 & 6 & 6 & 6 & 0 & 0 \\
+\texttt{P2} & 1 & 8 & 14 & 13 & 5 & 5 \\
+\texttt{P3} & 2 & 2 & 16 & 14 & 12 & 12 \\
+\texttt{P4} & 3 & 5 & 21 & 18 & 13 & 13 \\
+\texttt{P5} & 5 & 4 & 25 & 20 & 16 & 16 \\
+\midrule
+\multicolumn{4}{@{}l}{\textbf{Average}} & 14.2 & 9.2 & 9.2 \\
+\bottomrule
+\end{tabular}}
+  \vspace{0.15cm}
+  \begin{itemize}
+    \footnotesize
+    \item \texttt{P3} needs only 2~ms but waits 12~ms behind \texttt{P2}'s
+      8-ms burst. Average WT $= 46/5 = 9.2$~ms.
+  \end{itemize}
+\end{frame}
+
+\transitionslide{If order matters so much, pick the order deliberately: run the shortest job first.}
+
+% =============================================================================
+% ACT 4 --- SJF
+% =============================================================================
+\section{Shortest-Job-First}
+
+\begin{frame}{SJF: Definition}
+  \begin{block}{Definition}
+    \key{Shortest-Job-First} (SJF) gives the CPU to the ready process with
+    the smallest \emph{next CPU burst}. Ties are broken FCFS.
+  \end{block}
+  \begin{itemize}
+    \item The more accurate name is \emph{shortest-next-CPU-burst}: the
+      length that matters is the next burst, not the whole job.
+    \item In the form we use first, SJF is \key{non-preemptive}: once chosen,
+      a process runs its whole burst.
+    \item The preemptive form is SRTF (later today).
+  \end{itemize}
+  \muted{Silberschatz et al., Ch.~5 \S5.3.2, pp.~189--192; Stallings calls
+  it SPN (shortest process next), Ch.~9 \S9.2.}
+\end{frame}
+
+\begin{frame}{Worked Example: SJF With Simultaneous Arrivals}
+  \centering
+  \footnotesize
+  \texttt{P1}--\texttt{P4} arrive at 0 with bursts 6, 8, 7, 3~ms.\\[0.25cm]
+  \begin{tikzpicture}[x=0.5cm,y=1cm]
+  % Gantt: S2 under SJF (generated from the verified simulator); time axis left to right,
+  % bars y=0..0.6, time labels below y=0, arrival arrows y=-0.95..-0.5, arrival names below y=-0.95
+  \draw[draw=primary-blue, fill=light-bg] (0,0) rectangle (3,0.6);
+  \node[font=\scriptsize] at (1.5,0.3) {\texttt{P4}};
+  \draw[draw=primary-blue, fill=light-bg] (3,0) rectangle (9,0.6);
+  \node[font=\scriptsize] at (6,0.3) {\texttt{P1}};
+  \draw[draw=primary-blue, fill=light-bg] (9,0) rectangle (16,0.6);
+  \node[font=\scriptsize] at (12.5,0.3) {\texttt{P3}};
+  \draw[draw=primary-blue, fill=light-bg] (16,0) rectangle (24,0.6);
+  \node[font=\scriptsize] at (20,0.3) {\texttt{P2}};
+  \node[font=\tiny, below] at (0,0) {0};
+  \node[font=\tiny, below] at (3,0) {3};
+  \node[font=\tiny, below] at (9,0) {9};
+  \node[font=\tiny, below] at (16,0) {16};
+  \node[font=\tiny, below] at (24,0) {24};
+\end{tikzpicture}
+  \\[0.25cm]
+  \begin{tabular}{lcccc}
+    \toprule
+    & \texttt{P1} & \texttt{P2} & \texttt{P3} & \texttt{P4} \\
+    \midrule
+    WT (ms) & 3 & 16 & 9 & 0 \\
+    \bottomrule
+  \end{tabular}
+  \vspace{0.2cm}
+  \begin{exampleblock}{Comparison}
+    SJF: $(3+16+9+0)/4 = 7$~ms. FCFS in index order:
+    $(0+6+14+21)/4 = 10.25$~ms.
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}{Why SJF Is Optimal}
+  \begin{itemize}
+    \item $n$ processes all ready at time 0, run in order with bursts
+      $\tau_{(1)}, \tau_{(2)}, \ldots, \tau_{(n)}$.
+    \item The $k$-th burst delays every one of the $n-k$ processes after it:
+      \[
+        \sum_{i} \mathrm{WT}_i = \sum_{k=1}^{n} (n-k)\,\tau_{(k)} .
+      \]
+    \item The largest weight $n-1$ multiplies the first burst. To minimize
+      the sum, put the smallest burst there --- and so on down.
+  \end{itemize}
+  \begin{alertblock}{Result}
+    For a given set of processes, SJF gives the minimum average waiting
+    time. Swapping any adjacent long--short pair into short--long order
+    lowers the total.
+  \end{alertblock}
+  \muted{Silberschatz et al., Ch.~5 \S5.3.2, from p.~189 (SJF is provably optimal).}
+\end{frame}
+
+\begin{frame}{The Lab Server Under Non-preemptive SJF}
+  \centering
+  \begin{tikzpicture}[x=0.5cm,y=1cm]
+  % Gantt: R under SJF (generated from the verified simulator); time axis left to right,
+  % bars y=0..0.6, time labels below y=0, arrival arrows y=-0.95..-0.5, arrival names below y=-0.95
+  \draw[draw=primary-blue, fill=light-bg] (0,0) rectangle (6,0.6);
+  \node[font=\scriptsize] at (3,0.3) {\texttt{P1}};
+  \draw[draw=primary-blue, fill=light-bg] (6,0) rectangle (8,0.6);
+  \node[font=\scriptsize] at (7,0.3) {\texttt{P3}};
+  \draw[draw=primary-blue, fill=light-bg] (8,0) rectangle (12,0.6);
+  \node[font=\scriptsize] at (10,0.3) {\texttt{P5}};
+  \draw[draw=primary-blue, fill=light-bg] (12,0) rectangle (17,0.6);
+  \node[font=\scriptsize] at (14.5,0.3) {\texttt{P4}};
+  \draw[draw=primary-blue, fill=light-bg] (17,0) rectangle (25,0.6);
+  \node[font=\scriptsize] at (21,0.3) {\texttt{P2}};
+  \node[font=\tiny, below] at (0,0) {0};
+  \node[font=\tiny, below] at (6,0) {6};
+  \node[font=\tiny, below] at (8,0) {8};
+  \node[font=\tiny, below] at (12,0) {12};
+  \node[font=\tiny, below] at (17,0) {17};
+  \node[font=\tiny, below] at (25,0) {25};
+  \draw[-{Latex[length=1.2mm]}, draw=primary-gold] (0,-0.95) -- (0,-0.5);
+  \node[font=\tiny, text=primary-gold, below] at (0,-0.95) {P1};
+  \draw[-{Latex[length=1.2mm]}, draw=primary-gold] (1,-0.95) -- (1,-0.5);
+  \node[font=\tiny, text=primary-gold, below] at (1,-0.95) {P2};
+  \draw[-{Latex[length=1.2mm]}, draw=primary-gold] (2,-0.95) -- (2,-0.5);
+  \node[font=\tiny, text=primary-gold, below] at (2,-0.95) {P3};
+  \draw[-{Latex[length=1.2mm]}, draw=primary-gold] (3,-0.95) -- (3,-0.5);
+  \node[font=\tiny, text=primary-gold, below] at (3,-0.95) {P4};
+  \draw[-{Latex[length=1.2mm]}, draw=primary-gold] (5,-0.95) -- (5,-0.5);
+  \node[font=\tiny, text=primary-gold, below] at (5,-0.95) {P5};
+\end{tikzpicture}
+  \\[0.2cm]
+  {\footnotesize\begin{tabular}{lrrrrrr}
+\toprule
+\textbf{Proc.} & \textbf{AT} & $\boldsymbol{\tau}$ & \textbf{CT} & \textbf{TAT} & \textbf{WT} & \textbf{RT} \\
+\midrule
+\texttt{P1} & 0 & 6 & 6 & 6 & 0 & 0 \\
+\texttt{P2} & 1 & 8 & 25 & 24 & 16 & 16 \\
+\texttt{P3} & 2 & 2 & 8 & 6 & 4 & 4 \\
+\texttt{P4} & 3 & 5 & 17 & 14 & 9 & 9 \\
+\texttt{P5} & 5 & 4 & 12 & 7 & 3 & 3 \\
+\midrule
+\multicolumn{4}{@{}l}{\textbf{Average}} & 11.4 & 6.4 & 6.4 \\
+\bottomrule
+\end{tabular}}
+  \vspace{0.15cm}
+  \begin{itemize}
+    \footnotesize
+    \item At $t=0$ only \texttt{P1} is ready, so it runs to 6. At 6 the
+      choice is $\{8, 2, 5, 4\}$: \texttt{P3}, then \texttt{P5}, \texttt{P4},
+      \texttt{P2}. Average WT $= 32/5 = 6.4$~ms.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{The Catch: Nobody Knows the Next Burst}
+  \begin{itemize}
+    \item The short-term scheduler cannot read the future. It can only
+      \emph{predict} the next CPU burst from the past ones.
+    \item The standard predictor is the \key{exponential average}. With
+      $\tau_n$ the measured length of the $n$-th burst and
+      $\hat{\tau}_n$ its prediction:
+  \end{itemize}
+  \begin{block}{Exponential averaging}
+    \[
+      \hat{\tau}_{n+1} = \alpha\,\tau_n + (1-\alpha)\,\hat{\tau}_n ,
+      \qquad 0 \le \alpha \le 1 .
+    \]
+  \end{block}
+  \begin{itemize}
+    \item $\alpha = 0$: history only, recent behaviour ignored.
+      $\alpha = 1$: only the last burst counts.
+    \item Expanding the recursion, older bursts get weights $\alpha(1-\alpha)^j$
+      --- each step back counts less.
+  \end{itemize}
+  \muted{Silberschatz writes $t_n$ for the measured burst; we keep $\tau$ for
+  bursts and add a hat for a prediction.}
+\end{frame}
+
+\begin{frame}{Worked Example: Predicting Bursts With $\alpha = 1/2$}
+  \centering
+  \footnotesize
+  $\hat{\tau}_0 = 10$~ms; measured bursts $6, 4, 6, 4, 13, 13, 13$~ms.\\[0.25cm]
+  \renewcommand{\arraystretch}{1.25}
+  \begin{tabular}{lcccccccc}
+    \toprule
+    $n$ & 0 & 1 & 2 & 3 & 4 & 5 & 6 & 7 \\
+    \midrule
+    measured $\tau_n$ & 6 & 4 & 6 & 4 & 13 & 13 & 13 & --- \\
+    predicted $\hat{\tau}_n$ & 10 & 8 & 6 & 6 & 5 & 9 & 11 & 12 \\
+    \bottomrule
+  \end{tabular}
+  \vspace{0.25cm}
+  \begin{itemize}
+    \item $\hat{\tau}_1 = \tfrac12(6) + \tfrac12(10) = 8$;
+      $\hat{\tau}_2 = \tfrac12(4) + \tfrac12(8) = 6$;
+      $\hat{\tau}_5 = \tfrac12(13) + \tfrac12(5) = 9$.
+    \item When behaviour jumps from 4 to 13, the prediction lags --- 9, 11,
+      12 --- and converges.
+  \end{itemize}
+  \muted{Same instance as the exponential-average illustration in Silberschatz et al., Ch.~5 \S5.3.2.}
+\end{frame}
+
+\begin{frame}{Socratic Check 3}
+  \begin{block}{Question}
+    A process alternates bursts of 2~ms and 20~ms. Would you choose
+    $\alpha$ close to 0 or close to 1, and what does SJF then do with it?
+  \end{block}
+  \vspace{0.25cm}
+  \begin{itemize}
+    \item $\alpha$ near 1 follows the last burst: it predicts 2 right before a
+      20 and 20 right before a 2 --- always wrong.
+    \item $\alpha$ near 0 settles near the long-run average (about 11~ms):
+      never exact, but stable.
+    \item SJF is only as good as its predictor; a bad guess turns ``shortest
+      first'' into an arbitrary order.
+  \end{itemize}
+\end{frame}
+
+\transitionslide{Non-preemptive SJF ignores a short job that arrives one millisecond after a long one starts. The preemptive form does not.}
+
+% =============================================================================
+% ACT 5 --- SRTF
+% =============================================================================
+\section{Shortest-Remaining-Time-First}
+
+\begin{frame}{SRTF: Preemptive SJF}
+  \begin{block}{Definition}
+    \key{Shortest-Remaining-Time-First} (SRTF) is preemptive SJF. When a
+    process arrives, its burst is compared with the \emph{remaining} time of
+    the running process; if it is strictly shorter, the running process is
+    preempted.
+  \end{block}
+  \begin{itemize}
+    \item Decisions happen at every arrival and every completion (cases 1,
+      3, and 4).
+    \item Equal remaining times do not preempt; ties go to the earlier
+      arrival.
+    \item WT now includes the time a preempted process spends back in the
+      ready queue.
+  \end{itemize}
+  \muted{Silberschatz et al., Ch.~5 \S5.3.2 (from p.~189); Stallings calls
+  it SRT, Ch.~9 \S9.2.}
+\end{frame}
+
+\begin{frame}{Worked Example: SRTF vs.\ Non-preemptive SJF}
+  \centering
+  \footnotesize
+  (AT, $\tau$): \texttt{P1} $(0,8)$, \texttt{P2} $(1,4)$, \texttt{P3} $(2,9)$,
+  \texttt{P4} $(3,5)$.\\[0.15cm]
+  \begin{tikzpicture}[x=0.42cm,y=1cm]
+  % Gantt: S3 under SRTF (generated from the verified simulator); time axis left to right,
+  % bars y=0..0.6, time labels below y=0, arrival arrows y=-0.95..-0.5, arrival names below y=-0.95
+  \draw[draw=primary-blue, fill=light-bg] (0,0) rectangle (1,0.6);
+  \node[font=\scriptsize] at (0.5,0.3) {\texttt{P1}};
+  \draw[draw=primary-blue, fill=light-bg] (1,0) rectangle (5,0.6);
+  \node[font=\scriptsize] at (3,0.3) {\texttt{P2}};
+  \draw[draw=primary-blue, fill=light-bg] (5,0) rectangle (10,0.6);
+  \node[font=\scriptsize] at (7.5,0.3) {\texttt{P4}};
+  \draw[draw=primary-blue, fill=light-bg] (10,0) rectangle (17,0.6);
+  \node[font=\scriptsize] at (13.5,0.3) {\texttt{P1}};
+  \draw[draw=primary-blue, fill=light-bg] (17,0) rectangle (26,0.6);
+  \node[font=\scriptsize] at (21.5,0.3) {\texttt{P3}};
+  \node[font=\tiny, below] at (0,0) {0};
+  \node[font=\tiny, below] at (1,0) {1};
+  \node[font=\tiny, below] at (5,0) {5};
+  \node[font=\tiny, below] at (10,0) {10};
+  \node[font=\tiny, below] at (17,0) {17};
+  \node[font=\tiny, below] at (26,0) {26};
+  \draw[-{Latex[length=1.2mm]}, draw=primary-gold] (0,-0.95) -- (0,-0.5);
+  \node[font=\tiny, text=primary-gold, below] at (0,-0.95) {P1};
+  \draw[-{Latex[length=1.2mm]}, draw=primary-gold] (1,-0.95) -- (1,-0.5);
+  \node[font=\tiny, text=primary-gold, below] at (1,-0.95) {P2};
+  \draw[-{Latex[length=1.2mm]}, draw=primary-gold] (2,-0.95) -- (2,-0.5);
+  \node[font=\tiny, text=primary-gold, below] at (2,-0.95) {P3};
+  \draw[-{Latex[length=1.2mm]}, draw=primary-gold] (3,-0.95) -- (3,-0.5);
+  \node[font=\tiny, text=primary-gold, below] at (3,-0.95) {P4};
+\end{tikzpicture}
+  \\[0.1cm]
+  {\scriptsize\begin{tabular}{lrrrrrr}
+\toprule
+\textbf{Proc.} & \textbf{AT} & $\boldsymbol{\tau}$ & \textbf{CT} & \textbf{TAT} & \textbf{WT} & \textbf{RT} \\
+\midrule
+\texttt{P1} & 0 & 8 & 17 & 17 & 9 & 0 \\
+\texttt{P2} & 1 & 4 & 5 & 4 & 0 & 0 \\
+\texttt{P3} & 2 & 9 & 26 & 24 & 15 & 15 \\
+\texttt{P4} & 3 & 5 & 10 & 7 & 2 & 2 \\
+\midrule
+\multicolumn{4}{@{}l}{\textbf{Average}} & 13 & 6.5 & 4.25 \\
+\bottomrule
+\end{tabular}}
+  \vspace{0.1cm}
+  \begin{itemize}
+    \item At 1, \texttt{P2}'s 4 beats \texttt{P1}'s remaining 7: preempt.
+      \texttt{P1} resumes at 10.
+    \item SRTF average WT $= 26/4 = 6.5$~ms; non-preemptive SJF gives
+      $7.75$~ms.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{The Lab Server Under SRTF}
+  \centering
+  \begin{tikzpicture}[x=0.5cm,y=1cm]
+  % Gantt: R under SRTF (generated from the verified simulator); time axis left to right,
+  % bars y=0..0.6, time labels below y=0, arrival arrows y=-0.95..-0.5, arrival names below y=-0.95
+  \draw[draw=primary-blue, fill=light-bg] (0,0) rectangle (2,0.6);
+  \node[font=\scriptsize] at (1,0.3) {\texttt{P1}};
+  \draw[draw=primary-blue, fill=light-bg] (2,0) rectangle (4,0.6);
+  \node[font=\scriptsize] at (3,0.3) {\texttt{P3}};
+  \draw[draw=primary-blue, fill=light-bg] (4,0) rectangle (8,0.6);
+  \node[font=\scriptsize] at (6,0.3) {\texttt{P1}};
+  \draw[draw=primary-blue, fill=light-bg] (8,0) rectangle (12,0.6);
+  \node[font=\scriptsize] at (10,0.3) {\texttt{P5}};
+  \draw[draw=primary-blue, fill=light-bg] (12,0) rectangle (17,0.6);
+  \node[font=\scriptsize] at (14.5,0.3) {\texttt{P4}};
+  \draw[draw=primary-blue, fill=light-bg] (17,0) rectangle (25,0.6);
+  \node[font=\scriptsize] at (21,0.3) {\texttt{P2}};
+  \node[font=\tiny, below] at (0,0) {0};
+  \node[font=\tiny, below] at (2,0) {2};
+  \node[font=\tiny, below] at (4,0) {4};
+  \node[font=\tiny, below] at (8,0) {8};
+  \node[font=\tiny, below] at (12,0) {12};
+  \node[font=\tiny, below] at (17,0) {17};
+  \node[font=\tiny, below] at (25,0) {25};
+  \draw[-{Latex[length=1.2mm]}, draw=primary-gold] (0,-0.95) -- (0,-0.5);
+  \node[font=\tiny, text=primary-gold, below] at (0,-0.95) {P1};
+  \draw[-{Latex[length=1.2mm]}, draw=primary-gold] (1,-0.95) -- (1,-0.5);
+  \node[font=\tiny, text=primary-gold, below] at (1,-0.95) {P2};
+  \draw[-{Latex[length=1.2mm]}, draw=primary-gold] (2,-0.95) -- (2,-0.5);
+  \node[font=\tiny, text=primary-gold, below] at (2,-0.95) {P3};
+  \draw[-{Latex[length=1.2mm]}, draw=primary-gold] (3,-0.95) -- (3,-0.5);
+  \node[font=\tiny, text=primary-gold, below] at (3,-0.95) {P4};
+  \draw[-{Latex[length=1.2mm]}, draw=primary-gold] (5,-0.95) -- (5,-0.5);
+  \node[font=\tiny, text=primary-gold, below] at (5,-0.95) {P5};
+\end{tikzpicture}
+  \\[0.2cm]
+  {\footnotesize\begin{tabular}{lrrrrrr}
+\toprule
+\textbf{Proc.} & \textbf{AT} & $\boldsymbol{\tau}$ & \textbf{CT} & \textbf{TAT} & \textbf{WT} & \textbf{RT} \\
+\midrule
+\texttt{P1} & 0 & 6 & 8 & 8 & 2 & 0 \\
+\texttt{P2} & 1 & 8 & 25 & 24 & 16 & 16 \\
+\texttt{P3} & 2 & 2 & 4 & 2 & 0 & 0 \\
+\texttt{P4} & 3 & 5 & 17 & 14 & 9 & 9 \\
+\texttt{P5} & 5 & 4 & 12 & 7 & 3 & 3 \\
+\midrule
+\multicolumn{4}{@{}l}{\textbf{Average}} & 11 & 6 & 5.6 \\
+\bottomrule
+\end{tabular}}
+  \vspace{0.15cm}
+  \begin{itemize}
+    \footnotesize
+    \item At 2, \texttt{P3} (2) beats \texttt{P1}'s remaining 4: preempt. At 3
+      and 5, the newcomers (5 and 4) do not beat what is running.
+      Average WT $= 30/5 = 6.0$~ms.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Three Policies, One Workload}
+  \centering
+  \footnotesize
+  \renewcommand{\arraystretch}{1.3}
+  \begin{tabular}{lcccc}
+    \toprule
+    \textbf{Policy} & \textbf{avg WT} & \textbf{avg TAT} & \textbf{avg RT} & \textbf{dispatches} \\
+    \midrule
+    FCFS & 9.2 & 14.2 & 9.2 & 5 \\
+    SJF (non-preemptive) & 6.4 & 11.4 & 6.4 & 5 \\
+    SRTF & 6.0 & 11.0 & 5.6 & 6 \\
+    \bottomrule
+  \end{tabular}
+  \vspace{0.25cm}
+  \begin{itemize}
+    \item All three finish at 25~ms; the work is the same. Only the
+      \emph{order} --- and hence the waiting --- changes.
+    \item SRTF buys the best averages with one extra dispatch.
+    \item With 0.5-ms dispatch latency, SRTF's utilization is
+      $25/(25 + 6 \times 0.5) = 25/28 \approx 89.3\%$, versus $90.9\%$ for
+      FCFS.
+  \end{itemize}
+  \muted{All times in ms; lab-server jobs from the opening slide.}
+\end{frame}
+
+\begin{frame}{The Price of Short-First: Starvation}
+  \begin{itemize}
+    \item If short jobs keep arriving, a long job can wait
+      \emph{indefinitely}: SJF and SRTF can \key{starve} long processes.
+    \item On the lab server, \texttt{P2} (8~ms) already has the largest WT
+      (16~ms) under both SJF and SRTF; a steady stream of 2-ms jobs would
+      postpone it forever.
+    \item FCFS never starves anyone: each process waits only for those ahead
+      of it.
+  \end{itemize}
+  \vspace{0.2cm}
+  \begin{block}{Two further costs}
+    SJF/SRTF need a burst prediction, and SRTF pays a dispatch on every
+    preemption. Ageing (raising priority with waiting time) is the usual
+    cure for starvation --- Lecture 9.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Common Misconceptions}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{block}{Wrong}
+        \begin{itemize}
+          \item ``Waiting time is completion minus arrival.''
+          \item ``SJF uses the total length of the job.''
+          \item ``SRTF preempts on equal remaining time.''
+          \item ``A better policy finishes all the work sooner.''
+        \end{itemize}
+      \end{block}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{block}{Right}
+        \begin{itemize}
+          \item That is TAT; $\mathrm{WT} = \mathrm{TAT} - \tau$.
+          \item It uses the predicted \emph{next CPU burst}.
+          \item Only a strictly shorter newcomer preempts.
+          \item The last completion is the same; the averages change.
+        \end{itemize}
+      \end{block}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Takeaways}
+  \begin{itemize}
+    \item Processes alternate \key{CPU bursts} and \key{I/O bursts}; the
+      short-term scheduler fills the CPU while others wait for I/O.
+    \item Scheduling happens on block, exit (non-preemptive) and also on
+      timer or I/O completion (\key{preemptive}); the \key{dispatcher} pays a
+      latency on every switch.
+    \item $\mathrm{TAT} = \mathrm{CT} - \mathrm{AT}$,
+      $\mathrm{WT} = \mathrm{TAT} - \tau$,
+      $\mathrm{RT} = \mathrm{ST} - \mathrm{AT}$.
+    \item \key{FCFS} is simple and starvation-free but suffers the convoy
+      effect.
+    \item \key{SJF} minimizes average WT but needs a predicted burst
+      (exponential average); \key{SRTF} is its preemptive form. Both can
+      starve long jobs.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Next: Priority, Round Robin, and Multilevel Queues}
+  \begin{itemize}
+    \item Today: what scheduling is, how to measure it, and the two policies
+      that order by arrival and by burst length.
+    \item Next lecture: \key{Priority} scheduling and ageing, \key{Round
+      Robin} with a time quantum, multilevel queues and feedback queues, and
+      scheduling on more than one CPU.
+  \end{itemize}
+  \vspace{0.3cm}
+  \begin{block}{Reading}
+    Silberschatz et al., \emph{Operating System Concepts}, Ch.~5
+    \S5.3--5.5 \cite{SilberschatzOSC_operating_system_concepts}; Stallings,
+    \emph{Operating Systems: Internals and Design Principles}, Ch.~9
+    \S9.2 and Ch.~10 \S10.1 \cite{StallingsOS_internals_design_principles}.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Further Reading (Page-Cited)}
+  \footnotesize
+  \begin{itemize}
+    \item A.~Silberschatz, P.~B.~Galvin, G.~Gagne, \emph{Operating System
+      Concepts}, 8e --- Ch.~5 \S5.1 (basic concepts, p.~183), \S5.2
+      (scheduling criteria, p.~187), \S5.3.1 (FCFS, p.~188), \S5.3.2
+      (SJF and SRTF, p.~189).
+    \item W.~Stallings, \emph{Operating Systems: Internals and Design
+      Principles}, 6e --- Ch.~9 \S9.1 (types of scheduling, p.~406), \S9.2
+      (scheduling algorithms: FCFS, SPN, SRT, p.~410).
+  \end{itemize}
+  \vspace{0.2cm}
+  \muted{Page-verified via each book's \texttt{index.md} under
+  \texttt{master\_supporting\_docs/CS502/supporting\_books/}.}
+\end{frame}
+
+\begin{frame}[allowframebreaks]{References}
+  \footnotesize
+  \bibliographystyle{plain}
+  \nocite{SilberschatzOSC_operating_system_concepts,StallingsOS_internals_design_principles}
+  \bibliography{../../Bibliography_base}
+\end{frame}
+
+\end{document}

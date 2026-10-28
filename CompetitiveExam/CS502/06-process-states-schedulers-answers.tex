@@ -1,0 +1,50 @@
+% =============================================================================
+% CompetitiveExam/CS502/06-process-states-schedulers-answers.tex
+% ANSWER KEY — Competitive Exam Practice 6
+%
+% Provenance: ALL questions are Original (GATE-pattern); see the questions file.
+% Every answer below has been independently re-derived from
+% Slides/CS502/06-process-states-schedulers.tex and the matching Notes.
+%
+% Compile with: cd CompetitiveExam/CS502 &&
+%   TEXINPUTS=../../Preambles:$TEXINPUTS xelatex -interaction=nonstopmode 06-process-states-schedulers-answers.tex
+% =============================================================================
+
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\input{../../Preambles/header}
+\coursecode{CS502}
+\renewcommand{\thesection}{6.\arabic{section}}
+
+\title{Answer Key --- Competitive Exam Practice 6: Process State Diagram, Schedulers, and Context Switch\\\large GATE (Computer Science) Pattern}
+\author{Auqib Hamid Lone\\[0.3em]
+  \emph{Department of Computer Science \& Engineering}, \emph{GCET Ganderbal}}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{enumerate}
+\item[\textbf{Q1}] \textbf{(C).} A process whose event occurs goes \texttt{waiting} $\to$ \texttt{ready} and must then be dispatched by the short-term scheduler; there is no direct \texttt{waiting} $\to$ \texttt{running} arrow. (A) is preemption, (B) is event completion, (D) is an I/O request --- all legal.
+
+\item[\textbf{Q2}] \textbf{(B).} The long-term (job) scheduler decides which processes are admitted into memory, and so controls $n$, the number of processes in memory. The short-term scheduler and dispatcher only choose among processes already in memory.
+
+\item[\textbf{Q3}] \textbf{(C).} Swapping out and later swapping in a partially executed process is the medium-term scheduler's job; it reduces the degree of multiprogramming temporarily to improve the mix or free memory.
+
+\item[\textbf{Q4}] \textbf{(C).} An empty pipe forces the caller to block (\texttt{running} $\to$ \texttt{waiting}), so the kernel must switch to another process. \texttt{getpid} (A) is a mode switch only. In (B) the woken process merely moves to \texttt{ready}; the interrupted process may resume. (D) never enters the kernel.
+
+\item[\textbf{Q5}] \textbf{(B).} A switch to a different process can only be performed by the kernel, so it always involves entering kernel mode (and returning to user mode in the new process): S1 is true. A system call such as \texttt{getpid}, or an interrupt that returns to the interrupted process, is a mode switch with no process switch: S2 is false.
+
+\item[\textbf{Q6}] \textbf{28.} Running $= 8$ (one per core). Waiting $= 50 - 8 - 11 - 3 - 0 = 28$.
+
+\item[\textbf{Q7}] \textbf{10.} Overhead $= s/(q+s) = 5/(45+5) = 5/50 = 0.10 = 10\%$.
+
+\item[\textbf{Q8}] \textbf{24.} Require $1/(q+1) \le 0.04 \iff q + 1 \ge 25 \iff q \ge 24$\,ms.
+
+\item[\textbf{Q9}] \textbf{3.} Legal: \texttt{new} $\to$ \texttt{ready}, \texttt{running} $\to$ \texttt{ready}, \texttt{waiting} $\to$ \texttt{ready}. Illegal: \texttt{ready} $\to$ \texttt{waiting} (only a running process can issue a request to wait on), \texttt{waiting} $\to$ \texttt{running} (must pass through \texttt{ready}), \texttt{new} $\to$ \texttt{running} (must be admitted to \texttt{ready} first).
+
+\item[\textbf{Q10}] \textbf{3.} Timeline: \texttt{P1} runs $0$--$4$ (2\,ms left); switch to \texttt{P2}, runs $4$--$8$ (1\,ms left); switch to \texttt{P1}, runs $8$--$10$ and terminates; switch to \texttt{P2}, runs $10$--$11$ and terminates. Switches at $t = 4, 8, 10$: $3$. (The CPU goes idle at $t = 11$; that is not a switch to a different process.)
+
+\end{enumerate}
+
+\end{document}

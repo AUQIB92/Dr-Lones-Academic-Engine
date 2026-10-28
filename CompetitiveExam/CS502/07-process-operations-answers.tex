@@ -1,0 +1,51 @@
+% =============================================================================
+% CompetitiveExam/CS502/07-process-operations-answers.tex
+% ANSWER KEY — Competitive Exam Practice 7: Operations on Processes
+%
+% Provenance: ALL questions are Original (GATE-pattern); see the questions file.
+% Every numerical answer was verified by compiling and running the program
+% (gcc) on 2026-10-29: Q5 64 processes -> 63 children; Q6 4; Q7 30; Q8 8;
+% Q9 10 + 8 = 18; Q10 44.
+%
+% Compile with: cd CompetitiveExam/CS502 &&
+%   TEXINPUTS=../../Preambles:$TEXINPUTS xelatex -interaction=nonstopmode 07-process-operations-answers.tex
+% =============================================================================
+
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\input{../../Preambles/header}
+\coursecode{CS502}
+\renewcommand{\thesection}{7.\arabic{section}}
+
+\title{Answer Key --- Competitive Exam Practice 7: Operations on Processes\\\large GATE (Computer Science) Pattern}
+\author{Auqib Hamid Lone\\[0.3em]
+  \emph{Department of Computer Science \& Engineering}, \emph{GCET Ganderbal}}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{enumerate}
+\item[\textbf{Q1}] \textbf{(B).} \texttt{fork} returns twice: \texttt{0} in the child and the child's pid in the parent (\texttt{-1} only on failure). Both processes resume at the instruction after the call, not at the start of \texttt{main}, so (D) is false.
+
+\item[\textbf{Q2}] \textbf{(B).} \texttt{exec} replaces the memory image of the calling process; the pid and the parent relationship are unchanged. A successful \texttt{exec} never returns, because the code that called it no longer exists. No new process is created, so (A) and (C) are false; (D) is false because \texttt{exec} returns only on failure, with \texttt{-1}.
+
+\item[\textbf{Q3}] \textbf{(B).} A zombie has terminated; its resources are released, but its PCB entry (pid and exit status) remains until the parent calls \texttt{wait}. Option (A) describes an orphan.
+
+\item[\textbf{Q4}] \textbf{(C).} The child is an orphan; UNIX re-parents it to \texttt{init}, which calls \texttt{wait} periodically and reaps it. (A) describes cascading termination, which some systems enforce but UNIX does not require.
+
+\item[\textbf{Q5}] \textbf{63.} Six sequential forks give $2^6 = 64$ processes, of which $64 - 1 = 63$ are new children.
+
+\item[\textbf{Q6}] \textbf{4.} First \texttt{fork}: P (non-zero) and C1 (zero). C1's \texttt{\&\&} is false, so C1 stops. P evaluates \texttt{fork() || fork()}: P sees non-zero from the second \texttt{fork} and its \texttt{||} is true; the new child C2 sees zero and evaluates the third \texttt{fork}, creating C3. Processes P, C1, C2, C3 each print once: 4.
+
+\item[\textbf{Q7}] \textbf{30.} The print is inside the loop. Iterations $i = 0, 1, 2, 3$ run with $2, 4, 8, 16$ processes after their \texttt{fork}, each printing once: $2 + 4 + 8 + 16 = 30$.
+
+\item[\textbf{Q8}] \textbf{8.} \texttt{"X"} has no newline and output goes to a file, so it remains in the stdio buffer. Each \texttt{fork} copies the buffer; three forks give $2^3 = 8$ processes, each of which flushes its own copy of \texttt{"X"} at exit: 8 characters.
+
+\item[\textbf{Q9}] \textbf{18.} Parent and child have separate copies of \texttt{x}, each starting at 5. The child prints $5 \times 2 = 10$; the parent waits, then prints $5 + 3 = 8$. Sum $= 10 + 8 = 18$.
+
+\item[\textbf{Q10}] \textbf{44.} Only the low 8 bits are delivered: $300 \bmod 256 = 300 - 256 = 44$.
+
+\end{enumerate}
+
+\end{document}

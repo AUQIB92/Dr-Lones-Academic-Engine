@@ -1,0 +1,86 @@
+% =============================================================================
+% CompetitiveExam/CS502/05-process-concept-pcb-questions.tex
+% Competitive Exam Practice 5 — GATE (Computer Science) Pattern
+% Process Concept and the Process Control Block
+%
+% Student-facing — NO answers. Answer key: 05-process-concept-pcb-answers.tex.
+% Provenance: ALL questions are Original (GATE-pattern). No item is attributed
+% to a past GATE paper, and no year/question number is claimed.
+% Source of truth: Slides/CS502/05-process-concept-pcb.tex and its Notes.
+% =============================================================================
+
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\input{../../Preambles/header}
+\coursecode{CS502}
+\renewcommand{\thesection}{5.\arabic{section}}
+
+\title{Competitive Exam Practice 5: Process Concept and the PCB\\\large GATE (Computer Science) Pattern}
+\author{Auqib Hamid Lone\\[0.3em]
+  \emph{Department of Computer Science \& Engineering}, \emph{GCET Ganderbal}}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\noindent Each question carries 1--2 marks. MCQ = single correct option; NAT = Numerical Answer Type. \emph{All questions in this set are original, written in the GATE pattern; none is claimed to be a past-year question.}
+
+\begin{enumerate}
+\item[\textbf{Q1}] \textit{[Original, GATE-pattern]} \textbf{[MCQ, 1 mark]} Which statement about programs and processes is \textbf{TRUE}?
+\begin{enumerate}
+  \item[(A)] A program and a process are the same entity viewed from disk and from memory
+  \item[(B)] Two processes executing the same program share a single PCB
+  \item[(C)] Two processes executing the same program may share the text section but have separate stacks
+  \item[(D)] A process exists for as long as its executable file exists on disk
+\end{enumerate}
+
+\item[\textbf{Q2}] \textit{[Original, GATE-pattern]} \textbf{[MCQ, 1 mark]} In the five-state process model, which transition is \textbf{NOT} possible?
+\begin{enumerate}
+  \item[(A)] running $\to$ ready
+  \item[(B)] waiting $\to$ running
+  \item[(C)] waiting $\to$ ready
+  \item[(D)] new $\to$ ready
+\end{enumerate}
+
+\item[\textbf{Q3}] \textit{[Original, GATE-pattern]} \textbf{[MCQ, 1 mark]} A local variable declared inside a C function, and the memory returned by \texttt{malloc} inside that function, reside respectively in:
+\begin{enumerate}
+  \item[(A)] data, heap
+  \item[(B)] stack, heap
+  \item[(C)] heap, stack
+  \item[(D)] stack, data
+\end{enumerate}
+
+\item[\textbf{Q4}] \textit{[Original, GATE-pattern]} \textbf{[MCQ, 2 marks]} Which of the following is \textbf{NOT} normally stored in a process control block?
+\begin{enumerate}
+  \item[(A)] The program counter
+  \item[(B)] Base and limit registers or a page-table pointer
+  \item[(C)] The source code of the program
+  \item[(D)] The list of open files
+\end{enumerate}
+
+\item[\textbf{Q5}] \textit{[Original, GATE-pattern]} \textbf{[MCQ, 2 marks]} A running process issues a blocking \texttt{read} on the keyboard. Later, the key is pressed and the I/O completes while another process is running. The sequence of states the first process passes through, starting from running, is:
+\begin{enumerate}
+  \item[(A)] running $\to$ waiting $\to$ running
+  \item[(B)] running $\to$ ready $\to$ waiting $\to$ running
+  \item[(C)] running $\to$ waiting $\to$ ready $\to$ running
+  \item[(D)] running $\to$ terminated $\to$ ready $\to$ running
+\end{enumerate}
+
+\item[\textbf{Q6}] \textit{[Original, GATE-pattern]} \textbf{[NAT, 1 mark]} A system with 4 CPUs has 15 processes, none new or terminated. Exactly 6 are in the waiting state. The minimum possible number of processes in the ready state is \rule{1.5cm}{0.4pt}.
+
+\item[\textbf{Q7}] \textit{[Original, GATE-pattern]} \textbf{[NAT, 2 marks]} A single-CPU process is created, admitted, dispatched, preempted by the timer, dispatched, blocks for disk I/O, has its I/O complete, is dispatched, is preempted by the timer, is dispatched, and exits. The total number of state transitions it undergoes is \rule{1.5cm}{0.4pt}.
+
+\item[\textbf{Q8}] \textit{[Original, GATE-pattern]} \textbf{[NAT, 2 marks]} A PCB stores: a program counter (8 B), 32 general-purpose registers of 8 B each, a status register (8 B), a stack pointer (8 B), and 200 B of other control information. On each interrupt, only the processor-state information (PC, general registers, status register, stack pointer) is saved. The number of bytes saved per interrupt is \rule{1.5cm}{0.4pt}.
+
+\item[\textbf{Q9}] \textit{[Original, GATE-pattern]} \textbf{[NAT, 2 marks]} One CPU. At some instant: \texttt{P1} running; \texttt{P2}, \texttt{P3} ready; \texttt{P4}, \texttt{P5}, \texttt{P6} waiting. Then, in order: \texttt{P1}'s slice expires and \texttt{P2} is dispatched; \texttt{P2} blocks on I/O and \texttt{P3} is dispatched; \texttt{P4} and \texttt{P5} have their I/O complete. The number of processes in the ready state now is \rule{1.5cm}{0.4pt}.
+
+\item[\textbf{Q10}] \textit{[Original, GATE-pattern]} \textbf{[MCQ, 2 marks]} Which reason best explains why the PCB is kept in kernel memory rather than in the process's own address space?
+\begin{enumerate}
+  \item[(A)] Kernel memory is faster than user memory
+  \item[(B)] The process could otherwise modify its own state, PID, or memory limits, and the kernel must access the PCB even when the process's memory is swapped out
+  \item[(C)] User memory cannot hold structures larger than one page
+  \item[(D)] The PCB is needed only in kernel mode, so its location does not matter
+\end{enumerate}
+\end{enumerate}
+
+\end{document}

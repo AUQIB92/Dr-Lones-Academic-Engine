@@ -1,0 +1,102 @@
+% =============================================================================
+% CompetitiveExam/CS502/06-process-states-schedulers-questions.tex
+% Competitive Exam Practice 6 — GATE (Computer Science) Pattern
+% Process State Diagram, Schedulers, and Context Switch
+%
+% Student-facing — NO answers. Answer key: 06-process-states-schedulers-answers.tex.
+% Provenance: ALL questions are Original (GATE-pattern). No item in this set is
+% attributed to a past GATE paper, and no year/question number is claimed.
+% See .claude/skills/competitive-exam-questions/SKILL.md.
+%
+% Source of truth: Slides/CS502/06-process-states-schedulers.tex and
+% Notes/CS502/06-process-states-schedulers-notes.tex.
+%
+% Compile with: cd CompetitiveExam/CS502 &&
+%   TEXINPUTS=../../Preambles:$TEXINPUTS xelatex -interaction=nonstopmode 06-process-states-schedulers-questions.tex
+% =============================================================================
+
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\input{../../Preambles/header}
+\coursecode{CS502}
+\renewcommand{\thesection}{6.\arabic{section}}
+
+\title{Competitive Exam Practice 6: Process State Diagram, Schedulers, and Context Switch\\\large GATE (Computer Science) Pattern}
+\author{Auqib Hamid Lone\\[0.3em]
+  \emph{Department of Computer Science \& Engineering}, \emph{GCET Ganderbal}}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\noindent Each question carries 1--2 marks. MCQ = single correct option; NAT = Numerical Answer Type. \emph{All questions in this set are original, written in the GATE pattern; none is claimed to be a past-year question.}
+
+\begin{enumerate}
+\item[\textbf{Q1}] \textit{[Original, GATE-pattern]} \textbf{[MCQ, 1 mark]} In the five-state process model (\texttt{new}, \texttt{ready}, \texttt{running}, \texttt{waiting}, \texttt{terminated}), which of the following transitions is \textbf{NOT} possible?
+
+\begin{enumerate}
+  \item[(A)] \texttt{running} $\to$ \texttt{ready}
+  \item[(B)] \texttt{waiting} $\to$ \texttt{ready}
+  \item[(C)] \texttt{waiting} $\to$ \texttt{running}
+  \item[(D)] \texttt{running} $\to$ \texttt{waiting}
+\end{enumerate}
+
+\item[\textbf{Q2}] \textit{[Original, GATE-pattern]} \textbf{[MCQ, 1 mark]} The degree of multiprogramming is controlled primarily by the:
+
+\begin{enumerate}
+  \item[(A)] short-term scheduler
+  \item[(B)] long-term scheduler
+  \item[(C)] dispatcher
+  \item[(D)] I/O-completion interrupt handler
+\end{enumerate}
+
+\item[\textbf{Q3}] \textit{[Original, GATE-pattern]} \textbf{[MCQ, 1 mark]} Which scheduler removes a partially executed process from main memory to disk and later reintroduces it so that it continues where it left off?
+
+\begin{enumerate}
+  \item[(A)] Long-term scheduler
+  \item[(B)] Short-term scheduler
+  \item[(C)] Medium-term scheduler
+  \item[(D)] Dispatcher
+\end{enumerate}
+
+\item[\textbf{Q4}] \textit{[Original, GATE-pattern]} \textbf{[MCQ, 2 marks]} On a single-core system with other processes ready, which of the following events \textbf{necessarily} results in a context switch away from the current process?
+
+\begin{enumerate}
+  \item[(A)] The process calls \texttt{getpid}
+  \item[(B)] A keyboard interrupt wakes another, waiting process
+  \item[(C)] The process calls \texttt{read} on a pipe that is currently empty
+  \item[(D)] The process executes an ordinary user-mode function call
+\end{enumerate}
+
+\item[\textbf{Q5}] \textit{[Original, GATE-pattern]} \textbf{[MCQ, 2 marks]} Consider the following statements:
+\begin{itemize}
+  \item[S1:] Every context switch includes at least one switch between user and kernel mode.
+  \item[S2:] Every switch between user and kernel mode includes a context switch.
+\end{itemize}
+Which of the following is correct?
+
+\begin{enumerate}
+  \item[(A)] S1 and S2 are both true
+  \item[(B)] S1 is true and S2 is false
+  \item[(C)] S1 is false and S2 is true
+  \item[(D)] S1 and S2 are both false
+\end{enumerate}
+
+\item[\textbf{Q6}] \textit{[Original, GATE-pattern]} \textbf{[NAT, 1 mark]} A machine with 8 CPU cores has 50 processes. At some instant every core is executing a process, 11 processes are \texttt{ready}, 3 are \texttt{new}, and none is \texttt{terminated}. The number of processes in the \texttt{waiting} state is \rule{1.5cm}{0.4pt}.
+
+\item[\textbf{Q7}] \textit{[Original, GATE-pattern]} \textbf{[NAT, 1 mark]} A context switch takes $5\ \mu\text{s}$ and each process runs for a time slice of $45\ \mu\text{s}$ before being switched out. The percentage of CPU time spent on context switching is \rule{1.5cm}{0.4pt}.
+
+\item[\textbf{Q8}] \textit{[Original, GATE-pattern]} \textbf{[NAT, 2 marks]} A short-term scheduler takes $1$\,ms to select a process, after which the selected process runs for a time slice of $q$\,ms. The smallest value of $q$ (in ms) for which the fraction of CPU time spent scheduling is at most $4\%$ is \rule{1.5cm}{0.4pt}.
+
+\item[\textbf{Q9}] \textit{[Original, GATE-pattern]} \textbf{[NAT, 1 mark]} Consider the five-state process model and the following six transitions:
+\begin{center}
+\texttt{new}$\to$\texttt{ready};\quad \texttt{ready}$\to$\texttt{waiting};\quad \texttt{running}$\to$\texttt{ready};\\
+\texttt{waiting}$\to$\texttt{running};\quad \texttt{waiting}$\to$\texttt{ready};\quad \texttt{new}$\to$\texttt{running}.
+\end{center}
+The number of these transitions that are legal is \rule{1.5cm}{0.4pt}.
+
+\item[\textbf{Q10}] \textit{[Original, GATE-pattern]} \textbf{[NAT, 2 marks]} Two CPU-bound processes \texttt{P1} and \texttt{P2} arrive at time 0 on a single core; \texttt{P1} is dispatched first. The CPU bursts are $6$\,ms for \texttt{P1} and $5$\,ms for \texttt{P2}. The time slice is $4$\,ms, a preempted process joins the tail of the ready queue, and switching time is negligible. Neither process does I/O. Counting only switches from one process to a \emph{different} process, the number of context switches until both terminate is \rule{1.5cm}{0.4pt}.
+
+\end{enumerate}
+
+\end{document}

@@ -1,0 +1,109 @@
+% =============================================================================
+% Assignments/CS502/09-cpu-scheduling-advanced-assignment.tex
+% Assignment 9: Priority, Round Robin, Multilevel Queues, and Multiprocessor
+% Scheduling
+%
+% Student set — NO answers. Solution key: 09-cpu-scheduling-advanced-solutions.tex
+% (never published). Sourced from Slides/CS502/09-cpu-scheduling-advanced.tex;
+% every problem reuses the deck's notation (TAT/WT/RT, tau, q, Q0/Q1/Q2) and
+% applies its methods to new workloads. All schedules in the key were checked
+% with a discrete-event simulator.
+%
+% Compile with: cd Assignments/CS502 &&
+%   TEXINPUTS=../../Preambles:$TEXINPUTS xelatex -interaction=nonstopmode 09-cpu-scheduling-advanced-assignment.tex
+%   BIBINPUTS=../..:$BIBINPUTS bibtex 09-cpu-scheduling-advanced-assignment
+%   TEXINPUTS=../../Preambles:$TEXINPUTS xelatex ... (x2)
+% =============================================================================
+
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\input{../../Preambles/header}
+\coursecode{CS502}
+\renewcommand{\thesection}{9.\arabic{section}}
+
+\setlength{\emergencystretch}{2.5em}
+
+\title{Assignment 9: Priority, Round Robin, Multilevel Queues,\\and Multiprocessor Scheduling}
+\author{Auqib Hamid Lone\\[0.3em]
+  \emph{Department of Computer Science \& Engineering}, \emph{GCET Ganderbal}}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\noindent\textbf{Deadline:} \key{two weeks from the date of issue} --- there is no automatic late penalty; if you need more time, ask before the deadline and an extension will be granted (see the course policy in the syllabus).
+
+\noindent Answer every question. Show all working for Numerical and Design questions: draw the Gantt chart first, then give TAT, WT, and RT per process --- a bare final answer without the chart earns partial credit only.
+
+\noindent\textbf{Conventions (as in the lecture):} times in ms; a \emph{lower} priority number means \emph{higher} priority; ties go to the earlier arrival; in RR a process arriving at the instant a quantum expires joins the ready queue \emph{before} the preempted process; TAT $=$ completion $-$ arrival, WT $=$ TAT $-\ \tau$, RT $=$ first dispatch $-$ arrival.
+
+\noindent\textbf{Reading:} Silberschatz et al., \emph{Operating System Concepts}, Ch.~5 \S5.3 (pp.~192--199) and \S5.5 (p.~200 onward) \cite{SilberschatzOSC_operating_system_concepts}; Stallings, \emph{Operating Systems: Internals and Design Principles}, Ch.~9 \S9.2 and Ch.~10 \S10.1 \cite{StallingsOS_internals_design_principles}.
+
+\section{Conceptual}
+
+\textbf{Q1.} A classmate claims: ``Priority scheduling and SJF are different algorithms; RR with a big enough quantum is still fairer than FCFS; and MLQ and MLFQ differ only in the number of queues.'' Respond precisely \cite{SilberschatzOSC_operating_system_concepts}.
+\begin{enumerate}
+  \item[(a)] Show that SJF is a special case of priority scheduling by naming the priority it uses. Then explain why both suffer the same starvation problem, and how aging bounds it: with priorities 0 (highest) to 127 and aging that lowers a waiting process's priority number by 1 every 20 ms, what is the longest any process can wait before reaching priority 0?
+  \item[(b)] State exactly what RR becomes when $q$ is at least the longest CPU burst, and why. Then explain why RR's real guarantee is the bound $(n-1)q$ on the wait for the next quantum rather than a lower average WT.
+  \item[(c)] Contrast MLQ and MLFQ in terms of how a process's queue is chosen and whether it can change. List the five parameters that define an MLFQ.
+\end{enumerate}
+
+\textbf{Q2.} A server has eight cores and per-CPU ready queues.
+\begin{enumerate}
+  \item[(a)] Distinguish asymmetric multiprocessing from SMP, and say which one this server uses and why a common ready queue would need a lock.
+  \item[(b)] Define processor affinity, distinguish soft from hard affinity, and give a reason (beyond caches) why affinity matters more on a NUMA machine.
+  \item[(c)] Explain push and pull migration, and the tension between load balancing and affinity. When should the scheduler migrate a process?
+  \item[(d)] A core supports two hardware threads. Explain what a memory stall is and the two levels at which scheduling then takes place.
+\end{enumerate}
+
+\section{Numerical}
+
+\textbf{Q3.} Five processes arrive as follows:
+\begin{center}
+\begin{tabular}{lccc}
+  Process & Arrival & Burst $\tau$ & Priority \\ \hline
+  \texttt{P1} & 0 & 7 & 3 \\
+  \texttt{P2} & 2 & 4 & 1 \\
+  \texttt{P3} & 3 & 6 & 4 \\
+  \texttt{P4} & 5 & 3 & 2 \\
+  \texttt{P5} & 6 & 5 & 1 \\
+\end{tabular}
+\end{center}
+For each policy draw the Gantt chart (arrivals marked on the axis) and tabulate completion, TAT, WT, and RT per process, with averages:
+\begin{enumerate}
+  \item[(a)] non-preemptive priority;
+  \item[(b)] preemptive priority (note that \texttt{P2} and \texttt{P5} share priority 1);
+  \item[(c)] RR with $q=2$;
+  \item[(d)] RR with $q=4$.
+\end{enumerate}
+\begin{enumerate}
+  \item[(e)] Which policy gives the lowest average WT and which the lowest average RT? Count the context switches (changes of running process) for (c) and (d).
+\end{enumerate}
+
+\textbf{Q4.} Overheads and multiprocessors.
+\begin{enumerate}
+  \item[(a)] A context switch costs $s = 0.2$ ms. Compute the useful fraction $q/(q+s)$ for $q = 1, 4, 20$ ms. For your schedule in Q3(c), how much switching overhead is added in total?
+  \item[(b)] Eight interactive processes are ready under RR with $q = 15$ ms. Ignoring switch time, what is the longest a process can wait for its next quantum? What quantum would bound it by 70 ms?
+  \item[(c)] Six jobs with bursts 7, 6, 5, 4, 3, 3 ms are ready at $t=0$ on two CPUs. Give the finish time when J1--J3 are statically assigned to CPU0 and J4--J6 to CPU1, and when a common queue hands the next job (in the listed order) to the first free CPU (lower-numbered CPU on ties). Show both two-CPU Gantt charts and compare with the lower bound.
+\end{enumerate}
+
+\section{Design}
+
+\textbf{Q5.} An MLFQ has three queues: $Q_0$ RR $q=2$, $Q_1$ RR $q=4$, $Q_2$ FCFS. New arrivals enter $Q_0$; a process that uses its full quantum is demoted; higher queues preempt lower ones; a preempted process returns to the tail of its \emph{current} queue and receives a fresh quantum when next dispatched. The workload is \texttt{P1} (arrival 0, $\tau=10$), \texttt{P2} (1, 2), \texttt{P3} (3, 5), \texttt{P4} (9, 1).
+\begin{enumerate}
+  \item[(a)] Trace the schedule: give the Gantt chart, marking the queue of each slice, and the contents of each queue at every decision point.
+  \item[(b)] Give completion, TAT, WT, and RT per process and the averages.
+  \item[(c)] Repeat with plain RR, $q=2$, and compare the treatment of \texttt{P3} and \texttt{P4}. Explain which feature of MLFQ produced the difference.
+  \item[(d)] \texttt{P2}'s burst equals the $Q_0$ quantum. Is \texttt{P2} demoted? Justify from the rule.
+\end{enumerate}
+
+\textbf{Q6.} Design a scheduler for a lab server that runs (i) kernel daemons, (ii) students' interactive shells and editors, and (iii) overnight batch simulations \cite{SilberschatzOSC_operating_system_concepts}.
+\begin{enumerate}
+  \item[(a)] Propose an MLQ: the queues, the algorithm in each, and the inter-queue policy. Explain how you prevent batch starvation, giving numbers for a time-slice split.
+  \item[(b)] Now students sometimes run long compilations from their shells. Explain why your MLQ handles this badly and redesign it as an MLFQ, specifying all five parameters.
+  \item[(c)] Explain how a student could game your MLFQ with tiny I/O requests, and the specific rule that defends against it.
+\end{enumerate}
+
+\bibliography{../../Bibliography_base}
+\bibliographystyle{plain}
+\end{document}

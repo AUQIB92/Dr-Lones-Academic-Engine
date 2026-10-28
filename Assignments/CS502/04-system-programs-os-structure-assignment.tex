@@ -1,0 +1,91 @@
+% =============================================================================
+% Assignments/CS502/04-system-programs-os-structure-assignment.tex
+% Assignment 4: System Programs and Operating-System Structures
+%
+% Student set — NO answers. Solution key: 04-system-programs-os-structure-solutions.tex
+% (never published). Sourced from Slides/CS502/04-system-programs-os-structure.tex;
+% every problem reuses the deck's notation (the k-server counting model, the
+% blast-radius framing, mechanism vs. policy) and extends its worked examples
+% to new commands, server chains, and structures.
+%
+% Compile with: cd Assignments/CS502 &&
+%   TEXINPUTS=../../Preambles:$TEXINPUTS xelatex -interaction=nonstopmode 04-system-programs-os-structure-assignment.tex
+%   BIBINPUTS=../..:$BIBINPUTS bibtex 04-system-programs-os-structure-assignment
+%   TEXINPUTS=../../Preambles:$TEXINPUTS xelatex -interaction=nonstopmode 04-system-programs-os-structure-assignment.tex (x2)
+%   (Windows/MiKTeX uses ; not : as the path separator)
+% =============================================================================
+
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\input{../../Preambles/header}
+\coursecode{CS502}
+\renewcommand{\thesection}{4.\arabic{section}}
+
+\setlength{\emergencystretch}{2.5em}
+
+\title{Assignment 4: System Programs and Operating-System Structures}
+\author{Auqib Hamid Lone\\[0.3em]
+  \emph{Department of Computer Science \& Engineering}, \emph{GCET Ganderbal}}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\noindent\textbf{Deadline:} \key{two weeks from the date of issue} --- there is no automatic late penalty; if you need more time, ask before the deadline and an extension will be granted (see the course policy in the syllabus).
+
+\noindent Answer every question. Show all working for Numerical and Design questions --- a bare final answer without the derivation earns partial credit only.
+
+\noindent\textbf{Reading:} Silberschatz et al., \emph{Operating System Concepts}, Ch.~2 \S2.5--2.8, pp.~66--84 \cite{SilberschatzOSC_operating_system_concepts}; Stallings, \emph{Operating Systems: Internals and Design Principles}, Ch.~2 \S2.3 (p.~64) and Ch.~4 \S4.3 (p.~179) \cite{StallingsOS_internals_design_principles}.
+
+\section{Conceptual}
+
+\textbf{Q1.} System programs are what a user actually sees of the operating system \cite{SilberschatzOSC_operating_system_concepts}.
+\begin{enumerate}
+  \item[(a)] Classify each of the following into the six system-program categories: \texttt{mv}, \texttt{df}, \texttt{sed}, \texttt{as}, the loader, \texttt{ftp}. State which category none of them belongs to that a web browser would fall into, and why it is not part of the OS proper.
+  \item[(b)] \texttt{who} is a status-information \emph{program}. Name the system-\emph{call} category it most plausibly uses, and explain in two sentences why the two taxonomies differ.
+  \item[(c)] Compare the two designs for a command interpreter (built-in commands vs.\ commands as system programs) in terms of interpreter size and how a new command is added. A student proposes implementing \texttt{exit} (terminate the shell) as a separate program. Explain precisely why it would not work, using the same reasoning the lecture used for \texttt{cd}.
+\end{enumerate}
+
+\textbf{Q2.} Mechanism, policy, and isolation.
+\begin{enumerate}
+  \item[(a)] Define mechanism and policy. For each of the following, identify the mechanism and the policy: (i) a disk-scheduling routine that reorders pending requests according to a table of priorities; (ii) the kernel's check of a user's password at login; (iii) a hypervisor that divides CPU time among three virtual machines.
+  \item[(b)] Explain why ``layered'' does not mean ``the upper layers run in user mode,'' and why loadable kernel modules do not isolate drivers. In each case state the blast radius of the lecture's buggy network driver.
+  \item[(c)] Windows NT moved services from user-level servers back into the kernel. State one thing it gained and one thing it lost, in terms of the lecture's trade-off.
+\end{enumerate}
+
+\section{Numerical}
+
+\textbf{Q3.} Use the lecture's counting model: each message (or system call) is one trap, and each trap costs 2 boundary crossings (entry + return). A request that passes through a chain of $k$ user-level servers and back costs $2k$ message traps.
+\begin{enumerate}
+  \item[(a)] A microkernel application reads a file block; the request goes to the file server, which asks the disk-driver server, which asks a block-cache server, and replies return along the same chain. Give $k$, the number of traps, and the number of crossings. Compare with the monolithic cost.
+  \item[(b)] Each crossing costs $0.4~\mu\text{s}$ and each message also copies a 64-byte header between address spaces at $0.1~\mu\text{s}$ per message. Compute the per-request overhead for (a) and for the monolithic design (one trap, no message copy).
+  \item[(c)] A workload issues $250{,}000$ such reads per second. Compute the CPU time per second spent on overhead in each design, and express each as a percentage of one CPU.
+\end{enumerate}
+
+\textbf{Q4.} Layer traversal. A layered OS has layers numbered $0$ (hardware) to $5$ (user interface), and a request at layer $i$ calls each layer below it exactly once on the way down and returns through each on the way up.
+\begin{enumerate}
+  \item[(a)] A request enters at layer 5 and needs the hardware. How many inter-layer calls (downward) and returns (upward) occur?
+  \item[(b)] Each inter-layer call or return costs $50$~ns, and the useful work at the hardware level costs $2~\mu\text{s}$. What fraction of the request's time is layering overhead?
+  \item[(c)] The designers merge layers 2, 3, and 4 into one ``fewer, more functional'' layer. Recompute (a) and (b), and state the percentage reduction in overhead.
+\end{enumerate}
+
+\section{Design}
+
+\textbf{Q5.} Order the layers \cite{SilberschatzOSC_operating_system_concepts}. A small layered OS has five components: CPU scheduler (S), memory manager (M), backing-store driver (D), console driver (C), and file system (F). The calls are: F calls D and M; M calls D; D calls S (to block while waiting for I/O); C calls S; F calls C (to print errors).
+\begin{enumerate}
+  \item[(a)] Using the rule ``if A calls B, B is in a lower layer,'' derive a valid layer ordering, from lowest to highest, and justify each placement.
+  \item[(b)] Now add the lecture's large-system complication: S's tables may be swapped out, so S calls D. Show that no valid ordering exists, naming the cycle.
+  \item[(c)] Propose one design change that breaks the cycle (for example, pinning the scheduler's tables in memory), and give the resulting ordering.
+\end{enumerate}
+
+\textbf{Q6.} Choose a structure. For each system below, choose monolithic, layered, microkernel, modular, or virtual machine (a hybrid is allowed if justified). For each, state where the risky component runs, its blast radius if it fails, and the performance price you accept.
+\begin{enumerate}
+  \item[(a)] A hospital infusion-pump controller with a third-party Bluetooth logging driver of unknown quality.
+  \item[(b)] A university lab that must test students' experimental kernels on shared machines without disrupting other users.
+  \item[(c)] A desktop OS that must support thousands of hardware devices whose drivers are installed after the OS ships.
+  \item[(d)] A web-hosting company consolidating forty lightly loaded servers, each running a different OS version, onto four physical machines.
+\end{enumerate}
+
+\bibliography{../../Bibliography_base}
+\bibliographystyle{plain}
+\end{document}

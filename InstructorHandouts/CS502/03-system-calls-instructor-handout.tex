@@ -33,7 +33,7 @@
 \newenvironment{teachingaside}{\begin{quote}\small\color{primary-gold}\textbf{Teaching note:}\ }{\end{quote}}
 
 \title{Instructor Handout 3: System Calls\\[0.3em]
-  \large Week 3 --- Mechanics, Parameter Passing, and Types}
+  \large Lecture 3 --- Mechanics, Parameter Passing, and Types}
 \author{Auqib Hamid Lone\\[0.3em]
   \emph{Department of Computer Science \& Engineering}, \emph{GCET Ganderbal}}
 \date{\today}
@@ -52,7 +52,7 @@
   \item \textbf{Run the trace before class.} On Linux, \texttt{strace -e trace=openat,read,write,close cp notes.txt backup.txt} shows the real sequence. Expect more calls than the ten-call minimum: the dynamic loader opens shared objects before \texttt{main} runs. That discrepancy is a teaching opportunity, not a problem --- the minimum counts the program's own work.
   \item \textbf{Draw Figure~3.1 from memory.} You must be able to place the trap, the table lookup, and the return arrow without looking. If the return path is fuzzy, reread Bovet \& Cesati, Ch.~10, pp.~398--419.
   \item \textbf{Decide your concrete machine.} This handout assumes Linux x86-64: the \texttt{syscall} instruction, the number in \texttt{rax}, and arguments in \texttt{rdi}, \texttt{rsi}, \texttt{rdx}. If you teach a different ABI, substitute its registers consistently rather than mixing two.
-  \item \textbf{Prerequisite check (two minutes).} Recall the mode bit, privileged instructions, the timer, and the user/kernel boundary from Week~1. Students do not need process scheduling yet; \texttt{fork}/\texttt{exec} are introduced here only as calls the shell makes.
+  \item \textbf{Prerequisite check (two minutes).} Recall the mode bit, privileged instructions, the timer, and the user/kernel boundary from Lecture~1. Students do not need process scheduling yet; \texttt{fork}/\texttt{exec} are introduced here only as calls the shell makes.
 \end{itemize}
 
 \begin{teachingaside}

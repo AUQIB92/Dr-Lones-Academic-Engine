@@ -1,0 +1,95 @@
+% =============================================================================
+% CompetitiveExam/CS502/04-system-programs-os-structure-questions.tex
+% Competitive Exam Practice 4 --- student-facing, NO answers
+% System Programs and Operating-System Structures
+%
+% Provenance: ALL questions are Original (GATE-pattern). No item in this set is
+% attributed to a past GATE paper, and no year/question number is claimed.
+% This follows the course's provenance policy for OS practice sets: a question
+% ships with a past-year tag only after independent verification, which no item
+% here asserts. See .claude/skills/competitive-exam-questions/SKILL.md.
+%
+% Source of truth: Slides/CS502/04-system-programs-os-structure.tex and
+% Notes/CS502/04-system-programs-os-structure-notes.tex.
+%
+% Compile with: cd CompetitiveExam/CS502 &&
+%   TEXINPUTS=../../Preambles:$TEXINPUTS xelatex -interaction=nonstopmode 04-system-programs-os-structure-questions.tex
+% =============================================================================
+
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\input{../../Preambles/header}
+\coursecode{CS502}
+\renewcommand{\thesection}{4.\arabic{section}}
+
+\title{Competitive Exam Practice 4: System Programs and OS Structures\\\large GATE (Computer Science) Pattern}
+\author{Auqib Hamid Lone\\[0.3em]
+  \emph{Department of Computer Science \& Engineering}, \emph{GCET Ganderbal}}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\noindent Each question carries 1--2 marks. MCQ = single correct option; NAT = Numerical Answer Type. \emph{All questions in this set are original, written in the GATE pattern; none is claimed to be a past-year question.}
+
+\begin{enumerate}
+\item[\textbf{Q1}] \textit{[Original, GATE-pattern]} \textbf{[MCQ, 1 mark]} Which of the following is \textbf{NOT} a system program?
+\begin{enumerate}
+  \item[(A)] The command interpreter (shell)
+  \item[(B)] A compiler shipped with the operating system
+  \item[(C)] The CPU scheduler
+  \item[(D)] A linkage editor
+\end{enumerate}
+
+\item[\textbf{Q2}] \textit{[Original, GATE-pattern]} \textbf{[MCQ, 1 mark]} In a UNIX-style shell where most commands are implemented as separate system programs, which command must nevertheless be a shell built-in?
+\begin{enumerate}
+  \item[(A)] \texttt{ls}
+  \item[(B)] \texttt{cd}
+  \item[(C)] \texttt{rm}
+  \item[(D)] \texttt{cp}
+\end{enumerate}
+
+\item[\textbf{Q3}] \textit{[Original, GATE-pattern]} \textbf{[MCQ, 1 mark]} A timer interrupts the CPU after a fixed interval, and a configuration file sets the interval for each user class. Which statement is correct?
+\begin{enumerate}
+  \item[(A)] Both the timer and the interval are policies
+  \item[(B)] The timer is a mechanism; the interval chosen for each class is a policy
+  \item[(C)] The timer is a policy; the interval is a mechanism
+  \item[(D)] Both are mechanisms, because both are implemented in the kernel
+\end{enumerate}
+
+\item[\textbf{Q4}] \textit{[Original, GATE-pattern]} \textbf{[MCQ, 2 marks]} A device driver dereferences a \texttt{NULL} pointer. In which structure is the failure most likely to be confined to the driver alone, with the rest of the system continuing to run?
+\begin{enumerate}
+  \item[(A)] Monolithic kernel
+  \item[(B)] Layered kernel
+  \item[(C)] Microkernel with the driver as a user-level server
+  \item[(D)] Monolithic kernel with the driver as a loadable module
+\end{enumerate}
+
+\item[\textbf{Q5}] \textit{[Original, GATE-pattern]} \textbf{[MCQ, 2 marks]} Consider the statements
+\textbf{S1:} in a layered OS, every layer above layer~0 runs in user mode;
+\textbf{S2:} a loadable kernel module runs in kernel mode.
+\begin{enumerate}
+  \item[(A)] Only S1 is true
+  \item[(B)] Only S2 is true
+  \item[(C)] Both are true
+  \item[(D)] Neither is true
+\end{enumerate}
+
+\item[\textbf{Q6}] \textit{[Original, GATE-pattern]} \textbf{[MCQ, 2 marks]} The principal disadvantage of the microkernel approach relative to a monolithic kernel is:
+\begin{enumerate}
+  \item[(A)] it cannot support device drivers
+  \item[(B)] increased overhead from message passing and extra user/kernel crossings
+  \item[(C)] it cannot be ported to new hardware
+  \item[(D)] a bug in any service always crashes the whole system
+\end{enumerate}
+
+\item[\textbf{Q7}] \textit{[Original, GATE-pattern]} \textbf{[NAT, 2 marks]} In a microkernel, a read request travels from an application through a chain of 3 user-level servers, and the replies return along the same chain. Each message is one trap, and each trap causes 2 user/kernel boundary crossings. The total number of boundary crossings for the request is \rule{1.5cm}{0.4pt}.
+
+\item[\textbf{Q8}] \textit{[Original, GATE-pattern]} \textbf{[NAT, 2 marks]} A layered OS has layers 0 (hardware) through 6 (user interface). A request entering at layer 6 calls each lower layer once on the way down and returns through each on the way up. Each inter-layer call or return costs 40~ns, and the useful work at layer 0 takes 1.2~$\mu$s. The percentage of the total request time spent on inter-layer overhead is \rule{1.5cm}{0.4pt} (round to one decimal place).
+
+\item[\textbf{Q9}] \textit{[Original, GATE-pattern]} \textbf{[NAT, 2 marks]} In a layered design, the rule ``if A calls B, then B is in a lower layer'' is applied to four components F, M, D, S with calls F$\to$M, F$\to$D, M$\to$D, D$\to$S. The number of distinct valid orderings of the four components (each in its own layer) is \rule{1.5cm}{0.4pt}.
+
+\item[\textbf{Q10}] \textit{[Original, GATE-pattern]} \textbf{[NAT, 2 marks]} Each user/kernel crossing costs 0.5~$\mu$s. A monolithic kernel serves a file read with 1 trap; a microkernel serves it through a chain of 2 servers (count $2k$ traps for $k$ servers, 2 crossings per trap). For 100{,}000 reads per second, the additional CPU time per second, in milliseconds, that the microkernel spends on crossings is \rule{1.5cm}{0.4pt}.
+\end{enumerate}
+
+\end{document}

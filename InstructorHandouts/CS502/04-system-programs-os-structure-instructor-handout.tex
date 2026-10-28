@@ -1,0 +1,375 @@
+% =============================================================================
+% InstructorHandouts/CS502/04-system-programs-os-structure-instructor-handout.tex
+% Instructor Handout 4: System Programs and Operating-System Structures
+%
+% INSTRUCTOR-ONLY. Complete, self-contained teaching guide -- explanation,
+% embedded diagrams, presentation guidance, and delivery commentary are woven
+% together per topic, so an instructor can teach directly from this file with
+% no slides or Notes open. Explanations/diagrams/examples trace to
+% Slides/CS502/04-system-programs-os-structure.tex and
+% Notes/CS502/04-system-programs-os-structure-notes.tex (TikZ copied verbatim);
+% "Teaching note" asides are instructor judgment, visually distinguished.
+%
+% Anchor readings: Silberschatz et al., OSC 8e, Ch. 2 §2.5 (p. 66), §2.6,
+%   §2.7 (pp. 70-76), §2.8 (p. 76); Stallings 6e Ch. 2 §2.3 (p. 64), Ch. 4
+%   §4.3 (p. 179); Bovet & Cesati 3e Ch. 1 (pp. 1-34).
+%
+% Compile with: cd InstructorHandouts/CS502 &&
+%   TEXINPUTS=../../Preambles:$TEXINPUTS xelatex -interaction=nonstopmode 04-system-programs-os-structure-instructor-handout.tex
+% =============================================================================
+
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{array}
+\input{../../Preambles/header}
+\coursecode{CS502}
+\renewcommand{\thesection}{4.\arabic{section}}
+\renewcommand{\thefigure}{4.\arabic{figure}}
+\renewcommand{\thetable}{4.\arabic{table}}
+\newtheorem{example}{Example}[section]
+\newenvironment{definitionbox}[1]{%
+  \par\noindent\textbf{Definition (#1).}\ \itshape
+}{\par\vspace{0.3em}}
+\newenvironment{teachingaside}{\begin{quote}\small\color{primary-gold}\textbf{Teaching note:}\ }{\end{quote}}
+\setlength{\emergencystretch}{2em}
+
+\title{Instructor Handout 4: System Programs and OS Structures\\[0.3em]
+  \large Lecture 4 --- Monolithic, Layered, Microkernel, Modular, Virtual Machine}
+\author{Auqib Hamid Lone\\[0.3em]
+  \emph{Department of Computer Science \& Engineering}, \emph{GCET Ganderbal}}
+\date{\today}
+
+\begin{document}
+\maketitle
+{\centering\large\color{negative}\textbf{Instructor Copy --- Not for Student Distribution}\par}
+\vspace{0.5cm}
+
+\section{Before You Teach This Lecture}
+
+\begin{itemize}
+  \item \textbf{Silberschatz, Galvin \& Gagne, \textit{Operating System Concepts}, 8e} --- Ch.~2: \S2.5 (system programs, p.~66), \S2.6 (design and implementation: goals, mechanism vs.\ policy, implementation language), \S2.7 (OS structure: simple, layered, microkernels, modules, pp.~70--76), \S2.8 (virtual machines, p.~76); \S2.5--2.8 span pp.~66--84. Primary anchor for every topic. \emph{Page-verified} via the course index (section-level pages; the index does not give per-subsection pages inside \S2.7, so cite the range).
+  \item \textbf{Stallings, \textit{Operating Systems: Internals and Design Principles}, 6e} --- Ch.~2 \S2.3 (system structure among the major achievements, p.~64) and Ch.~4 \S4.3 (microkernels, p.~179), for the fuller list of microkernel benefits. \emph{Page-verified.}
+  \item \textbf{Bovet \& Cesati, \textit{Understanding the Linux Kernel}, 3e} --- Ch.~1 (pp.~1--34), for Linux as a monolithic kernel with loadable modules. \emph{Page-verified} at chapter level.
+  \item \textbf{Prepare one live demo (optional).} On Linux, \texttt{lsmod} lists loaded modules and \texttt{type cd} / \texttt{type ls} in \texttt{bash} shows one built-in and one file. Both make the abstract claims concrete in under a minute.
+  \item \textbf{Draw the five structure figures from memory} (Figures~\ref{fig:msdos}--\ref{fig:vm}). The lecture is a comparison; you must be able to put two side by side on the board without notes.
+  \item \textbf{Assessment context.} The syllabus schedules Class Test~1 (Unit~I part) around this lecture; the comparison table (Table~\ref{tab:compare}) and the crossing-count model are the most testable items.
+\end{itemize}
+
+\begin{teachingaside}
+The thesis for the hour: \emph{isolation is bought with boundary crossings.} Every structure is a point on that trade-off, and the buggy driver is the probe that reveals where each point lies. Keep a five-row ``blast radius'' table in a corner of the board and fill one row per structure as you go.
+\end{teachingaside}
+
+\section{Opening: One Bad Driver}
+
+Pose the question before naming any structure: a network-card driver dereferences a \texttt{NULL} pointer on a rare packet. Does the machine crash, does only the network stop, or does nobody notice? The answer is not in the driver's code; it is in how the operating system is organized --- whether the driver runs in kernel mode or user mode, inside the kernel or beside it. Last lecture was the system-call doorway; this lecture is what sits on each side of it. The roadmap has five stops: system programs, design principles, kernel structures (simple, monolithic, layered, microkernel, modular), virtual machines, and a comparison.
+
+\textbf{Board:} the empty blast-radius table. \emph{On the board, in order:} (i) draw five rows labelled Monolithic, Layered, Microkernel, Modular, VM; (ii) add two columns, ``driver runs in'' and ``blast radius''; (iii) leave every cell blank. \emph{Say:} ``By the end of the hour every cell is filled, and you will be able to fill them in an exam without me.''
+
+\textbf{Board:} the poll. \emph{On the board, in order:} (i) write the three options --- whole machine / network only / nobody notices; (ii) take a show of hands; (iii) write the counts and leave them up. \emph{Say:} ``Most of you said `whole machine.' That is right for three of the five structures and wrong for two.''
+
+\begin{teachingaside}
+Students who have seen a Windows blue screen will answer ``whole machine'' confidently. Do not correct them yet; the microkernel and VM rows are where the correction lands, and the poll counts make the reversal memorable.
+\end{teachingaside}
+
+\section{System Programs}
+
+Most of what a user calls ``the operating system'' is not the kernel. It is a set of ordinary programs that make system calls.
+
+\begin{definitionbox}{System program}
+A \key{system program} (system utility) is a program shipped with the operating system that gives users a convenient environment for program development and execution. It runs in user mode and obtains every privileged service through system calls.
+\end{definitionbox}
+
+\texttt{ls}, \texttt{cp}, \texttt{cc}, \texttt{vi}, the shell, and the login program are all system programs; the user's view of the OS is defined by them, not by the system calls. Silberschatz (Ch.~2 \S2.5, p.~66) gives six categories: file management (\texttt{cp}, \texttt{mv}, \texttt{rm}, \texttt{ls}); status information (\texttt{date}, \texttt{who}, \texttt{df}); file modification (\texttt{vi}, \texttt{grep}, \texttt{sed}); programming-language support (\texttt{cc}, \texttt{as}, \texttt{gdb}); program loading and execution (\texttt{ld}, the loader); and communications (\texttt{ssh}, \texttt{mail}, \texttt{ftp}). Application programs --- browsers, word processors, databases --- often ship with the system but are not part of the OS proper.
+
+\begin{example}[The deck's six commands]
+\texttt{ls -l}: file management. \texttt{date}: status information (it reads the clock through an information-maintenance call). \texttt{vi notes.txt}: file modification. \texttt{cc prog.c}: programming-language support. \texttt{ld prog.o}: program loading and execution. \texttt{ssh server}: communications.
+\end{example}
+
+\textbf{Board:} classify by voting. \emph{On the board, in order:} (i) write the six category names across the top; (ii) write \texttt{ls -l}, \texttt{date}, \texttt{vi}, \texttt{cc}, \texttt{ld}, \texttt{ssh} down the side; (iii) for each, ask for a category before you place a tick. \emph{Say:} ``Every command you have typed this semester lives in one of these six columns.''
+
+\textbf{Board:} a second set for practice (the Notes' exercise set). \emph{On the board, in order:} (i) keep the columns; (ii) write \texttt{cp}, \texttt{who}, \texttt{grep}, \texttt{gdb}, \texttt{mail}; (iii) have pairs classify them in thirty seconds, then reveal: file management, status information, file modification, language support, communications.
+
+\begin{teachingaside}
+The common confusion is between the two taxonomies. \texttt{date} is a status-information \emph{program} that makes an information-maintenance \emph{call}. Write ``program category $\neq$ call category'' on the board when \texttt{date} comes up, and point at Lecture~3's six call categories.
+\end{teachingaside}
+
+\subsection*{The command interpreter}
+
+There are two ways to build a shell (Silberschatz, Ch.~2 \S2.2). With built-in commands, the interpreter contains each command's code and grows with every command. With commands as system programs (UNIX), \texttt{rm file.txt} makes the shell find a file named \texttt{rm}, load it, and pass \texttt{file.txt}; new commands are new files and the shell stays small. UNIX uses the second design for most commands but keeps a few built-ins such as \texttt{cd}.
+
+\textbf{Board:} why \texttt{cd} is built in. \emph{On the board, in order:} (i) draw a box ``shell, cwd = /home'' ; (ii) draw an arrow labelled \texttt{fork} to a child box ``cwd = /home''; (iii) in the child, write \texttt{chdir("/tmp")} and change its cwd to /tmp; (iv) cross the child out (it exits) and point at the parent, still /home. \emph{Say:} ``The directory changed --- in a process that no longer exists.''
+
+\textbf{Board:} the same argument for \texttt{exit} (a second instance). \emph{On the board, in order:} reuse the two boxes; in the child write \texttt{exit()}; cross out the child; the shell's \texttt{wait} returns and the prompt reappears. \emph{Ask:} ``So can \texttt{exit} be a separate program?'' (No --- it would end only the child.)
+
+\section{Design Principles}
+
+Users want an OS that is convenient, easy to learn, reliable, safe, and fast; builders want one that is easy to design, implement, and maintain, flexible, reliable, error-free, and efficient. The goals conflict, so there is no single best OS, only a best fit to requirements.
+
+\begin{definitionbox}{Mechanism vs.\ policy}
+A \key{mechanism} determines \emph{how} to do something; a \key{policy} determines \emph{what} will be done. Separating them lets a policy change without rewriting the mechanism.
+\end{definitionbox}
+
+Table~\ref{tab:mechpol} is the deck's worked example. The timer mechanism of Lecture~2 is unchanged whether the quantum is 10\,ms or 100\,ms; only a parameter changes. A microkernel pushes the idea to its limit: the kernel keeps mechanisms, servers hold policy.
+
+\begin{table}[h]
+\centering
+\small
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.20\linewidth}>{\raggedright\arraybackslash}p{0.36\linewidth}>{\raggedright\arraybackslash}p{0.36\linewidth}@{}}
+\toprule
+\textbf{Situation} & \textbf{Mechanism (how)} & \textbf{Policy (what)} \\
+\midrule
+CPU protection & the timer interrupts the CPU after a set interval & how long the interval is for each user \\
+Scheduling & a context switch from one process to another & which process runs next \\
+File protection & the kernel checks a permission bit before \texttt{open} & who is granted which bits \\
+Our driver & loading code into the kernel at run time & which drivers are trusted enough to load \\
+\bottomrule
+\end{tabular}
+\caption{Mechanism versus policy (deck, ``Separate the Mechanism From the Policy'').}
+\label{tab:mechpol}
+\end{table}
+
+\textbf{Board:} the ``change one thing'' test. \emph{On the board, in order:} (i) write ``quantum = 10 ms''; (ii) cross it out and write ``100 ms''; (iii) ask what code changed --- none, only a parameter; (iv) label the timer \emph{mechanism} and the number \emph{policy}. \emph{Say:} ``If changing the decision forces you to rewrite code, mechanism and policy were tangled.''
+
+\textbf{Board:} file protection as a second instance. \emph{On the board, in order:} (i) draw a file with permission bits \texttt{rw-r-----}; (ii) write ``kernel checks bits on \texttt{open}'' (mechanism); (iii) change the bits with \texttt{chmod} (policy changes, kernel code does not).
+
+Implementation language: early systems were written in assembly; Linux and Windows are mostly C with small assembly parts (trap entry, context switch, device registers). A high-level language is faster to write, easier to debug, and easier to port; the possible slowdown matters less than algorithms and data structures, which are tuned after profiling.
+
+\begin{teachingaside}
+Students often think ``policy'' means a written rule or a legal document. Anchor it as ``the parameter or decision,'' and mechanism as ``the code that obeys it.''
+\end{teachingaside}
+
+\section{Simple and Monolithic Structure}
+
+MS-DOS (Figure~\ref{fig:msdos}) was written for small machines; its levels are not well separated, and applications can call BIOS routines and write to the display directly because the Intel 8088 had no dual mode and no hardware protection. One bad program can crash the whole system.
+
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}[every node/.style={font=\small},
+      lvl/.style={draw=primary-blue, fill=light-bg, minimum width=6.4cm,
+                  minimum height=0.62cm, align=center}]
+    \node[lvl] (app)  at (0, 1.65) {Application program};
+    \node[lvl] (res)  at (0, 0.85) {Resident system program};
+    \node[lvl] (dos)  at (0, 0.05) {MS-DOS device drivers};
+    \node[lvl, draw=primary-gold, fill=white] (bios) at (0,-0.75)
+      {ROM BIOS device drivers};
+    \draw[confound-edge] (app.east) -- (4.0,1.65) |- (bios.east);
+    \node[anchor=west, text=negative, align=left, font=\footnotesize]
+      at (4.25,0.45) {direct access\\to hardware};
+  \end{tikzpicture}
+\caption{MS-DOS layer structure (deck figure, verbatim) --- Silberschatz et al., Ch.~2 \S2.7, pp.~70--76.}
+\label{fig:msdos}
+\end{figure}
+
+\emph{How to draw it:} the coordinate map gives the build order --- four equal boxes from the top (application, resident system program, MS-DOS drivers, ROM BIOS drivers), then the dashed bypass from the application's right edge down to the BIOS's right edge, then the label ``direct access to hardware'' to the right of the dashed line. Draw the bypass last and in a different colour: it is the whole point.
+
+Traditional UNIX (Figure~\ref{fig:unix}) has two parts, kernel and system programs. Everything between the system-call interface and the hardware interface is one program in kernel mode and one address space: fast, because subsystems call each other as functions, and hard to maintain.
+
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}[every node/.style={font=\footnotesize},
+      bx/.style={draw=primary-blue, fill=light-bg, minimum width=9.6cm,
+                 align=center},
+      bd/.style={draw=negative, dashed, fill=white, minimum width=9.6cm,
+                 align=center}]
+    \node[bx, minimum height=0.50cm] (usr) at (0, 1.75)
+      {Users \quad shells and commands};
+    \node[bx, minimum height=0.50cm] (sys) at (0, 1.15)
+      {System programs: compilers, interpreters, system libraries};
+    \node[bd, minimum height=0.44cm] (sci) at (0, 0.58)
+      {System-call interface to the kernel};
+    \node[bx, minimum height=1.00cm, fill=white, draw=primary-gold, text width=9.2cm] (krn) at (0,-0.25)
+      {\textbf{Kernel:} file system, CPU scheduling, memory management,
+      signals, terminal handling, \key{device drivers} --- one address space};
+    \node[bd, minimum height=0.44cm] (hwi) at (0,-1.07)
+      {Kernel interface to the hardware};
+    \node[bx, minimum height=0.50cm] (hw) at (0,-1.64)
+      {Hardware: terminal controllers, device controllers, memory};
+  \end{tikzpicture}
+\caption{Traditional UNIX structure (deck figure, verbatim) --- Silberschatz et al., Ch.~2 \S2.7, pp.~70--76.}
+\label{fig:unix}
+\end{figure}
+
+\emph{How to draw it:} top to bottom --- users, system programs, a dashed system-call interface, one tall kernel box (write the subsystems inside, with ``device drivers'' last and underlined), a dashed hardware interface, hardware. Say ``one address space'' as you close the kernel box.
+
+\textbf{Board:} the monolithic driver trace (deck Running Example 1). \emph{On the board, in order:} (i) circle ``device drivers'' inside the kernel box; (ii) write the four steps: driver in kernel mode $\to$ \texttt{NULL} dereference $\to$ fault in kernel mode, nothing more privileged to contain it $\to$ kernel cannot tell what was corrupted, so it panics; (iii) fill the table row: kernel mode / whole machine.
+
+\textbf{Board:} contrast with MS-DOS. \emph{On the board, in order:} (i) beside the UNIX figure, redraw the four MS-DOS boxes small; (ii) ask: ``In MS-DOS, can an \emph{application} bug crash the machine?'' (yes --- no dual mode); ``In UNIX?'' (an application bug, no; a driver bug, yes). \emph{Say:} ``UNIX added a wall between applications and kernel, but not between the parts of the kernel.''
+
+\begin{teachingaside}
+Students conflate ``simple'' and ``monolithic.'' The distinction to stress: MS-DOS lacks \emph{hardware} protection between applications and the OS; UNIX has it, but its kernel is one undivided privileged program.
+\end{teachingaside}
+
+\section{The Layered Approach}
+
+The OS is a stack of layers from 0 (hardware) to $N$ (user interface); layer $i$ uses only layers below $i$ and hides its data structures from those above (Figure~\ref{fig:layers}). The payoff is bottom-up debugging: once layer $i-1$ is verified, a bug found while testing layer $i$ must be in layer $i$.
+
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}[every node/.style={font=\footnotesize},
+          ly/.style={draw=primary-blue, fill=light-bg, minimum width=4.6cm,
+                     minimum height=0.50cm, align=center}]
+        \node[ly] (L5) at (0, 1.80) {Layer $N$: user interface};
+        \node[ly] (L4) at (0, 1.05) {I/O management};
+        \node[ly] (L3) at (0, 0.30) {Device drivers, console};
+        \node[ly] (L2) at (0,-0.45) {Memory management};
+        \node[ly] (L1) at (0,-1.20) {CPU scheduling};
+        \node[ly, draw=primary-gold, fill=white] (L0) at (0,-1.95)
+          {Layer 0: hardware};
+        \foreach \a/\b in {L5/L4, L4/L3, L3/L2, L2/L1, L1/L0}
+          \draw[observed-edge] (\a.south) -- (\b.north);
+      \end{tikzpicture}
+\caption{A layered OS (deck figure, verbatim) --- Silberschatz et al., Ch.~2 \S2.7, pp.~70--76; Stallings, Ch.~2 \S2.3, p.~64.}
+\label{fig:layers}
+\end{figure}
+
+\emph{How to draw it:} stack the six boxes from the bottom up (hardware first, labelled ``layer 0''), then add the short downward arrows in the gaps one at a time, saying ``calls only the layer below'' each time.
+
+\begin{example}[Where does the backing-store driver go? (deck)]
+Rule: if A calls B, B is lower. (1) Memory management swaps pages, so it calls the driver: driver below memory management. (2) The driver waits for I/O and the CPU should run someone else, so it calls the scheduler: scheduler below driver. (3) On a large system the scheduler's tables may be swapped, so the scheduler calls the driver: driver below scheduler. Steps 2 and 3 contradict: some dependencies have no clean order.
+\end{example}
+
+\textbf{Board:} the ordering puzzle. \emph{On the board, in order:} (i) write three cards: MM, D, S; (ii) draw the arrow MM$\to$D, place D under MM; (iii) draw D$\to$S, place S under D; (iv) draw S$\to$D and ask the class where D goes now. Let the contradiction sit for ten seconds before naming it.
+
+\textbf{Board:} a second, solvable instance (assignment-style). \emph{On the board, in order:} (i) four components F, M, D, S with calls F$\to$M, F$\to$D, M$\to$D, D$\to$S; (ii) have students derive the order; (iii) reveal the unique chain $S < D < M < F$. \emph{Say:} ``When the calls form a chain, layering is easy; when they form a cycle, it is impossible.''
+
+The costs: defining layers is hard, and each layer adds overhead --- a request from the top passes through every layer below, each adding a call and possibly copying parameters (an I/O system call traverses I/O $\to$ memory $\to$ scheduling $\to$ hardware). Modern systems use fewer, more functional layers. Running Example 2: layering does not change privilege, so the driver layer is still kernel mode and the \texttt{NULL} dereference still crashes the kernel; the win is finding the bug sooner, not surviving it.
+
+\begin{teachingaside}
+The most persistent misconception of the lecture: ``upper layers run in user mode.'' Ask directly, ``Which layers in this figure run in kernel mode?'' and insist on ``all of them.'' Then fill the table row: kernel mode / whole machine.
+\end{teachingaside}
+
+\section{Microkernels}
+
+If kernel mode is where one bug becomes everyone's bug, put as little as possible in kernel mode. A microkernel keeps message passing, basic memory management, and CPU scheduling; file systems, drivers, and networking move into user-level servers that exchange messages through the kernel (Figure~\ref{fig:micro}). Mach (CMU, mid-1980s) and QNX are the examples.
+
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}[every node/.style={font=\footnotesize},
+      us/.style={draw=primary-blue, fill=light-bg, minimum width=2.6cm,
+                 minimum height=0.70cm, align=center},
+      kb/.style={draw=primary-gold, fill=white, minimum width=10.0cm,
+                 align=center}]
+    \node[us] (app) at (-3.6, 1.30) {Application};
+    \node[us] (fs)  at ( 0.0, 1.30) {File server};
+    \node[us] (drv) at ( 3.6, 1.30) {Device driver};
+    \draw[dashed, draw=negative] (-5.0,0.55) -- (5.0,0.55);
+    \node[anchor=west, text=negative] at (5.1,0.75) {user mode};
+    \node[anchor=west, text=negative] at (5.1,0.35) {kernel mode};
+    \node[kb, minimum height=0.80cm] (mk) at (0,-0.25)
+      {\textbf{Microkernel:} message passing (IPC), basic memory management,
+      CPU scheduling};
+    \node[kb, minimum height=0.50cm, draw=primary-blue, fill=light-bg] (hw)
+      at (0,-1.20) {Hardware};
+    \draw[observed-edge] (-3.6,0.95) -- (-3.6,0.15);
+    \draw[observed-edge] (-0.6,0.15) -- (-0.6,0.95);
+    \node[anchor=west, text=primary-gold] at (-3.4,0.75) {send};
+    \node[anchor=west, text=primary-gold] at (-0.4,0.75) {deliver};
+  \end{tikzpicture}
+\caption{Microkernel structure (deck figure, verbatim) --- Silberschatz et al., Ch.~2 \S2.7; Stallings, Ch.~4 \S4.3, p.~179.}
+\label{fig:micro}
+\end{figure}
+
+\emph{How to draw it:} three user boxes along the top, then the dashed red mode line, then the wide microkernel box and hardware. Draw the ``send'' arrow (application down into the kernel) and only then the ``deliver'' arrow (kernel up into the file server). Ask before drawing the second arrow: ``Can the application call the file server directly?''
+
+\begin{example}[Counting boundary crossings (deck)]
+Each trap is one entry plus one return, 2 crossings. Monolithic read: 1 trap, 2 crossings. Microkernel with a file server only: send + reply, 2 traps, 4 crossings. File server plus driver server: app$\to$fs, fs$\to$drv, drv$\to$fs, fs$\to$app, 4 traps, 8 crossings. In general, a chain of $k$ servers costs $2k$ traps, $4k$ crossings, versus 2 monolithic; with $k=2$, four times as many. Message copies between address spaces add the ``system-function overhead.''
+\end{example}
+
+\textbf{Board:} count with $k=1$ and $k=2$. \emph{On the board, in order:} (i) draw the app and one server above a line, the kernel below; (ii) draw each message as a down-and-up zigzag through the kernel and count arrows crossing the line (4); (iii) add a second server and redraw (8). \emph{Ask:} ``Predict $k=3$ before I draw it.'' (12.)
+
+\textbf{Board:} what it costs per second (a second instance, from the assignment family). \emph{On the board, in order:} (i) write ``0.5 $\mu$s per crossing, 100{,}000 reads/s''; (ii) monolithic: $2 \times 0.5 = 1~\mu$s per read; (iii) microkernel $k=2$: $8 \times 0.5 = 4~\mu$s per read; (iv) difference $3~\mu$s $\times$ 100{,}000 $= 300$\,ms of CPU per second. \emph{Say:} ``Isolation is not free; here it costs almost a third of a CPU.''
+
+Benefits: extensible (new service = new server), portable (little hardware-specific code in the kernel), reliable and secure (services are user processes); Stallings (Ch.~4 \S4.3, p.~179) adds uniform interfaces, flexibility, and distributed-system support. Cost: performance. Running Example 3: the driver is a user process; the \texttt{NULL} dereference is an ordinary page fault, the kernel kills only that process and can restart it. Table row: user mode / the driver only. The Windows NT history (Socratic Check 2) closes the topic: NT began as a layered microkernel and moved services back into the kernel to cut messages and mode switches, giving up isolation.
+
+\begin{teachingaside}
+Students hear ``micro'' and conclude ``fast.'' Ask them to count crossings before you state the cost; the counting example is the antidote.
+\end{teachingaside}
+
+\section{Modules and Hybrid Systems}
+
+A modular kernel is a small core plus loadable modules linked in at boot or run time without recompiling. Modules have defined interfaces like layers, may call one another like microkernel servers, but need no messages, because all run in kernel mode. Solaris has a core kernel with seven module types: scheduling classes, file systems, loadable system calls, executable formats, STREAMS modules, miscellaneous, and device and bus drivers. Linux is monolithic with loadable modules (Bovet \& Cesati, Ch.~1). Hybrids: Linux (monolithic + modules), Mac OS X (Mach microkernel + BSD environment + kernel extensions), Windows (largely monolithic, with microkernel-style user-mode subsystems).
+
+\textbf{Board:} \texttt{insmod} (Running Example 4). \emph{On the board, in order:} (i) redraw the UNIX kernel box with a gap; (ii) draw \texttt{netdrv.ko} sliding into the gap with the label \texttt{insmod}; (iii) ask what mode it now runs in (kernel); (iv) fill the row: kernel mode / whole machine. \emph{Say:} ``Modules buy flexibility, not isolation.''
+
+\textbf{Board:} the seven Solaris module types as a hub. \emph{On the board, in order:} (i) a circle ``core kernel''; (ii) seven spokes, one per module type; (iii) ask which spoke our driver hangs on (device and bus drivers).
+
+\begin{teachingaside}
+``Loadable'' sounds like ``separate.'' Run \texttt{lsmod} if you can; the modules listed are inside the kernel, sharing its address space.
+\end{teachingaside}
+
+\section{Virtual Machines}
+
+Push isolation further: run the whole operating system as a guest. The virtual-machine manager gives each guest the illusion of its own processor, memory, and devices; each guest runs a full, unmodified OS (Figure~\ref{fig:vm}). Examples: IBM VM/370 (1972), VMware, the Java Virtual Machine.
+
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}[every node/.style={font=\footnotesize},
+      gb/.style={draw=primary-blue, fill=light-bg, minimum width=3.0cm,
+                 minimum height=0.55cm, align=center},
+      wd/.style={draw=primary-gold, fill=white, minimum width=9.6cm,
+                 align=center}]
+    \node[gb] (p1) at (-3.25, 0.60) {processes};
+    \node[gb] (p2) at ( 0.00, 0.60) {processes};
+    \node[gb] (p3) at ( 3.25, 0.60) {processes};
+    \node[gb, fill=white] (k1) at (-3.25,-0.10) {kernel (VM 1)};
+    \node[gb, fill=white] (k2) at ( 0.00,-0.10) {kernel (VM 2)};
+    \node[gb, fill=white] (k3) at ( 3.25,-0.10) {kernel (VM 3)};
+    \node[wd, minimum height=0.55cm] (vmm) at (0,-0.85)
+      {Virtual-machine manager (hypervisor)};
+    \node[wd, minimum height=0.50cm, draw=primary-blue, fill=light-bg] (hw)
+      at (0,-1.55) {Hardware};
+  \end{tikzpicture}
+\caption{Virtual machines (deck figure, verbatim) --- Silberschatz et al., Ch.~2 \S2.8, p.~76.}
+\label{fig:vm}
+\end{figure}
+
+\emph{How to draw it:} hardware, then the manager across the full width, then three guest columns, each a kernel box topped by a processes box. Draw all three columns identically, then shade VM~1 for the driver example.
+
+Benefits: isolation (a virus in one VM cannot reach another directly), system development (test a new kernel without disrupting others), consolidation (lightly used servers become VMs on one machine). Cost: the guest kernel runs de-privileged, so its privileged operations are trapped and emulated by the manager. Running Example 5: the driver is in VM~1's guest kernel; VM~1 panics, the manager and VMs 2 and 3 keep running. Row: guest kernel / one VM.
+
+\textbf{Board:} shade the casualties. \emph{On the board, in order:} (i) the three-column figure; (ii) shade all of VM~1 red; (iii) ask which boxes survive (manager, VMs 2 and 3).
+
+\textbf{Board:} consolidation arithmetic (second instance). \emph{On the board, in order:} (i) write ``40 servers, each 5\% busy''; (ii) ask how many physical machines at most 50\% load need (four, with ten VMs each); (iii) note that a crash in one VM still loses only that VM.
+
+\section{Comparison and Close}
+
+\begin{table}[h]
+\centering
+\small
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.14\linewidth}>{\raggedright\arraybackslash}p{0.15\linewidth}>{\raggedright\arraybackslash}p{0.17\linewidth}>{\raggedright\arraybackslash}p{0.18\linewidth}>{\raggedright\arraybackslash}p{0.20\linewidth}@{}}
+\toprule
+\textbf{Structure} & \textbf{Driver runs in} & \textbf{Bug's blast radius} & \textbf{Speed} & \textbf{Main strength} \\
+\midrule
+Monolithic & kernel mode & whole machine & fastest (calls) & performance \\
+Layered & kernel mode & whole machine & layer overhead & bottom-up debugging \\
+Microkernel & user mode & the driver only & messages, $4k$ crossings & isolation, extensibility \\
+Modular & kernel mode & whole machine & near monolithic & load at run time \\
+Virtual machine & guest kernel & one VM & trap-and-emulate & isolates whole OSes \\
+\bottomrule
+\end{tabular}
+\caption{One driver bug, five structures (deck comparison slide).}
+\label{tab:compare}
+\end{table}
+
+The board table should now match Table~\ref{tab:compare}. Return to the opening poll: ``whole machine'' was right for monolithic, layered, and modular; wrong for microkernel and VM. Socratic Check 3 (flight-control computer with a network-logging driver) has the answer microkernel --- the logging server's failure cannot take down control software, at a price of $4k$ crossings instead of 2 --- which is why QNX-style microkernels are common in embedded and real-time systems.
+
+Misconceptions to clear explicitly: the shell is part of the kernel (no --- a user-mode system program); layered means upper layers are user mode (no --- privilege unchanged); modules isolate drivers (no --- kernel mode); microkernels are faster because they are small (no --- messages add crossings).
+
+\begin{teachingaside}
+End by pointing forward: every structure manages the same unit, the process, and the next lecture introduces it and its process control block (Silberschatz Ch.~3 \S3.1; Stallings Ch.~3 \S3.1--3.3).
+\end{teachingaside}
+
+\section{Summary}
+
+\begin{itemize}
+  \item \key{System programs}: six categories (file management, status information, file modification, language support, loading and execution, communications); user mode; built on system calls. \texttt{cd} must be a built-in.
+  \item \key{Mechanism} = how; \key{policy} = what. Separate them so policies change without code changes.
+  \item \key{MS-DOS}: no dual mode, applications reach hardware. \key{UNIX}: kernel + system programs; monolithic kernel, one address space.
+  \item \key{Layered}: layer $i$ uses only lower layers; bottom-up debugging; ordering can cycle (backing-store driver vs.\ scheduler); per-layer overhead.
+  \item \key{Microkernel}: minimal kernel, user-level servers, messages; $2k$ traps $= 4k$ crossings for a chain of $k$ servers vs.\ 2; isolation and extensibility for speed.
+  \item \key{Modular}: core + loadable modules, kernel mode, flexibility not isolation. \key{VM}: whole OSes as isolated guests; trap-and-emulate cost.
+\end{itemize}
+
+\end{document}

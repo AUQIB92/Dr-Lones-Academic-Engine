@@ -1,0 +1,96 @@
+% =============================================================================
+% Assignments/CS502/05-process-concept-pcb-assignment.tex
+% Assignment 5: Process Concept and the Process Control Block
+%
+% Student set — NO answers. Solution key: 05-process-concept-pcb-solutions.tex
+% (never published). Sourced from Slides/CS502/05-process-concept-pcb.tex;
+% every problem reuses the deck's notation and extends its worked examples to
+% new programs, traces, and process counts.
+%
+% Compile with: cd Assignments/CS502 &&
+%   TEXINPUTS=../../Preambles: xelatex -interaction=nonstopmode 05-process-concept-pcb-assignment.tex
+%   BIBINPUTS=../..: bibtex 05-process-concept-pcb-assignment ; xelatex (x2)
+% =============================================================================
+
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\input{../../Preambles/header}
+\coursecode{CS502}
+\renewcommand{\thesection}{5.\arabic{section}}
+
+\setlength{\emergencystretch}{2.5em}
+
+\title{Assignment 5: Process Concept and the Process Control Block}
+\author{Auqib Hamid Lone\\[0.3em]
+  \emph{Department of Computer Science \& Engineering}, \emph{GCET Ganderbal}}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\noindent\textbf{Deadline:} \key{two weeks from the date of issue} --- there is no automatic late penalty; if you need more time, ask before the deadline and an extension will be granted (see the course policy in the syllabus).
+
+\noindent Answer every question. Show all working for Numerical and Design questions --- a bare final answer without the derivation earns partial credit only.
+
+\noindent\textbf{Reading:} Silberschatz et al., \emph{Operating System Concepts}, Ch.~3 \S3.1, pp.~101--105 \cite{SilberschatzOSC_operating_system_concepts}; Stallings, \emph{Operating Systems: Internals and Design Principles}, Ch.~3 \S3.1--3.3, pp.~108--126 \cite{StallingsOS_internals_design_principles}; Bovet \& Cesati, \emph{Understanding the Linux Kernel}, Ch.~3, pp.~79--130 \cite{BovetCesati_understanding_linux_kernel}.
+
+\section{Conceptual}
+
+\textbf{Q1.} A classmate claims: ``A process is just the executable file; if I run \texttt{./editor} three times there is one process with three windows, and all three share one PCB.'' Respond precisely \cite{SilberschatzOSC_operating_system_concepts}.
+\begin{enumerate}
+  \item[(a)] Distinguish a program from a process along four dimensions: what it is, passive vs.\ active, how many exist per run, and lifetime.
+  \item[(b)] For three runs of \texttt{./editor} from three terminals, state how many processes and how many PCBs exist, and which address-space region(s) the three may share.
+  \item[(c)] Explain why the number of windows on screen does not decide the number of processes, and state what you would ask the OS to settle the question.
+\end{enumerate}
+
+\textbf{Q2.} The five-state model \cite{StallingsOS_internals_design_principles}.
+\begin{enumerate}
+  \item[(a)] Name the event that causes each of the six legal transitions.
+  \item[(b)] Explain why there is no waiting $\to$ running arrow and no ready $\to$ waiting arrow.
+  \item[(c)] Explain why Stallings' two-state model (running / not running) is too coarse, and what goes wrong if the dispatcher picks a not-running process that is actually blocked.
+  \item[(d)] Explain why the PCB must live in kernel memory rather than in the process's own heap. Give two distinct reasons.
+\end{enumerate}
+
+\section{Numerical}
+
+\textbf{Q3.} A single-CPU system has seven processes. At time $t_0$: \texttt{P1} is running; \texttt{P2}, \texttt{P3}, \texttt{P4} are ready (queue order \texttt{P2}, \texttt{P3}, \texttt{P4}); \texttt{P5} and \texttt{P6} are waiting for the disk; \texttt{P7} is new. The scheduler always dispatches the head of the ready queue, and processes join the ready queue at the tail. The following events occur in order:
+\begin{enumerate}
+  \item[(i)] \texttt{P7} is admitted.
+  \item[(ii)] \texttt{P1}'s time slice expires; one dispatch follows.
+  \item[(iii)] The running process calls a blocking \texttt{read} on the keyboard; one dispatch follows.
+  \item[(iv)] \texttt{P5}'s disk I/O completes.
+  \item[(v)] The running process calls \texttt{exit}; one dispatch follows.
+\end{enumerate}
+\begin{enumerate}
+  \item[(a)] After each event, give the running process, the ready queue (in order), and the waiting set.
+  \item[(b)] Count the total number of state transitions across all five events.
+  \item[(c)] Verify that the number of non-terminated processes is conserved except at the one event that changes it.
+\end{enumerate}
+
+\textbf{Q4.} PCB arithmetic. A kernel's PCB contains: state (4 bytes), PID (4 bytes), program counter (8 bytes), 16 general-purpose registers of 8 bytes each, a flags register (8 bytes), a stack pointer (8 bytes), a page-table pointer (8 bytes), a priority (4 bytes), accounting fields totalling 24 bytes, and a pointer to an open-file table (8 bytes).
+\begin{enumerate}
+  \item[(a)] Compute the size of one PCB in bytes.
+  \item[(b)] Which of these bytes form the processor-state information (Stallings) that must be saved when the process is interrupted? Compute that byte count.
+  \item[(c)] A server runs 3000 processes. How many KiB of kernel memory do the PCBs occupy (1~KiB = 1024 bytes)? Give the answer to two decimal places.
+  \item[(d)] Assign every field to one of Silberschatz's seven PCB categories.
+\end{enumerate}
+
+\section{Design}
+
+\textbf{Q5.} Write a short C program \texttt{logger.c} with: one global \texttt{int lines}, a function \texttt{void put(const char *s)} with a local \texttt{int n}, and a \texttt{main} that allocates a 256-byte buffer with \texttt{malloc} and calls \texttt{put} in a loop.
+\begin{enumerate}
+  \item[(a)] For every named object (including the pointer to the buffer, the buffer itself, the parameter \texttt{s}, and the return address of \texttt{put}), state the region (text, data, heap, stack).
+  \item[(b)] \texttt{./logger} is started twice as \texttt{P1} and \texttt{P2}. Build a two-column table, in the style of the lecture's \texttt{./counter} example, of the PCB and address-space fields that differ and those that are shared.
+  \item[(c)] While \texttt{P1} is inside \texttt{put}, a timer interrupt hands the CPU to \texttt{P2}. List, in order, what the kernel saves into which PCB and what it loads, and explain why \texttt{P1} later resumes inside \texttt{put} with the correct value of \texttt{n}.
+\end{enumerate}
+
+\textbf{Q6.} Linux maps the textbook states onto \texttt{task\_struct}'s \texttt{state} field \cite{BovetCesati_understanding_linux_kernel}.
+\begin{enumerate}
+  \item[(a)] Linux uses \texttt{TASK\_RUNNING} for both ready and running. Design the extra information the kernel needs to tell the two apart, and say where it would naturally live.
+  \item[(b)] A process sleeping in \texttt{TASK\_INTERRUPTIBLE} and one in \texttt{TASK\_UNINTERRUPTIBLE} both correspond to which textbook state?
+  \item[(c)] Redraw the five-state diagram with each textbook state relabelled by the Linux flag(s) it corresponds to, and mark which textbook transitions become ``no change of flag'' in Linux.
+\end{enumerate}
+
+\bibliography{../../Bibliography_base}
+\bibliographystyle{plain}
+\end{document}
