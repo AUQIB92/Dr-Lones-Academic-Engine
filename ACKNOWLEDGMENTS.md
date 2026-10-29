@@ -12,7 +12,7 @@ I'm grateful to Pedro for publishing the template openly — it made building th
 
 ## Incorporated work
 
-- **clo-author** by **Hugo Sant'Anna** (UAB) — the `/review-paper --peer <journal>` simulated peer-review pipeline in this repo is adapted from clo-author with Hugo's permission. See the [README](README.md#community--extensions) and the [guide](https://auqib92.github.io/claude-code-my-workflow/workflow-guide.html#sec-ecosystem).
+- **clo-author** by **Hugo Sant'Anna** (UAB) — the `/review-paper --peer <journal>` simulated peer-review pipeline in this repo is adapted from clo-author with Hugo's permission. See the [README](README.md#community--extensions) and the [guide](https://auqib92.github.io/Dr-Lones-Academic-Engine/workflow-guide.html#sec-ecosystem).
 - Any other upstream contributors credited in the template's community/extension list remain credited there.
 
 ---

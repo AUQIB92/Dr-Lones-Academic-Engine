@@ -7,7 +7,7 @@
 
 > **Actively maintained.** How I use Claude Code for my teaching and research — lecture slides, prose notes, assignments, and competitive-exam practice, all under quality gates. See [CHANGELOG.md](CHANGELOG.md) for the latest changes.
 
-**Live site:** [auqib92.github.io/claude-code-my-workflow](https://auqib92.github.io/claude-code-my-workflow/)
+**Live site:** [auqib92.github.io/Dr-Lones-Academic-Engine](https://auqib92.github.io/Dr-Lones-Academic-Engine/)
 
 A working repository for AI-assisted course development and academic work. I describe what I want — a lecture deck, lecture notes, a graded assignment, a GATE practice set — and Claude plans the approach, runs specialized agents, fixes issues, verifies quality, and presents results. Like a contractor who handles the entire job. Forked from Pedro Sant'Anna's [claude-code-my-workflow](https://github.com/pedrohcgs/claude-code-my-workflow) template and extended for my courses (currently CS-401 Computer Organization &amp; Architecture).
 
@@ -25,7 +25,7 @@ A working repository for AI-assisted course development and academic work. I des
 
 ```bash
 # Fork this repo on GitHub (click "Fork" on the repo page), then:
-git clone https://github.com/AUQIB92/claude-code-my-workflow.git my-project
+git clone https://github.com/AUQIB92/Dr-Lones-Academic-Engine.git my-project
 cd my-project
 ./scripts/validate-setup.sh        # reports missing tools with install links
 ```
@@ -38,15 +38,15 @@ cd my-project
 claude
 ```
 
-**Using VS Code?** Open the Claude Code panel instead. Everything works the same — see the [full guide](https://auqib92.github.io/claude-code-my-workflow/workflow-guide.html#sec-setup) for details.
+**Using VS Code?** Open the Claude Code panel instead. Everything works the same — see the [full guide](https://auqib92.github.io/Dr-Lones-Academic-Engine/workflow-guide.html#sec-setup) for details.
 
-> **Avoid prompt fatigue.** Out of the box, Claude Code asks permission for every tool invocation. After the first few approvals, toggle **Auto-accept edits** mode (a keybinding; see the [permission modes section](https://auqib92.github.io/claude-code-my-workflow/workflow-guide.html#settings---permissions-and-hooks) of the guide) or run `claude --permission-mode acceptEdits`. For fully-autonomous runs on a trusted repo, **Bypass** mode skips prompts entirely. The template's `.claude/settings.json` pre-approves ~100 common Bash and Edit/Write patterns, so even at default permissions most work is unattended.
+> **Avoid prompt fatigue.** Out of the box, Claude Code asks permission for every tool invocation. After the first few approvals, toggle **Auto-accept edits** mode (a keybinding; see the [permission modes section](https://auqib92.github.io/Dr-Lones-Academic-Engine/workflow-guide.html#settings---permissions-and-hooks) of the guide) or run `claude --permission-mode acceptEdits`. For fully-autonomous runs on a trusted repo, **Bypass** mode skips prompts entirely. The template's `.claude/settings.json` pre-approves ~100 common Bash and Edit/Write patterns, so even at default permissions most work is unattended.
 
-Then paste the [starter prompt](https://auqib92.github.io/claude-code-my-workflow/workflow-guide.html#sec-first-session) from the guide, filling in your project details:
+Then paste the [starter prompt](https://auqib92.github.io/Dr-Lones-Academic-Engine/workflow-guide.html#sec-first-session) from the guide, filling in your project details:
 
 > I am starting to work on **[PROJECT NAME]** in this repo. **[Describe your project in 2–3 sentences.]** I've set up the Claude Code academic workflow... Please read the configuration files and adapt them for my project. Enter plan mode and start.
 
-The [full guide](https://auqib92.github.io/claude-code-my-workflow/workflow-guide.html#sec-first-session) has the complete starter prompt with all the details.
+The [full guide](https://auqib92.github.io/Dr-Lones-Academic-Engine/workflow-guide.html#sec-first-session) has the complete starter prompt with all the details.
 
 **What this does:** Claude reads all the configuration files, fills in your project name, institution, and preferences, then enters contractor mode — planning, implementing, and (within the skill you invoke) running the review + verify loop. You approve the plan, invoke a skill, and the skill handles the rest within its scope.
 
@@ -132,7 +132,7 @@ Multiple complementary verification layers run before submission:
 
 ## The Guide
 
-For a comprehensive walkthrough, read the **[full guide](https://auqib92.github.io/claude-code-my-workflow/workflow-guide.html)** (or see the [source](guide/workflow-guide.qmd)).
+For a comprehensive walkthrough, read the **[full guide](https://auqib92.github.io/Dr-Lones-Academic-Engine/workflow-guide.html)** (or see the [source](guide/workflow-guide.qmd)).
 
 It covers:
 1. **Why This Workflow Exists** — the problem and the vision
@@ -426,7 +426,7 @@ This repository is a fork of **Pedro Sant'Anna's [claude-code-my-workflow](https
 
 **The workflow infrastructure is Pedro's work — this repo would not exist without it.** See [ACKNOWLEDGMENTS.md](ACKNOWLEDGMENTS.md) for full credit to the original author and incorporated projects. The [LICENSE](LICENSE) retains the original copyright notice.
 
-See the [live site](https://auqib92.github.io/claude-code-my-workflow/) and [course hub](https://auqib92.github.io/claude-code-my-workflow/courses/cs401/) for the published CS-401 materials.
+See the [live site](https://auqib92.github.io/Dr-Lones-Academic-Engine/) and [course hub](https://auqib92.github.io/Dr-Lones-Academic-Engine/courses/cs401/) for the published CS-401 materials.
 
 ---
 
@@ -442,7 +442,7 @@ As of March 2026, **15+ research groups** across economics, energy, political sc
 - **[autoresearch](https://github.com/karpathy/autoresearch)** by Andrej Karpathy — Constraint-based autonomous research with `program.md` as constitutional document
 - **[ClaudeCodeTools](https://github.com/aspi6246/ClaudeCodeTools)** — "The Editor" persona: seven-audit sequential paper review protocol
 
-See the [guide's ecosystem section](https://auqib92.github.io/claude-code-my-workflow/workflow-guide.html#sec-ecosystem) for detailed descriptions, design principles, and more resources.
+See the [guide's ecosystem section](https://auqib92.github.io/Dr-Lones-Academic-Engine/workflow-guide.html#sec-ecosystem) for detailed descriptions, design principles, and more resources.
 
 ---
 

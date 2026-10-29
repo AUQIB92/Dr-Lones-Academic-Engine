@@ -36,7 +36,7 @@ Verify with `claude mcp list` — `stata-mcp` should appear with status `connect
 
 Default permission mode prompts on every `Bash`, `Edit`, `Write`. Two fixes:
 
-- **Auto-accept edits** — keybinding in Claude Code; see guide's [permission modes section](https://auqib92.github.io/claude-code-my-workflow/workflow-guide.html#settings---permissions-and-hooks).
+- **Auto-accept edits** — keybinding in Claude Code; see guide's [permission modes section](https://auqib92.github.io/Dr-Lones-Academic-Engine/workflow-guide.html#settings---permissions-and-hooks).
 - **Bypass mode** — `claude --permission-mode acceptEdits` (auto-approves edits but still prompts for sensitive ops) or `claude --permission-mode bypassPermissions` (skips prompts entirely — use only on trusted repos).
 
 The template's `.claude/settings.json` pre-approves ~100 common patterns, so even at default most routine work is unattended.
@@ -286,5 +286,5 @@ You probably have `CLAUDE_PRECOMPACT_BLOCK_ON_DRAFT=1` set in your environment. 
 
 ## Still stuck?
 
-- Read the [guide's troubleshooting section](https://auqib92.github.io/claude-code-my-workflow/workflow-guide.html#troubleshooting) for longer-form recovery scenarios.
-- Open an issue at <https://github.com/AUQIB92/claude-code-my-workflow/issues> — the bug-report template asks for the environment details we need to help.
+- Read the [guide's troubleshooting section](https://auqib92.github.io/Dr-Lones-Academic-Engine/workflow-guide.html#troubleshooting) for longer-form recovery scenarios.
+- Open an issue at <https://github.com/AUQIB92/Dr-Lones-Academic-Engine/issues> — the bug-report template asks for the environment details we need to help.
