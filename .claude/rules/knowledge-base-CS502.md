@@ -51,9 +51,9 @@ paths:
 | Scheduling metrics | Spell out at first use, then abbreviate: **TAT** (turnaround), **WT** (waiting), **RT** (response), `τ` (burst/CPU time) | "average WT = 3.25 ms" | `T_A`, `W`, `W.T.` — invented abbreviations |
 | Scheduling algorithms | Fixed acronyms, no punctuation: `FCFS`, `SJF`, `SRTF`, `RR`, `Priority`, `MLFQ` | "SRTF is preemptive SJF" | `S.J.F.`, `Round-Robin` (inconsistent hyphenation) |
 | Gantt charts | Time horizontal, left→right; a process bar labeled with the process; **arrival marked on the axis**, not inside the bar | `| P1 | P2 | P1 |` over `0 2 4 7` | Bars with no time axis; idle gaps unmarked |
-| Address translation | page number `p` + offset `d`; frame number `f`; physical address = `f · 2^d + d` | `p = 12, d = 0x2A` | Reusing `p` for both page and frame |
+| Address translation | page number `p` + offset `d`; frame number `f`; physical address = `f · 2^n + d` for an `n`-bit offset | `p = 12, d = 0x2A` | Reusing `p` for both page and frame |
 | Memory units | Binary units: 1 KB = 1024 B; state the page/frame size at first use | "4 KB pages ⇒ 12-bit offset" | Mixing 1000/1024 silently |
-| Effective access time | **`EAT`**; state hit ratio `α` and access times explicitly | `EAT = α·t_TLB + (1−α)(t_TLB + t_mem)` | Bare "average time" with no formula |
+| Effective access time | **`EAT`**; state hit ratio `α` and access times explicitly | `EAT = α(t_TLB + t_mem) + (1−α)(t_TLB + 2·t_mem)` (single-level table) | Bare "average time" with no formula |
 | Deadlock matrices | `Available`, `Max`, `Allocation`, `Need` (capitalized as named objects) | `Need = Max − Allocation` | Lowercase `max`, `alloc` |
 | Disk scheduling | Acronyms as named: `FCFS`, `SSTF`, `SCAN`, `C-SCAN`, `LOOK`, `C-LOOK`; report total head movement | "SSTF total = 236 cylinders" | `CScan`, `c-scan` |
 | File system | `FCB` / `inode` (Silberschatz uses "file-control block" and "inode"); file names in `\texttt{}` | `\texttt{/usr/src/test.c}` | "File descriptor" used for the FCB |
