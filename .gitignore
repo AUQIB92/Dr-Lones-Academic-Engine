@@ -160,3 +160,9 @@ syllabi/JKSSB_Computer_Awareness_Syllabus_Module_Wise_Chapter_Wise_Complete.md
 # Output artifacts — uncomment lines below based on your preference
 # *.rds
 # output/**/*.rds
+revenue/products/*/dist/
+revenue/data/
+
+# Generated papers are private — never commit (see .githooks/pre-commit)
+Papers/
+*.paper.tex

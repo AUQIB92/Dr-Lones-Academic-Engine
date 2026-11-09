@@ -29,6 +29,16 @@ REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || {
 }
 cd "$REPO_ROOT" || exit 2
 
+# ── Private-content guard (no bypass via SKIP_QUALITY_GATE) ──
+# Generated papers and the closed-source video engine must never be committed.
+_PRIVATE=$(git diff --cached --name-only --diff-filter=ACMR | grep -E '^Papers/|^\.claude/skills/explainer-video/|[Pp]rompt2[Rr]ender' || true)
+if [ -n "$_PRIVATE" ]; then
+    echo "pre-commit: BLOCKED — private files staged (papers / video engine):" >&2
+    echo "$_PRIVATE" | sed 's/^/  /' >&2
+    echo "Unstage with: git restore --staged <path>" >&2
+    exit 1
+fi
+
 # Validate the STAGED index, not the working tree, by stashing unstaged
 # *tracked* changes — but ONLY when it is safe. If any single file has BOTH
 # staged and unstaged changes (the `git add -p` workflow), a `stash --keep-index`
