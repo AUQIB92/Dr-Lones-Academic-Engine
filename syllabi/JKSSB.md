@@ -2,7 +2,7 @@
 
 Competitive-exam prep · self-paced (video + slide course) · 66 lessons across 12 units
 
-Source: `syllabi/JKSSB_Computer_Awareness_Prompt2Render_Animation.docx` — a 66-lesson Prompt2Render command book ("JKSSB Computer Awareness") calibrated against the JKSSB Previous Year Question Papers index and the Junior Assistant 2026 / Website Operator 2026 / Computer Instructor-Operator 2025 papers.
+Source: a private 66-lesson course plan ("JKSSB Computer Awareness") calibrated against the JKSSB Previous Year Question Papers index and the Junior Assistant 2026 / Website Operator 2026 / Computer Instructor-Operator 2025 papers.
 
 ---
 
@@ -57,7 +57,7 @@ Every lesson produces three study artifacts plus one video lesson. The video is 
 | **Revision Slides** | Compact, animated, exam-focused deck — every definition, full form, classification, contrast and trap on one scannable pass | `/create-lecture` (Beamer `.tex`) | `Slides/JKSSB/<NN>-<slug>.tex` |
 | **Detailed Notes** | Full prose expansion of the slides — worked examples, expanded contrasts, the "what it is / what it is not / where used / nearest confusion" for every distinction | `/lecture-notes` | `Notes/JKSSB/<NN>-<slug>-notes.tex` |
 | **MCQs + PYQs** | 30-item practice set per lesson (Lessons 50 and 59 retain their existing 26/27 items plus five additions); source-linked PYQ adaptations plus original exam-pattern and MSQ drills, with a matching answer key and rationale for every option | `/competitive-exam-questions` | `CompetitiveExam/JKSSB/<NN>-<slug>-questions.tex` · `-answers.tex` |
-| *Video lesson* | The 6–10-minute animation-heavy explanation lesson itself (Manim precision layer + realistic 3D only where it aids recognition; Hinglish narration, Kokoro `hm_omega`) | `prompt2render.py new … ` / `build` | `<NN>-<slug>` project slug |
+| *Video lesson* | The 6–10-minute animation-heavy explanation lesson itself (animation-heavy, Hinglish narration) | private video pipeline | `<NN>-<slug>` |
 
 **Deck tag:** every Beamer deck sets `\coursecode{JKSSB}` right after `\input{header}`.
 
@@ -239,7 +239,7 @@ Before calling any lesson "current," check the exact target-post notification fo
 
 ## Lesson → artifact work-list (hand to the build skills)
 
-Each row is self-contained: hand the **Slides deck name** to `/create-lecture`, then run `/lecture-notes` and `/competitive-exam-questions` on the result. Quarto is not required. The video lesson is produced independently via the `prompt2render.py new "<NN> <Title>"` command from the source docx.
+Each row is self-contained: hand the **Slides deck name** to `/create-lecture`, then run `/lecture-notes` and `/competitive-exam-questions` on the result. Quarto is not required. The video lesson is produced separately with a private video pipeline.
 
 | # | Deck name (`JKSSB/NN-slug`) | Objective(s) | Source section (docx) |
 |----|------------------------------|--------------|-----------------------|

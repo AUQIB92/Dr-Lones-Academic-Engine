@@ -5,7 +5,20 @@
 [![Contributing](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](.github/CONTRIBUTING.md)
 [![Acknowledgments](https://img.shields.io/badge/Thanks-Pedro%20Sant'Anna-blue.svg)](ACKNOWLEDGMENTS.md)
 
-> **Actively maintained.** How I use Claude Code for my teaching and research — lecture slides, prose notes, assignments, and competitive-exam practice, all under quality gates. See [CHANGELOG.md](CHANGELOG.md) for the latest changes.
+### Teach a full CS course with an AI faculty team that checks its own work.
+
+One prompt in, and out come a lecture deck, prose notes, a graded assignment with a separate key, a GATE practice set with verified past-year questions, an instructor handout, and NBA/AICTE CO-PO mapping. Every number is computed, every citation is checked, and nothing ships below a quality score of 80/100.
+
+**Built in this repo and in use:** 96 Beamer decks · 95 lecture notes · 90+ GATE/JKSSB practice sets · 4 courses (Computer Architecture, Data Structures, Operating Systems, JKSSB Computer Awareness) · 76 skills · 23 reviewer agents.
+
+```text
+/build-week CS502/09-cpu-scheduling-advanced
+  → deck → notes → assignment + key → GATE set → handout → verified → compiled
+```
+
+⭐ **If this saves you a semester of prep, star the repo** so other teachers can find it. · [Live course hub](https://auqib92.github.io/Dr-Lones-Academic-Engine/) · [5-minute quick start](#quick-start-510-minutes-plus-30-min-for-first-time-installs)
+
+> **Actively maintained.** How I use Claude Code for my teaching and research: lecture slides, prose notes, assignments, and competitive-exam practice, all under quality gates. See [CHANGELOG.md](CHANGELOG.md) for the latest changes. Course content is free under [CC BY-NC-SA 4.0](CONTENT-LICENSE.md); code is [MIT](LICENSE).
 
 **Live site:** [auqib92.github.io/Dr-Lones-Academic-Engine](https://auqib92.github.io/Dr-Lones-Academic-Engine/)
 
@@ -188,7 +201,7 @@ This workflow is designed as a **single hub for an entire research program** —
 ## What's Included
 
 <details>
-<summary><strong>23 agents, 75 skills, 41 rules, 8 hooks</strong> (click to expand)</summary>
+<summary><strong>23 agents, 76 skills, 41 rules, 8 hooks</strong> (click to expand)</summary>
 
 ### Agents (`.claude/agents/`)
 
@@ -299,6 +312,7 @@ This workflow is designed as a **single hub for an entire research program** —
 | `/repo-innovator` (v1.0) | Discover the 2-3 innovations that could make a repository category-defining — deep repo intelligence, then a disciplined diverge (20+ ideas / 10 lenses) → combine → contrarian → converge pipeline, scored and cut hard via a 7-question "No. 1 Test"; explicitly refuses generic features unless strategically justified. Sibling to `/feature-discovery`, not a replacement — that skill covers the evidence-grounded backlog (quick wins, maintenance), this one refuses to |
 | `/accreditation-autopilot` (v1.0) | Roll up NBA/AICTE CO-PO-PSO accreditation data across every course in a program into one program-level Self-Assessment Report — generates any missing per-course draft via `/accreditation`, then combines all of them with a mechanically-computed (never hand-tallied) PO-coverage summary |
 | `/render-lecture-video` (v1.0) | Render an already-authored step-diagram sequence (from `/trace-execution` or a hand-authored Notes trace) into a silent, captioned animated GIF — every on-screen caption copied verbatim from the sequence's own `\caption{}` text, never LLM-generated |
+| `/revenue-engine` (v1.0) | Inventory every teaching artifact in the repo, classify it under licensing/integrity guardrails (never solutions, live exams, or copyrighted books), and produce a scored product catalogue, funnel, exam-anchored launch calendar, delegated launch kits, and a monthly revenue review loop |
 
 ### Research Workflow
 

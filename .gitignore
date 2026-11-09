@@ -166,3 +166,6 @@ revenue/data/
 # Generated papers are private — never commit (see .githooks/pre-commit)
 Papers/
 *.paper.tex
+quality_reports/lit_review_prompt_to_render*
+quality_reports/repo_innovator_academic-workload_2026-08-20/
+syllabi/*Prompt2Render*
