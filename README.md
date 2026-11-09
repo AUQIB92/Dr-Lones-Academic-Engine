@@ -7,9 +7,11 @@
 
 ### Teach a full CS course with an AI faculty team that checks its own work.
 
-One prompt in, and out come a lecture deck, prose notes, a graded assignment with a separate key, a GATE practice set with verified past-year questions, an instructor handout, and NBA/AICTE CO-PO mapping. Every number is computed, every citation is checked, and nothing ships below a quality score of 80/100.
+One prompt in, and out come a lecture deck, prose notes, a graded assignment with a separate key, a GATE practice set (original exam-pattern questions, plus real past-year questions only when independently verified), an instructor handout, and NBA/AICTE CO-PO mapping. Every number is computed, every citation is checked, and nothing ships below a quality score of 80/100.
 
 **Built in this repo and in use:** 96 Beamer decks · 95 lecture notes · 90+ GATE/JKSSB practice sets · 4 courses (Computer Architecture, Data Structures, Operating Systems, JKSSB Computer Awareness) · 76 skills · 23 reviewer agents.
+
+![One command builds a full teaching week: deck, notes, assignment, GATE-pattern practice set and handout](docs/assets/demo-build-week.gif)
 
 ```text
 /build-week CS502/09-cpu-scheduling-advanced
