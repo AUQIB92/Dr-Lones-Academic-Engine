@@ -1,0 +1,35 @@
+const puppeteer=require('puppeteer-core');
+const out=process.argv[2];
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+(async()=>{
+ const b=await puppeteer.launch({executablePath:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',headless:'new',args:['--hide-scrollbars']});
+ const p=await b.newPage(); await p.setViewport({width:1600,height:900,deviceScaleFactor:1.2});
+ const cursor=async()=>p.evaluate(()=>{if(document.getElementById('__cur'))return;const c=document.createElement('div');c.id='__cur';c.innerHTML='<svg width="30" height="30" viewBox="0 0 24 24"><path d="M3 2l7 19 2.6-7.6L20 11z" fill="#111" stroke="#fff" stroke-width="1.5"/></svg>';Object.assign(c.style,{position:'fixed',left:'800px',top:'500px',zIndex:2147483647,pointerEvents:'none',transition:'transform .12s',filter:'drop-shadow(0 2px 3px rgba(0,0,0,.4))'});document.body.appendChild(c);document.addEventListener('mousemove',e=>{c.style.left=e.clientX+'px';c.style.top=e.clientY+'px'});document.addEventListener('mousedown',()=>c.style.transform='scale(.8)');document.addEventListener('mouseup',()=>c.style.transform='scale(1)');document.documentElement.style.scrollBehavior='auto';});
+ const scrollTo=async(y,ms)=>p.evaluate((y,ms)=>new Promise(r=>{const y0=scrollY,t0=performance.now();const f=t=>{const k=Math.min(1,(t-t0)/ms),e=k<.5?4*k*k*k:1-Math.pow(-2*k+2,3)/2;scrollTo(0,y0+(y-y0)*e);k<1?requestAnimationFrame(f):r()};requestAnimationFrame(f)}),y,ms);
+ const yOf=async fn=>p.evaluate(fn);
+ const base='https://auqib92.github.io/Dr-Lones-Academic-Engine/';
+ await p.goto(base,{waitUntil:'networkidle2'}); await p.evaluate(async()=>{for(let y=0;y<document.body.scrollHeight;y+=600){scrollTo(0,y);await new Promise(r=>setTimeout(r,60))}scrollTo(0,0)}); await sleep(800); await cursor();
+ await p.mouse.move(800,500);
+ const rec=await p.screencast({path:out+'/browser.webm'});
+ const T0=Date.now(); const mark=[]; const m=n=>mark.push([n,(Date.now()-T0)/1000]);
+ m('home'); await sleep(1600);
+ await p.mouse.move(1180,680,{steps:25}); await sleep(400);
+ const cy=await yOf(()=>document.querySelector('#courses').getBoundingClientRect().top+scrollY-80);
+ await scrollTo(cy,2600); m('courses'); await sleep(900);
+ const tile=await p.evaluateHandle(()=>[...document.querySelectorAll('a')].find(a=>/courses\/cs502/.test(a.getAttribute('href')||'')));
+ const bb=await tile.boundingBox(); await p.mouse.move(bb.x+bb.width/2,bb.y+bb.height/2,{steps:30}); await sleep(700);
+ await p.mouse.down(); await sleep(90); await p.mouse.up();
+ await Promise.all([p.waitForNavigation({waitUntil:'networkidle2'}).catch(()=>{}), tile.click().catch(()=>{})]);
+ await cursor(); await p.mouse.move(bb.x+bb.width/2,300); m('hub'); await sleep(1800);
+ const ly=await yOf(()=>{const a=[...document.querySelectorAll('a')].find(a=>(a.getAttribute('href')||'').endsWith('05-process-concept-pcb.pdf'));return a.getBoundingClientRect().top+scrollY-330;});
+ await p.evaluate(async()=>{});
+ await scrollTo(ly,4200); m('l05'); await sleep(600);
+ const sl=await p.evaluateHandle(()=>[...document.querySelectorAll('a')].find(a=>(a.getAttribute('href')||'').endsWith('05-process-concept-pcb.pdf')));
+ const sb=await sl.boundingBox(); await p.mouse.move(sb.x+sb.width/2,sb.y+sb.height/2,{steps:30}); await sleep(900);
+ await p.mouse.down(); await sleep(90); await p.mouse.up(); m('click'); await sleep(400);
+ await rec.stop();
+ console.log(JSON.stringify(mark));
+ // PDF test
+ const href=await sl.evaluate(a=>a.href); console.log(href);
+ await b.close();
+})();

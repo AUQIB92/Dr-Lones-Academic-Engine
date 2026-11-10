@@ -169,3 +169,8 @@ Papers/
 quality_reports/lit_review_prompt_to_render*
 quality_reports/repo_innovator_academic-workload_2026-08-20/
 syllabi/*Prompt2Render*
+
+# Marketing video build outputs (large binaries)
+Videos/marketing/.work/
+Videos/marketing/out/
+Videos/marketing/my-voice/

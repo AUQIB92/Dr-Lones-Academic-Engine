@@ -1,89 +1,247 @@
-# Dr. Auqib Hamid Lone — Academic Workflow & Course Hub
+<div align="center">
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Changelog](https://img.shields.io/badge/See-CHANGELOG-blue.svg)](CHANGELOG.md)
-[![Contributing](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](.github/CONTRIBUTING.md)
-[![Acknowledgments](https://img.shields.io/badge/Thanks-Pedro%20Sant'Anna-blue.svg)](ACKNOWLEDGMENTS.md)
+# Dr. Lone's Academic Engine
 
-### Teach a full CS course with an AI faculty team that checks its own work.
+### Your textbooks in. A whole lecture out.
 
-One prompt in, and out come a lecture deck, prose notes, a graded assignment with a separate key, a GATE practice set (original exam-pattern questions, plus real past-year questions only when independently verified), an instructor handout, and NBA/AICTE CO-PO mapping. Every number is computed, every citation is checked, and nothing ships below a quality score of 80/100.
+**Slides · lecture notes · assignments with answer keys · labs · GATE practice · instructor handouts · a live course website**<br>
+built by Claude Code, checked by AI reviewers, and gated on quality before anything ships.
 
-**Built in this repo and in use:** 96 Beamer decks · 95 lecture notes · 90+ GATE/JKSSB practice sets · 4 courses (Computer Architecture, Data Structures, Operating Systems, JKSSB Computer Awareness) · 76 skills · 23 reviewer agents.
+[![License: MIT](https://img.shields.io/badge/code-MIT-blue.svg)](LICENSE)
+[![Content: CC BY-NC-SA 4.0](https://img.shields.io/badge/content-CC%20BY--NC--SA%204.0-lightgrey.svg)](CONTENT-LICENSE.md)
+[![Live site](https://img.shields.io/badge/live-course%20site-2c5e2a.svg)](https://auqib92.github.io/Dr-Lones-Academic-Engine/)
+[![Built on](https://img.shields.io/badge/built%20on-Pedro%20Sant'Anna's%20template-d4a464.svg)](ACKNOWLEDGMENTS.md)
+[![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](.github/CONTRIBUTING.md)
+
+[**See what it has built →**](https://auqib92.github.io/Dr-Lones-Academic-Engine/courses/cs502/) &nbsp;·&nbsp; [**Start in 6 steps →**](#-start-in-6-steps) &nbsp;·&nbsp; [**Which skill do I use? →**](#-which-skill-do-i-use)
+
+</div>
 
 ![One command builds a full teaching week: deck, notes, assignment, GATE-pattern practice set and handout](docs/assets/demo-build-week.gif)
 
-```text
-/build-week CS502/09-cpu-scheduling-advanced
-  → deck → notes → assignment + key → GATE set → handout → verified → compiled
-```
-
-⭐ **If this saves you a semester of prep, star the repo** so other teachers can find it. · [Live course hub](https://auqib92.github.io/Dr-Lones-Academic-Engine/) · [5-minute quick start](#quick-start-510-minutes-plus-30-min-for-first-time-installs)
-
-> **Actively maintained.** How I use Claude Code for my teaching and research: lecture slides, prose notes, assignments, and competitive-exam practice, all under quality gates. See [CHANGELOG.md](CHANGELOG.md) for the latest changes. Course content is free under [CC BY-NC-SA 4.0](CONTENT-LICENSE.md); code is [MIT](LICENSE).
-
-**Live site:** [auqib92.github.io/Dr-Lones-Academic-Engine](https://auqib92.github.io/Dr-Lones-Academic-Engine/)
-
-A working repository for AI-assisted course development and academic work. I describe what I want — a lecture deck, lecture notes, a graded assignment, a GATE practice set — and Claude plans the approach, runs specialized agents, fixes issues, verifies quality, and presents results. Like a contractor who handles the entire job. Forked from Pedro Sant'Anna's [claude-code-my-workflow](https://github.com/pedrohcgs/claude-code-my-workflow) template and extended for my courses (currently CS-401 Computer Organization &amp; Architecture).
+> **Built in this repo and in use (Nov 2026):** 96 Beamer decks · 95 lecture notes · 90+ GATE/JKSSB practice sets · 4 courses, all open on the [live site](https://auqib92.github.io/Dr-Lones-Academic-Engine/).
+> ⭐ If it saves you a semester of prep, **star the repo** so other teachers can find it.
 
 ---
 
-## Quick Start (5–10 minutes, plus ~30 min for first-time installs)
+## ✨ What it does, in one picture
 
-> **Before you start:** Claude Code + git are the minimum. To build and compile course lectures, install XeLaTeX. Quarto is used only for maintaining the existing guide/site infrastructure, not for course workflows. R and the GitHub CLI are recommended. Python 3 is used by a few internal scripts (`check-palette-sync.py`, `check-tikz-prevention.py`) and is pre-installed on macOS/Linux. Full list in [Prerequisites](#prerequisites) below. Fastest path: clone first, then run `./scripts/validate-setup.sh` — it reports what's missing with install links.
->
-> **Only need Python/R/markdown?** You don't need XeLaTeX or Quarto. The agents, rules, skills, and orchestration patterns work for any text/code artifact. Skip the `HelloWorld` demo and head straight to `/data-analysis`, `/review-paper`, `/lit-review`, or `/review-r`.
->
-> **Session 2 onwards:** [MEMORY.md](MEMORY.md) (committed) collects generic `[LEARN]` entries that help all forkers; `.claude/state/personal-memory.md` (gitignored) is for machine-specific notes. See [`.claude/rules/meta-governance.md`](.claude/rules/meta-governance.md) for the distinction.
-
-### 1. Fork & Clone
-
-```bash
-# Fork this repo on GitHub (click "Fork" on the repo page), then:
-git clone https://github.com/AUQIB92/Dr-Lones-Academic-Engine.git my-project
-cd my-project
-./scripts/validate-setup.sh        # reports missing tools with install links
+```mermaid
+flowchart LR
+    A["📚 Your sources<br/>textbooks · your slides<br/>technical papers · notes"] --> B["🗺️ Curriculum<br/>/syllabus<br/>/index-textbook"]
+    B --> C{"⚙️ Build<br/>/build-week<br/>or one skill"}
+    C --> D["🎞️ Slides"]
+    C --> E["📝 Notes"]
+    C --> F["✅ Assignment + key"]
+    C --> G["🧪 Lab"]
+    C --> H["🎯 GATE practice"]
+    C --> I["🧑‍🏫 Instructor handout"]
+    D & E & F & G & H & I --> Q["🛡️ Quality gates<br/>compile · AI review<br/>page-checked citations · ≥80/100"]
+    Q --> W["🌐 Your course website<br/>GitHub Pages"]
 ```
 
-(If you forked it, replace `AUQIB92` with your GitHub username.)
+You talk to Claude in plain English. Behind the scenes it plans the work, writes it, has specialist reviewer agents (proofreading, pedagogy, layout, domain) critique it, fixes what they find, compiles it, and scores it. **Nothing below 80/100 gets committed.**
 
-### 2. Start Claude Code and Paste This Prompt
+## 🔎 See it live
+
+Everything below was produced with this engine and is free to browse and download:
+
+| Course | What's there | Open |
+|---|---|---|
+| **CS-502 Operating Systems** | slides, notes, assignments, GATE practice sets | [course page →](https://auqib92.github.io/Dr-Lones-Academic-Engine/courses/cs502/) |
+| **CS-401 Computer Organization & Architecture** | slides, notes, assignments, labs, GATE practice sets | [course page →](https://auqib92.github.io/Dr-Lones-Academic-Engine/courses/cs401/) |
+| **CS-301 Data Structures** | slides, notes, assignments, labs, GATE practice sets | [course page →](https://auqib92.github.io/Dr-Lones-Academic-Engine/courses/cs301/) |
+| **JKSSB Computer Awareness** | slides, notes, exam practice sets | [course page →](https://auqib92.github.io/Dr-Lones-Academic-Engine/courses/jkssb/) |
+
+The home page with all courses: **[auqib92.github.io/Dr-Lones-Academic-Engine](https://auqib92.github.io/Dr-Lones-Academic-Engine/)**
+
+---
+
+## 🚀 Start in 6 steps
+
+> **First time?** Budget ~10 minutes, plus ~30 minutes if you still need to install LaTeX.
+
+### Step 0 · What you need
+
+| Tool | Why | Get it |
+|---|---|---|
+| **Claude Code** | does the work | [claude.ai/install](https://claude.ai/install) |
+| **git** | your copy of the repo | [git-scm.com](https://git-scm.com/downloads) |
+| **XeLaTeX** | turns slides/notes into PDFs | [MacTeX](https://tug.org/mactex/) (macOS) · [TeX Live](https://tug.org/texlive/) (Linux/Windows) |
+| GitHub CLI *(optional)* | one-command commits/PRs | `brew install gh` · [cli.github.com](https://cli.github.com/) |
+
+Python 3 is also used by a few checkers; it's already on macOS/Linux. Full list in [Prerequisites](#prerequisites).
+
+### Step 1 · Get your own copy
+
+Click **Fork** at the top of this page, then:
+
+```bash
+git clone https://github.com/<your-username>/Dr-Lones-Academic-Engine.git my-courses
+cd my-courses
+./scripts/validate-setup.sh     # tells you what's missing, with install links
+./scripts/install-hooks.sh      # turns on the quality gate for every commit
+```
+
+### Step 2 · Open Claude and introduce your course
 
 ```bash
 claude
 ```
 
-**Using VS Code?** Open the Claude Code panel instead. Everything works the same — see the [full guide](https://auqib92.github.io/Dr-Lones-Academic-Engine/workflow-guide.html#sec-setup) for details.
+Paste this, filling in the brackets (the [full starter prompt](https://auqib92.github.io/Dr-Lones-Academic-Engine/workflow-guide.html#sec-first-session) is in the guide):
 
-> **Avoid prompt fatigue.** Out of the box, Claude Code asks permission for every tool invocation. After the first few approvals, toggle **Auto-accept edits** mode (a keybinding; see the [permission modes section](https://auqib92.github.io/Dr-Lones-Academic-Engine/workflow-guide.html#settings---permissions-and-hooks) of the guide) or run `claude --permission-mode acceptEdits`. For fully-autonomous runs on a trusted repo, **Bypass** mode skips prompts entirely. The template's `.claude/settings.json` pre-approves ~100 common Bash and Edit/Write patterns, so even at default permissions most work is unattended.
+> I am starting to work on **[COURSE NAME, e.g. "PHY-201 Electromagnetism"]** in this repo. **[2–3 sentences about the course and your students.]** Please read the configuration files and adapt them for my project. Enter plan mode and start.
 
-Then paste the [starter prompt](https://auqib92.github.io/Dr-Lones-Academic-Engine/workflow-guide.html#sec-first-session) from the guide, filling in your project details:
+Claude fills in your name, institution and preferences, and shows you a plan to approve.
 
-> I am starting to work on **[PROJECT NAME]** in this repo. **[Describe your project in 2–3 sentences.]** I've set up the Claude Code academic workflow... Please read the configuration files and adapt them for my project. Enter plan mode and start.
+> 💡 **Fewer pop-ups:** after the first few approvals, switch on **auto-accept edits** (or start with `claude --permission-mode acceptEdits`). Many common commands are already pre-approved.
 
-The [full guide](https://auqib92.github.io/Dr-Lones-Academic-Engine/workflow-guide.html#sec-first-session) has the complete starter prompt with all the details.
+### Step 3 · Add your sources
 
-**What this does:** Claude reads all the configuration files, fills in your project name, institution, and preferences, then enters contractor mode — planning, implementing, and (within the skill you invoke) running the review + verify loop. You approve the plan, invoke a skill, and the skill handles the rest within its scope.
-
-> **Heavily adapting CLAUDE.md for a non-academic project?** Anthropic's built-in `/init` command will re-derive a `CLAUDE.md` from your codebase as a starting point. The pre-shipped CLAUDE.md in this template already covers the academic setup — you only need `/init` if your fork diverges substantially (e.g., a Python/ML project that doesn't use LaTeX or Quarto).
-
-### 3. Verify Your Setup
-
-Before building real lectures, confirm your environment works:
-
-```bash
-./scripts/validate-setup.sh        # Checks required course tools; Quarto is for guide/site maintenance
-```
-
-Then inside Claude:
+Drop your material into one folder per course (`<CODE>` is your course code, e.g. `PHY201`):
 
 ```text
-/compile-latex HelloWorld          # Compiles Slides/HelloWorld.tex to PDF
+master_supporting_docs/<CODE>/
+├── supporting_books/<Book>/book.pdf   ← textbooks (kept out of git: copyright)
+├── supporting_slides/                 ← slides you already teach from
+└── supporting_papers/                 ← technical / research papers
 ```
 
-If compilation succeeds, delete `Slides/HelloWorld.tex` and start on your real work. Quarto course mirrors are legacy artifacts and are not part of course workflows; the existing guide and site/deployment infrastructure is retained.
+Then in Claude:
+
+```text
+/index-textbook <CODE>/<Book>     # builds a chapter → page → key-terms index
+```
+
+Now every claim in your lectures can cite a **real page number**, and those citations are checked.
+
+### Step 4 · Plan the whole course
+
+```text
+/syllabus <CODE> "<course title>"
+```
+
+You get `syllabi/<CODE>.md`: course description, units, a lecture-by-lecture plan with page-cited readings, and learning outcomes.
+
+### Step 5 · Build a lecture, all of it or one part
+
+```text
+/build-week <CODE>/<NN>           # entire lecture, end to end
+```
+
+It runs **slides → notes → assignment → lab → GATE practice → course page**, pausing after each stage so you can review and approve. Want just one piece? Use the single skills in the [cheat sheet](#-which-skill-do-i-use).
+
+### Step 6 · Publish to your course website
+
+1. **New course?** Ask Claude once: *"create a course page for `<CODE>` like the CS-502 one"*.
+2. Ask Claude: *"publish `<CODE>/<NN>` to the site"*. It copies the student-facing PDFs into `docs/` and runs `/publish-course-hub <CODE>` to refresh the course page.
+3. Run `/commit`. The quality gate runs and, if it passes, your work is pushed.
+4. **One-time:** on GitHub open **Settings → Pages**, choose **Deploy from a branch → `main` / `docs`**.
+
+Your site is live at `https://<your-username>.github.io/<repo-name>/`.
+
+> 🔒 **Never published:** solution keys, instructor handouts, lab references and internal exam papers stay private; the publish step only copies student-facing files.
 
 ---
+
+## 🧭 Which skill do I use?
+
+Type these inside Claude. Each one works on its own; `/build-week` chains them.
+
+| I want to… | Type | You get |
+|---|---|---|
+| **Build an entire lecture** | `/build-week <CODE>/<NN>` | everything below, stage by stage |
+| Make the slide deck | `/create-lecture` | Beamer `.tex` + PDF in `Slides/<CODE>/` |
+| Write prose lecture notes | `/lecture-notes` | `Notes/<CODE>/<NN>-notes.pdf` |
+| Set a graded assignment | `/create-assignment` | student sheet + **separate answer key** |
+| Set a programming assignment | `/coding-assignment` | problem, reference solution, hidden tests, autograder |
+| Write a lab sheet | `/lab-manual` | procedure, observation table, viva questions, rubric |
+| Make exam practice | `/competitive-exam-questions` | GATE-style set, past questions verified |
+| Prepare myself to teach | `/instructor-handout` | what to read (with pages), demo to prep, misconceptions, exit ticket |
+| Update the course web page | `/publish-course-hub <CODE>` | refreshed lecture list, progress bar, tables |
+| Plan the course | `/syllabus` | units, lecture plan, outcomes |
+| Index a textbook | `/index-textbook` | chapter → page → key-terms map |
+| Turn a paper into a lecture | `/teach-from-paper` | outline, key results, slide skeleton, questions |
+| Set an internal exam | `/create-minor-paper` | two-section sessional paper + solutions (kept private) |
+| Get a deck reviewed | `/slide-excellence` | parallel proofreading, layout and pedagogy review |
+| Compile a deck | `/compile-latex` | 3-pass XeLaTeX PDF |
+| Save my work | `/commit` | quality-gated commit + push |
+
+The full list of skills is in [Reference → What's Included](#whats-included).
+
+---
+
+## 🧑‍🏫 The instructor handout: walk in prepared
+
+Every lecture can come with a private handout that tells you exactly how to get ready. For example, CS-502 Lecture 05 *(Process Concept & PCB)* says:
+
+- **Read:** Silberschatz Ch. 3 §3.1 (pp. 101–105) · Stallings Ch. 3 §3.1–3.3 (pp. 108, 111, 126) · skim Bovet & Cesati Ch. 3 (`task_struct`)
+- **Prepare the demo:** run `counter.c` in two terminals, then `ps -o pid,stat,cmd`
+- **Practise:** draw the process-state diagram from memory (5 states, 6 arrows, the cause of each)
+- **Check prerequisites:** Lecture 2's timer interrupt, Lecture 3's blocking `read`
+- **Close with:** 4 exit-ticket questions, a one-page refresh, and the readings for next time
+
+---
+
+## 🌍 Made for CS & Math, ready for any field
+
+The courses here are computer science and mathematics, but nothing in the engine is tied to them. To use it for **physics, chemistry, biology, engineering, economics, medicine, business, law or the humanities**:
+
+1. **Your sources:** put your field's books, slides and papers in `master_supporting_docs/<CODE>/`.
+2. **Your syllabus:** run `/syllabus` with your course outline or institute scheme.
+3. **Your knowledge base:** copy `.claude/rules/knowledge-base-template.md` to `knowledge-base-<CODE>.md` and fill in your notation and key terms.
+4. **Your domain reviewer:** edit the review lenses in `.claude/agents/domain-reviewer.md` (e.g. "units and dimensions are consistent" for physics).
+5. **Your look:** change colours in `Preambles/header.tex` (see [`Preambles/README.md`](Preambles/README.md)).
+
+The same skills, reviewers and quality gates then build your course.
+
+---
+
+## 🛡️ Why you can trust the output
+
+- **It compiles.** Every deck is built with 3-pass XeLaTeX; broken output never ships.
+- **It's reviewed.** Specialist AI reviewers (proofreading, pedagogy, layout, your domain) critique each artifact, and a fixer applies their findings.
+- **Citations are checked.** Page numbers come from the textbook index, and a separate verifier re-checks factual claims without seeing the draft.
+- **It's scored.** Each artifact gets 0–100. **80** to commit, **90** to publish, **95** is excellence. A git hook enforces it on every commit.
+- **You stay in charge.** Plans wait for your approval, `/build-week` pauses between stages, and nothing is committed without `/commit`.
+
+---
+
+## 🎬 Video explainers: the Video Engine *(proprietary)*
+
+Lectures can also become narrated, animated video explainers in the instructor's own voice, like the 13-minute explainer for CS-502 Lecture 05. That is done by a separate engine, **Prompt2Render**, which is **proprietary and not part of this repository**.
+
+🔒 **Want access?** Get in touch through the [contact section of the site](https://auqib92.github.io/Dr-Lones-Academic-Engine/#contact).
+
+---
+
+## 🆘 Stuck?
+
+| Problem | Fix |
+|---|---|
+| Something's missing | `./scripts/validate-setup.sh` lists it, with an install link |
+| A deck won't compile | ask Claude *"why won't this compile?"*, or see [TROUBLESHOOTING.md](TROUBLESHOOTING.md) |
+| On Windows (MiKTeX) | use `;` instead of `:` in `TEXINPUTS` (details in [CLAUDE.md](CLAUDE.md)) |
+| A commit is blocked | the quality gate found issues; fix them, or override deliberately with `SKIP_QUALITY_GATE=1` |
+| Too many permission prompts | auto-accept edits mode, or `/fewer-permission-prompts` |
+
+The **[full guide](https://auqib92.github.io/Dr-Lones-Academic-Engine/workflow-guide.html)** walks through everything in depth.
+
+---
+
+## 🙏 Credits
+
+This engine stands on the shoulders of **[Pedro H. C. Sant'Anna](https://psantanna.com)**, whose open-source **[claude-code-my-workflow](https://github.com/pedrohcgs/claude-code-my-workflow)** template (MIT) it is forked from. The multi-agent review runtime, quality gates and orchestrator architecture are his work. The `/review-paper --peer` pipeline is adapted from **[clo-author](https://github.com/hugosantanna/clo-author)** by **Hugo Sant'Anna**, with permission. Full credits are in [ACKNOWLEDGMENTS.md](ACKNOWLEDGMENTS.md).
+
+Built and maintained by **Dr. Auqib Hamid Lone**, GCET Kashmir · code [MIT](LICENSE) · course content [CC BY-NC-SA 4.0](CONTENT-LICENSE.md) · [CHANGELOG](CHANGELOG.md)
+
+---
+
+# 📖 Reference
+
+*Everything below is the detailed documentation: how the system works inside, every skill, agent and rule, and the research workflows inherited from the template.*
+
 
 ## How It Works
 
