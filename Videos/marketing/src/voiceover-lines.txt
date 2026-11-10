@@ -1,0 +1,14 @@
+What if one command could turn the textbooks you trust into a complete lecture, and publish it to the web?
+It starts with your sources. Textbooks, your existing slides, technical papers, and any supporting material. Books are indexed page by page, so every claim can point to a real page.
+From those books and your syllabus, it drafts the curriculum. Thirty-nine lectures. Four units. Outcomes mapped, lecture by lecture.
+Then you choose. One skill, called build week, creates the entire lecture, end to end. Or call a single skill for just the part you need: slides, notes, an assignment, a lab, exam practice, or a handout.
+Here is the engine at work, for real. It reads the book index and the syllabus, then compiles the Beamer deck.
+Nothing ships until it compiles cleanly and clears the quality gate. This lecture scored one hundred out of one hundred.
+Out comes a Beamer slide deck. An analogy to hook the class. Worked examples. Diagrams. Socratic checks. And citations, down to the page.
+Plus lecture notes, a graded assignment with a separate answer key, gate exam practice, and an instructor handout.
+And the instructor handout gets you ready to teach. Exactly which pages to read, the demo to prepare, the diagram to draw from memory, the prerequisites to check, and the exit questions to ask.
+And for video, there is my Video Engine, Prompt to Render. It turns the same lecture into a narrated, animated explainer. The engine is proprietary, so reach out for access.
+Then it goes live, on your own course website, through GitHub Pages. Free, open, and ready for your students.
+Today it is tailored for computer science and mathematics. But the best part: swap in your own books, syllabus, and knowledge base, and it adapts to any field. Physics, biology, engineering, economics, medicine, even the humanities.
+A big thank you to Pedro Santanna. This engine is built on his open source Claude Code workflow template.
+I built this for my own students, and now it is open source. See everything it has produced so far on my course page, and get the code on GitHub. Professors, lecturers, academics: fork it, teach with it, and help make it better.

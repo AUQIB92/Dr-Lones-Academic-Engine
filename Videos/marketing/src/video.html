@@ -1,0 +1,385 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<link rel="stylesheet" href="xterm/xterm.css"><script src="xterm/xterm.js"></script><script src="term.cast.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inria+Serif:ital,wght@0,400;0,700;1,400&family=Inter:wght@400;600;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0b120e;--bg2:#13201a;--green:#2c5e2a;--green2:#4f9a4b;--gold:#d4a464;--gold2:#f0cf94;--ink:#f4efe4;--muted:#9fb0a4}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:1920px;height:1080px;overflow:hidden;background:var(--bg);color:var(--ink);font-family:Inter,sans-serif}
+#stage{position:absolute;inset:0;overflow:hidden}
+#bg{position:absolute;inset:-200px;background:radial-gradient(1200px 800px at 30% 30%,#1d3a25 0%,transparent 60%),radial-gradient(1000px 700px at 75% 70%,#3a2e17 0%,transparent 60%),var(--bg)}
+#grid{position:absolute;inset:0;background-image:linear-gradient(rgba(212,164,100,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(212,164,100,.06) 1px,transparent 1px);background-size:80px 80px;mask-image:radial-gradient(circle at 50% 50%,#000 30%,transparent 80%)}
+.p{position:absolute;border-radius:50%;background:var(--gold);filter:blur(1px)}
+.scene{position:absolute;inset:0;opacity:0}
+.serif{font-family:'Inria Serif',serif}
+.mono{font-family:'JetBrains Mono',monospace}
+.kicker{font-family:'JetBrains Mono';letter-spacing:.35em;font-size:22px;color:var(--gold);text-transform:uppercase}
+.abs{position:absolute}
+.gold{color:var(--gold)}
+.center{left:0;right:0;text-align:center}
+/* books */
+.book{position:absolute;width:300px;height:420px;border-radius:8px 14px 14px 8px;padding:34px 28px;box-shadow:0 30px 60px rgba(0,0,0,.55),inset 6px 0 0 rgba(0,0,0,.25);display:flex;flex-direction:column}
+.book h3{font-family:'Inria Serif';font-size:34px;line-height:1.1;margin-bottom:14px}
+.book .au{font-size:17px;opacity:.85;margin-top:auto}
+.book .ed{font-family:'JetBrains Mono';font-size:14px;letter-spacing:.2em;opacity:.8;margin-bottom:18px}
+.idx{position:absolute;font-family:'JetBrains Mono';font-size:25px;color:var(--ink);white-space:nowrap}
+.idx b{color:var(--gold);font-weight:600}
+.idx .ck{color:#7fd17a;margin-right:14px}
+/* syllabus */
+.unit{position:absolute;width:390px;height:330px;border-radius:18px;background:rgba(255,255,255,.04);border:1px solid rgba(212,164,100,.35);padding:26px}
+.unit .u{font-family:'JetBrains Mono';color:var(--gold);letter-spacing:.2em;font-size:18px}
+.unit .t{font-family:'Inria Serif';font-size:29px;margin-top:10px;line-height:1.15;height:100px}
+.dots{display:flex;flex-wrap:wrap;gap:7px;margin-top:22px}
+.dot{width:24px;height:24px;border-radius:6px;background:var(--green2);opacity:0}
+/* terminal */
+.term{position:absolute;left:150px;top:130px;width:1620px;height:800px;border-radius:18px;background:#0d0f0e;border:1px solid #2a332d;box-shadow:0 40px 120px rgba(0,0,0,.7);overflow:hidden}
+.term .bar{height:52px;background:#1a1f1c;display:flex;align-items:center;padding-left:22px;gap:10px}
+.term .bar i{width:15px;height:15px;border-radius:50%;display:block}
+.term .bar span{margin-left:20px;font-family:'JetBrains Mono';color:#8a958d;font-size:18px}
+.term pre{font-family:'JetBrains Mono';font-size:27px;line-height:1.6;padding:34px 40px;color:#dfe7e0;white-space:pre}
+.cur{display:inline-block;width:14px;height:30px;background:var(--gold);vertical-align:-5px}
+/* slides */
+.slide{position:absolute;border-radius:12px;box-shadow:0 40px 100px rgba(0,0,0,.65);overflow:hidden;background:#fff}
+.slide img{width:100%;height:100%;display:block}
+.tag{position:absolute;font-family:'JetBrains Mono';font-size:24px;letter-spacing:.15em;padding:12px 24px;border-radius:40px;background:var(--gold);color:#1a1408;font-weight:700;text-transform:uppercase}
+/* docs */
+.doc{position:absolute;width:360px;border-radius:8px;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.6);background:#fff}
+.doc img{width:100%;display:block}
+.dlab{position:absolute;width:360px;text-align:center;font-family:'Inria Serif';font-size:31px}
+/* quality */
+.badge{position:absolute;left:560px;width:800px;height:110px;border-radius:20px;background:rgba(255,255,255,.05);border:1px solid rgba(127,209,122,.35);display:flex;align-items:center;padding:0 34px;gap:28px}
+.badge .c{width:60px;height:60px;border-radius:50%;background:#2f7d34;display:flex;align-items:center;justify-content:center;font-size:36px;color:#fff;font-weight:800}
+.badge .x{font-size:34px;font-weight:600}
+.badge .y{font-family:'JetBrains Mono';font-size:20px;color:var(--muted);margin-top:4px}
+/* browser */
+.browser{position:absolute;left:210px;top:70px;width:1500px;height:904px;border-radius:16px;overflow:hidden;background:#f3efe6;box-shadow:0 50px 140px rgba(0,0,0,.7)}
+.browser .bar{height:60px;background:#e6e1d6;display:flex;align-items:center;padding:0 22px;gap:10px}
+.browser .bar i{width:15px;height:15px;border-radius:50%;display:block}
+.url{margin-left:24px;flex:1;height:38px;border-radius:19px;background:#fff;font-family:'JetBrains Mono';font-size:19px;color:#3b4a3e;display:flex;align-items:center;padding-left:22px}
+.view{position:absolute;left:0;top:60px;width:1500px;height:820px;overflow:hidden}
+.view img{position:absolute;left:0;top:0;width:1500px}
+.hl{position:absolute;border:4px solid var(--gold);border-radius:14px;box-shadow:0 0 0 9999px rgba(10,18,12,.35),0 0 40px rgba(212,164,100,.8)}
+.cursor{position:absolute;width:34px;height:34px}
+/* cta */
+.pill{display:inline-block;font-family:'JetBrains Mono';font-size:34px;padding:20px 40px;border-radius:60px;border:2px solid var(--gold);color:var(--gold2);background:rgba(212,164,100,.08)}
+.player{position:absolute;left:310px;top:205px;width:1300px;height:731px;border-radius:16px;overflow:hidden;box-shadow:0 50px 140px rgba(0,0,0,.7),0 0 0 1px rgba(212,164,100,.35)}
+.player img{width:100%;height:100%;display:block}
+.lock{position:absolute;display:flex;align-items:center;gap:14px;font-family:'JetBrains Mono';font-weight:700;letter-spacing:.14em;text-transform:uppercase;border-radius:40px}
+.sub{position:absolute;left:0;right:0;bottom:34px;text-align:center}
+.sub span{display:inline-block;background:rgba(8,12,10,.82);color:#fff;font-family:Inter;font-size:30px;padding:10px 22px;border-radius:10px;max-width:1150px;line-height:1.3}
+.card{position:absolute;width:375px;height:250px;border-radius:18px;background:rgba(255,255,255,.045);border:1px solid rgba(212,164,100,.35);padding:26px}
+.card .ic{width:58px;height:58px;border-radius:14px;display:flex;align-items:center;justify-content:center;margin-bottom:18px}
+.card .h{font-family:'Inria Serif';font-size:34px;line-height:1.1}
+.card .d{font-size:19px;color:var(--muted);margin-top:10px;line-height:1.35}
+.card .f{font-family:'JetBrains Mono';font-size:15px;color:var(--gold);margin-top:12px;opacity:.85}
+.panel{position:absolute;border-radius:22px;background:rgba(255,255,255,.04);border:1px solid rgba(212,164,100,.35);padding:34px}
+.chip{display:inline-flex;align-items:center;gap:10px;font-family:'JetBrains Mono';font-size:22px;padding:12px 18px;border-radius:12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);margin:0 10px 12px 0;opacity:0}
+.chip i{font-style:normal;font-family:Inter;font-size:17px;color:var(--muted)}
+.stage{display:inline-block;font-family:'JetBrains Mono';font-size:21px;padding:12px 16px;border-radius:12px;border:1px solid rgba(127,209,122,.4);background:rgba(127,209,122,.06);color:var(--ink)}
+.arrow{display:inline-block;color:var(--gold);font-size:24px;margin:0 8px}
+.ckl{position:absolute;left:820px;font-size:27px;display:flex;gap:18px;align-items:flex-start;width:960px;line-height:1.3}
+.ckl .bx{flex:none;width:34px;height:34px;border-radius:8px;border:2px solid var(--green2);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:22px;margin-top:2px}
+.ckl b{color:var(--gold2);font-weight:600}
+.ckl .m{font-family:'JetBrains Mono';font-size:21px;color:var(--muted)}
+.core{position:absolute;left:810px;top:430px;width:300px;height:300px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;background:radial-gradient(circle at 40% 35%,#2f6a3a,#12261a 70%);border:2px solid rgba(212,164,100,.6);box-shadow:0 0 80px rgba(79,154,75,.45),inset 0 0 40px rgba(0,0,0,.4)}
+.core .a{font-family:'JetBrains Mono';font-size:16px;letter-spacing:.25em;color:var(--gold)}
+.core .b{font-family:'Inria Serif';font-size:40px;line-height:1.05;margin-top:8px}
+.dom{position:absolute;transform:translate(-50%,-50%);display:flex;align-items:center;gap:10px;font-family:Inter;font-weight:600;font-size:24px;padding:12px 20px;border-radius:40px;background:rgba(14,22,17,.9);border:1px solid rgba(255,255,255,.16);white-space:nowrap}
+.dom i{width:12px;height:12px;border-radius:50%;display:block}
+.home{position:absolute;transform:translate(-50%,-50%);font-family:Inter;font-weight:800;font-size:28px;padding:14px 26px;border-radius:40px;background:var(--gold);color:#1a1408;box-shadow:0 0 40px rgba(212,164,100,.6);white-space:nowrap}
+#lower{position:absolute;left:70px;bottom:52px;font-family:'JetBrains Mono';font-size:18px;letter-spacing:.25em;color:rgba(244,239,228,.55)}
+#prog{position:absolute;left:0;bottom:0;height:5px;background:linear-gradient(90deg,var(--green2),var(--gold))}
+#flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none}
+</style></head>
+<body><div id="stage">
+<div id="bg"></div><div id="grid"></div><div id="parts"></div>
+
+<!-- S1 HOOK -->
+<div class="scene" id="s1">
+  <div class="abs center kicker" id="s1k" style="top:300px">For teachers who build courses</div>
+  <div class="abs center serif" id="s1a" style="top:370px;font-size:118px;line-height:1.05">Your textbooks in.</div>
+  <div class="abs center serif" id="s1b" style="top:510px;font-size:118px;line-height:1.05"><span class="gold">A whole lecture</span> out.</div>
+  <div class="abs" id="s1u" style="top:665px;left:610px;height:6px;width:700px;background:linear-gradient(90deg,var(--gold),transparent);transform-origin:left"></div>
+  <div class="abs center mono" id="s1c" style="top:720px;font-size:26px;color:var(--muted)">slides · notes · assignments · exam practice · course website</div>
+</div>
+
+<!-- S2 SOURCES -->
+<div class="scene" id="s2">
+  <div class="abs kicker" style="left:150px;top:100px">Step 1 · Your sources</div>
+  <div class="abs serif" style="left:150px;top:142px;font-size:64px">Start from the material you already trust.</div>
+  <div class="card" id="k1" style="left:150px;top:290px"><div class="ic" style="background:#1f4f8a"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M4 4h7a3 3 0 013 3v13a2 2 0 00-2-2H4z"/><path d="M20 4h-6a3 3 0 00-3 3"/><path d="M20 4v14h-6"/></svg></div><div class="h">Textbooks</div><div class="d">Silberschatz · Stallings · Bovet &amp; Cesati</div><div class="f">supporting_books/</div></div>
+  <div class="card" id="k2" style="left:555px;top:290px"><div class="ic" style="background:#8a5a22"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M12 16v4M8 20h8"/></svg></div><div class="h">Your slides</div><div class="d">decks you already teach from</div><div class="f">supporting_slides/</div></div>
+  <div class="card" id="k3" style="left:960px;top:290px"><div class="ic" style="background:#5a2f7a"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M6 2h9l5 5v15H6z"/><path d="M15 2v5h5M9 13h8M9 17h6"/></svg></div><div class="h">Technical papers</div><div class="d">research turned into teaching</div><div class="f">supporting_papers/</div></div>
+  <div class="card" id="k4" style="left:1365px;top:290px"><div class="ic" style="background:#2f6a3a"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M3 6h6l2 2h10v11H3z"/></svg></div><div class="h">Supporting material</div><div class="d">syllabus PDF · notes · PYQ books</div><div class="f">master_supporting_docs/</div></div>
+  <div class="abs mono" id="idxh" style="left:150px;top:600px;font-size:20px;letter-spacing:.2em;color:var(--muted)">BOOK INDEX · 982 PAGES · CHAPTER → PAGE → KEY TERMS</div>
+  <div class="idx" id="i1" style="left:150px;top:655px"><span class="ck">✓</span>Process concept <b>p.101</b></div>
+  <div class="idx" id="i2" style="left:150px;top:715px"><span class="ck">✓</span>Process control block <b>p.103</b></div>
+  <div class="idx" id="i3" style="left:150px;top:775px"><span class="ck">✓</span>Process states <b>p.103</b></div>
+  <div class="idx" id="i4" style="left:960px;top:655px"><span class="ck">✓</span>Context switch <b>p.110</b></div>
+  <div class="idx" id="i5" style="left:960px;top:715px"><span class="ck">✓</span>Five-state model <b>Stallings p.111</b></div>
+  <div class="idx" id="i6" style="left:960px;top:775px"><span class="ck">✓</span>task_struct <b>Bovet &amp; Cesati Ch. 3</b></div>
+  <div class="abs serif" id="s2q" style="left:150px;top:870px;font-size:36px;font-style:italic;color:var(--gold2)">Every claim can point to a real page.</div>
+</div>
+
+<!-- S3 SYLLABUS -->
+<div class="scene" id="s3">
+  <div class="abs kicker" style="left:160px;top:120px">Step 2 · Curriculum</div>
+  <div class="abs serif" style="left:160px;top:165px;font-size:66px">Operating Systems <span class="gold">· CS-502</span></div>
+  <div class="abs" style="right:160px;top:130px;text-align:right"><div class="serif" id="cnt" style="font-size:150px;line-height:1;color:var(--gold)">0</div><div class="mono" style="font-size:22px;letter-spacing:.25em;color:var(--muted)">LECTURES PLANNED</div></div>
+  <div class="unit" id="u1" style="left:160px;top:420px"><div class="u">UNIT I · 9 LECTURES</div><div class="t">Processes &amp; CPU Scheduling</div><div class="dots" data-n="9"></div></div>
+  <div class="unit" id="u2" style="left:570px;top:420px"><div class="u">UNIT II · 10 LECTURES</div><div class="t">Concurrency &amp; Deadlock</div><div class="dots" data-n="10"></div></div>
+  <div class="unit" id="u3" style="left:980px;top:420px"><div class="u">UNIT III · 10 LECTURES</div><div class="t">Memory &amp; Virtual Memory</div><div class="dots" data-n="10"></div></div>
+  <div class="unit" id="u4" style="left:1390px;top:420px"><div class="u">UNIT IV · 10 LECTURES</div><div class="t">I/O, Disks &amp; File Systems</div><div class="dots" data-n="10"></div></div>
+  <div class="abs mono" id="s3o" style="left:160px;top:810px;font-size:24px;color:var(--muted)">13 learning outcomes · mapped lecture by lecture · readings page-cited</div>
+</div>
+
+<!-- S4 TERMINAL -->
+<div class="scene" id="s4">
+  <div class="term" id="term"><div class="bar"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i><span>academic-engine — zsh — real session</span></div>
+  <div id="xt" style="padding:24px 30px"></div></div>
+  <div class="tag" id="s4t" style="left:150px;top:960px">Real terminal · real output · typing sped up</div>
+</div>
+
+<!-- S5 SLIDES -->
+<div class="scene" id="s5">
+  <div class="abs kicker" style="left:120px;top:70px">Output · Beamer deck · 36 slides</div>
+  <div id="slides"></div>
+  <div class="tag" id="stag" style="left:120px;top:1006px">Title</div>
+</div>
+
+<!-- S6 PACKAGE -->
+<div class="scene" id="s6">
+  <div class="abs center kicker" style="top:110px">Output · the full lecture package</div>
+  <div class="doc" id="d1" style="left:150px;top:250px"><img src="img/notes_01.png"></div>
+  <div class="doc" id="d2" style="left:580px;top:250px"><img src="img/assign_01.png"></div>
+  <div class="doc" id="d3" style="left:1010px;top:250px"><img src="img/gate_01.png"></div>
+  <div class="doc" id="d4" style="left:1440px;top:250px"><img src="img/handout_01.png"></div>
+  <div class="dlab" id="l1" style="left:150px;top:800px">Lecture Notes</div>
+  <div class="dlab" id="l2" style="left:580px;top:800px">Assignment <span class="gold">+ Key</span></div>
+  <div class="dlab" id="l3" style="left:1010px;top:800px">GATE Practice</div>
+  <div class="dlab" id="l4" style="left:1440px;top:800px">Instructor Handout</div>
+</div>
+
+<!-- S7 QUALITY -->
+<div class="scene" id="s7">
+  <div class="abs center kicker" style="top:150px">Quality gates · nothing ships below 80</div>
+  <div class="badge" id="q1" style="top:250px"><div class="c">✓</div><div><div class="x">Compiles cleanly</div><div class="y">3-pass XeLaTeX + BibTeX</div></div></div>
+  <div class="badge" id="q2" style="top:385px"><div class="c">✓</div><div><div class="x">Reviewed by agents</div><div class="y">pedagogy · proofreading · layout · domain</div></div></div>
+  <div class="badge" id="q3" style="top:520px"><div class="c">✓</div><div><div class="x">Citations page-checked</div><div class="y">against each book's index</div></div></div>
+  <div class="badge" id="q4" style="top:655px;border-color:rgba(212,164,100,.7)"><div class="c" style="background:var(--gold);color:#1a1408">★</div><div><div class="x">Quality score <span class="gold" id="qs">0</span><span class="gold">/100</span></div><div class="y">Lecture 05 · Process Concept &amp; PCB</div></div></div>
+</div>
+
+<!-- S3K SKILLS -->
+<div class="scene" id="s3k">
+  <div class="abs kicker" style="left:150px;top:90px">Step 3 · Skills</div>
+  <div class="abs serif" style="left:150px;top:132px;font-size:64px">The whole lecture, <span class="gold">or just the part you need.</span></div>
+  <div class="panel" id="pk1" style="left:150px;top:270px;width:1620px;height:250px">
+    <div class="mono" style="font-size:19px;letter-spacing:.2em;color:var(--gold)">ENTIRE LECTURE · ONE SKILL</div>
+    <div class="mono" style="font-size:40px;margin:14px 0 26px"><span class="gold">❯</span> /build-week CS502/05</div>
+    <div><span class="stage" id="st0">Slides</span><span class="arrow">→</span><span class="stage" id="st1">Notes</span><span class="arrow">→</span><span class="stage" id="st2">Assignment</span><span class="arrow">→</span><span class="stage" id="st3">Lab</span><span class="arrow">→</span><span class="stage" id="st4">GATE practice</span><span class="arrow">→</span><span class="stage" id="st5">Course hub</span></div>
+  </div>
+  <div class="panel" id="pk2" style="left:150px;top:550px;width:1620px;height:420px">
+    <div class="mono" style="font-size:19px;letter-spacing:.2em;color:var(--gold);margin-bottom:18px">ANY SINGLE PART · ONE SKILL EACH</div>
+    <div><span class="chip" id="cp0">/create-lecture<i>slides</i></span><span class="chip" id="cp1">/lecture-notes<i>notes</i></span><span class="chip" id="cp2">/create-assignment<i>assignment + key</i></span><span class="chip" id="cp3">/lab-manual<i>lab</i></span><span class="chip" id="cp4">/coding-assignment<i>autograded code</i></span><span class="chip" id="cp5">/competitive-exam-questions<i>GATE practice</i></span><span class="chip" id="cp6">/instructor-handout<i>prep handout</i></span><span class="chip" id="cp7">/publish-course-hub<i>course page</i></span></div>
+    <div class="mono" style="font-size:19px;letter-spacing:.2em;color:var(--muted);margin:14px 0 14px">AND FOR THE INPUTS</div>
+    <div><span class="chip" id="ip0">/syllabus<i>curriculum</i></span><span class="chip" id="ip1">/index-textbook<i>page index</i></span><span class="chip" id="ip2">/teach-from-paper<i>paper → lecture</i></span></div>
+  </div>
+</div>
+
+<!-- S6H HANDOUT -->
+<div class="scene" id="s6h">
+  <div class="abs kicker" style="left:150px;top:90px">Instructor handout · Lecture 05</div>
+  <div class="abs serif" style="left:150px;top:132px;font-size:64px">Walk in <span class="gold">prepared.</span></div>
+  <div class="doc" id="hd" style="left:150px;top:260px;width:560px"><img src="img/handout_01.png"></div>
+  <div class="abs mono" id="hh" style="left:820px;top:268px;font-size:20px;letter-spacing:.2em;color:var(--muted)">BEFORE YOU TEACH THIS LECTURE</div>
+  <div class="ckl" id="h1" style="top:320px"><div class="bx">✓</div><div>Read <b>Silberschatz Ch. 3 §3.1</b> <span class="m">pp. 101–105</span></div></div>
+  <div class="ckl" id="h2" style="top:400px"><div class="bx">✓</div><div>Read <b>Stallings Ch. 3 §3.1–3.3</b> <span class="m">pp. 108, 111, 126</span></div></div>
+  <div class="ckl" id="h3" style="top:480px"><div class="bx">✓</div><div>Skim <b>Bovet &amp; Cesati Ch. 3</b> <span class="m">task_struct · pp. 79–130</span></div></div>
+  <div class="ckl" id="h4" style="top:560px"><div class="bx">✓</div><div>Prepare the demo: <b>counter.c</b> in two terminals <span class="m">+ ps -o pid,stat,cmd</span></div></div>
+  <div class="ckl" id="h5" style="top:640px"><div class="bx">✓</div><div>Draw the state diagram <b>from memory</b> <span class="m">5 states · 6 arrows · each cause</span></div></div>
+  <div class="ckl" id="h6" style="top:720px"><div class="bx">✓</div><div>Prerequisite check: <b>L2 timer interrupt</b>, <b>L3 blocking read</b></div></div>
+  <div class="ckl" id="h7" style="top:800px"><div class="bx">✓</div><div>Exit ticket: <b>4 comprehension checks</b> <span class="m">+ one-page refresh · next readings</span></div></div>
+</div>
+
+<!-- S7V VIDEO ENGINE (proprietary) -->
+<div class="scene" id="s7v">
+  <div class="abs kicker" id="vk" style="left:310px;top:62px">Video Engine · Prompt2Render</div>
+  <div class="abs serif" id="vt" style="left:310px;top:100px;font-size:54px">The same lecture, as a narrated explainer.</div>
+  <div class="lock" id="vlock" style="right:310px;top:44px;z-index:5;padding:12px 22px;font-size:20px;background:#b8432f;color:#fff;box-shadow:0 0 30px rgba(184,67,47,.55)">
+    <svg width="22" height="26" viewBox="0 0 22 26"><rect x="2" y="11" width="18" height="14" rx="3" fill="#fff"/><path d="M6 11V7a5 5 0 0110 0v4" stroke="#fff" stroke-width="3" fill="none"/></svg>Proprietary</div>
+  <div class="player" id="vp"><img id="exf"><div class="sub" id="vsub"><span>“Both processes share the exact same text segment address in memory because they run the same program.”</span></div></div>
+  <div class="abs mono" id="vcap" style="left:310px;top:958px;font-size:21px;color:var(--muted)">Real output · CS-502 Lecture 05 explainer · 13 min</div>
+  <div class="lock" id="vreq" style="right:310px;top:948px;padding:12px 24px;font-size:20px;border:2px solid var(--gold);color:var(--gold2);background:rgba(212,164,100,.1)">Request access →</div>
+  <div class="abs mono" id="vaud" style="left:990px;top:950px;z-index:5;font-size:18px;letter-spacing:.2em;padding:8px 16px;border-radius:30px;background:rgba(8,12,10,.8);color:var(--gold2)">♪ ORIGINAL NARRATION</div>
+</div>
+
+<!-- S8 PAGES -->
+<div class="scene" id="s8">
+  <div class="browser" id="brw"><div class="bar"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i><div class="url" id="url">auqib92.github.io/Dr-Lones-Academic-Engine/</div></div>
+    <div class="view"><img id="brf" style="width:1500px;height:844px"></div></div>
+  <div class="tag" id="s8t" style="left:210px;top:996px">Real screen recording · auqib92.github.io/Dr-Lones-Academic-Engine</div>
+</div>
+
+<!-- S8D ANY FIELD -->
+<div class="scene" id="s8d">
+  <div class="abs center kicker" id="fd0" style="top:70px">Built for CS &amp; Math · ready for any field</div>
+  <div class="abs center serif" id="fd1" style="top:112px;font-size:66px">Made for CS &amp; Math. <span class="gold">Ready for any field.</span></div>
+  <svg id="dl" class="abs" style="left:0;top:0" width="1920" height="1080"></svg>
+  <div class="core" id="dcore"><div class="a">ACADEMIC</div><div class="b">Engine</div><div class="a" style="margin-top:10px;color:var(--muted);letter-spacing:.15em;font-size:13px">SKILLS · AGENTS · GATES</div></div>
+  <div class="home" id="hcs" style="left:960px;top:400px">Computer Science</div>
+  <div class="home" id="hma" style="left:960px;top:760px">Mathematics</div>
+  <div id="doms"></div>
+  <div class="abs center mono" id="fd2" style="top:975px;font-size:23px;color:var(--muted)">Swap the <span class="gold">books</span>, <span class="gold">syllabus</span> &amp; <span class="gold">knowledge base</span>, and the same skills build your course.</div>
+</div>
+
+<!-- S8X SHOUT-OUT -->
+<div class="scene" id="s8x">
+  <div class="abs center kicker" id="x0" style="top:250px">Standing on the shoulders of</div>
+  <div class="abs center serif" id="x1" style="top:305px;font-size:116px">Pedro H. C. <span class="gold">Sant'Anna</span></div>
+  <div class="abs center serif" id="x2" style="top:472px;font-size:33px;color:var(--muted);font-style:italic">Original author of the open-source <span style="color:var(--ink);font-style:normal" class="mono">claude-code-my-workflow</span> template, which this engine is forked from.</div>
+  <div class="abs center" id="x3" style="top:575px"><span class="pill" style="font-size:30px">github.com/pedrohcgs/claude-code-my-workflow</span></div>
+  <div class="abs center mono" id="x4" style="top:700px;font-size:21px;letter-spacing:.12em;color:var(--muted)">MIT License · thank you, Pedro, for publishing it openly</div>
+  <div class="abs center mono" id="x5" style="top:760px;font-size:20px;color:rgba(244,239,228,.6)">Peer-review pipeline adapted from <span style="color:var(--gold2)">clo-author</span> by Hugo Sant'Anna, with permission</div>
+</div>
+
+<!-- S9 CTA -->
+<div class="scene" id="s9">
+  <div class="abs center kicker" id="c0" style="top:150px">Built by a teacher · for teachers</div>
+  <div class="abs center serif" id="c1" style="top:200px;font-size:112px">Now <span class="gold">open source.</span></div>
+  <div class="abs center serif" id="c2" style="top:360px;font-size:40px;color:var(--muted);font-style:italic">Professors · Lecturers · Academics: fork it, teach with it, make it better.</div>
+  <div class="abs center" id="c3" style="top:460px"><span class="pill"><span style="font-size:20px;letter-spacing:.2em;color:var(--muted);margin-right:22px">CODE</span>github.com/AUQIB92/Dr-Lones-Academic-Engine</span></div>
+  <div class="abs center" id="c3b" style="top:575px"><span class="pill" style="border-color:var(--green2);color:#cfe8cc;background:rgba(79,154,75,.12)"><span style="font-size:20px;letter-spacing:.2em;color:var(--muted);margin-right:22px">SEE WHAT IT HAS BUILT</span>auqib92.github.io/Dr-Lones-Academic-Engine/courses/cs502</span></div>
+  <div class="abs center mono" id="c4" style="top:715px;font-size:24px;letter-spacing:.2em;color:var(--ink)">★ STAR &nbsp;·&nbsp; ⑂ FORK &nbsp;·&nbsp; SHARE WITH A COLLEAGUE</div>
+  <div class="abs center serif" id="c5" style="top:790px;font-size:30px;color:var(--gold2)">Dr. Auqib Hamid Lone · GCET Kashmir</div>
+  <div class="abs center" id="c6" style="top:870px"><span class="lock" style="position:relative;display:inline-flex;padding:12px 26px;font-size:19px;border:2px solid #b8432f;color:#f3c3b8;background:rgba(184,67,47,.14)"><svg width="18" height="22" viewBox="0 0 22 26"><rect x="2" y="11" width="18" height="14" rx="3" fill="#f3c3b8"/><path d="M6 11V7a5 5 0 0110 0v4" stroke="#f3c3b8" stroke-width="3" fill="none"/></svg>Video Engine (Prompt2Render) is proprietary · request access: auqib92.github.io/Dr-Lones-Academic-Engine/#contact</span></div>
+</div>
+
+<div id="lower">DR. LONE'S ACADEMIC ENGINE</div>
+<div id="prog"></div>
+<div id="flash"></div>
+</div>
+<script>
+const SC=[['s1',8.4],['s2',14.4],['s3',10.8],['s3k',16.2],['s4',21.0],['s5',11.8],['s6',9.6],['s6h',15.4],['s7v',22.4],['s8',16.0],['s8d',19.0],['s8x',9.0],['s9',20.0]];
+let acc=0;const T={};for(const [id,d] of SC){T[id]=[acc,acc+d];acc+=d;}
+window.TOTAL=acc;window.SCENES=T;
+const $=id=>document.getElementById(id);
+const cl=(x,a=0,b=1)=>Math.max(a,Math.min(b,x));
+const seg=(t,a,b)=>cl((t-a)/(b-a));
+const eo=x=>1-Math.pow(1-x,3), eio=x=>x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2, back=x=>{const c=1.70158;return 1+(c+1)*Math.pow(x-1,3)+c*Math.pow(x-1,2)};
+function pop(el,p,dy=40,sc=0){el.style.opacity=p;el.style.transform=`translateY(${(1-p)*dy}px) scale(${1-sc*(1-p)})`;}
+// particles
+const parts=$('parts');const P=[];let seed=7;const rnd=()=>(seed=(seed*16807)%2147483647)/2147483647;
+for(let i=0;i<46;i++){const d=document.createElement('div');d.className='p';const s=2+rnd()*5;d.style.width=d.style.height=s+'px';parts.appendChild(d);P.push({d,x:rnd()*1920,y:rnd()*1080,v:8+rnd()*22,ph:rnd()*6,o:.15+rnd()*.45});}
+// dots
+document.querySelectorAll('.dots').forEach(e=>{for(let i=0;i<+e.dataset.n;i++){const d=document.createElement('div');d.className='dot';e.appendChild(d);}});
+// slides
+const SL=[['slides_01','Title · page-cited sources'],['slides_04','Analogy hook'],['slides_15','Diagram · process states'],['slides_20','Socratic check'],['slides_23','Worked figure · inside the PCB'],['slides_32','Misconceptions'],['slides_35','Further reading · page-cited']];
+const slw=$('slides');const SLE=SL.map(([f])=>{const d=document.createElement('div');d.className='slide';d.innerHTML=`<img src="img/${f}.png">`;slw.appendChild(d);return d;});
+const TERM=[
+ ['> ','/build-week CS502/05-process-concept-pcb',0.9,2.6],
+ ['','',0,0],
+ ['  ','reading  syllabi/CS502.md · books index (Silberschatz, Stallings, Bovet)',3.0],
+ ['✓ ','slides       Slides/CS502/05-process-concept-pcb.tex   36 frames',3.5],
+ ['✓ ','notes        Notes/CS502/05-...-notes.tex              8 pages',4.0],
+ ['✓ ','assignment   Assignments/CS502/05-...  + solutions key',4.5],
+ ['– ','lab          not applicable (theory course)',4.9],
+ ['✓ ','gate         CompetitiveExam/CS502/05-...-questions',5.3],
+ ['✓ ','course hub   docs/courses/cs502/   → GitHub Pages',5.8],
+ ['','',0,0],
+ ['★ ','quality score 100/100 · 0 critical issues',6.5]];
+function renderTerm(lt){let s='';for(const r of TERM){if(r[1]===''){s+='\n';continue;}
+ if(r.length===4){const n=Math.floor(seg(lt,r[2],r[3])*r[1].length);s+=`<span style="color:#d4a464">${r[0]}</span>${r[1].slice(0,n)}${lt<r[3]+0.3||lt>6.6?'<span class="cur" style="opacity:'+((Math.floor(lt*2.5)%2)?0:1)+'"></span>':''}\n`;continue;}
+ if(lt<r[2]){continue;} const c=r[0].startsWith('✓')?'#7fd17a':r[0].startsWith('★')?'#f0cf94':'#8a958d';s+=`<span style="color:${c}">${r[0]}</span><span style="color:${r[0].startsWith('–')?'#6d786f':'#dfe7e0'}">${r[1]}</span>\n`;}
+ $('tx').innerHTML=s;}
+
+// ---- real recordings ----
+window.EXN=609;window.BRN=+(new URLSearchParams(location.search).get('brn')||457);
+const pend=[];function setImg(el,src){if(el.dataset.src===src)return;el.dataset.src=src;el.src=src;pend.push(el.decode().catch(()=>{}));}
+let XT=null,CAST=null,ci=0,ctime=-1;
+function initTerm(){XT=new Terminal({cols:120,rows:26,fontFamily:'JetBrains Mono',fontSize:21,lineHeight:1.12,theme:{background:'#0d0f0e',foreground:'#dfe7e0',cursor:'#d4a464'},allowTransparency:false,cursorBlink:false});XT.open(document.getElementById('xt'));}
+function termTo(lt){if(!CAST)return; if(lt<ctime){XT.reset();ci=0;} ctime=lt; let buf='';while(ci<CAST.length&&CAST[ci][0]<=lt){buf+=CAST[ci][2];ci++;} if(buf)pend.push(new Promise(r=>XT.write(buf,r)));}
+window.ready=async()=>{while(pend.length){await Promise.all(pend.splice(0));}};
+window.boot=async()=>{initTerm();const txt=window.CASTTXT;CAST=txt.trim().split('\n').slice(1).map(l=>JSON.parse(l));await document.fonts.ready;};
+
+// ---- any-field orbit ----
+const DOMS=[['Physics','#6aa9ff',12.6],['Chemistry','#ff8f6a',null],['Biology','#7fd17a',13.4],['Electrical Eng.','#ffd36a',14.1],['Mechanical Eng.','#c6a0ff',14.1],['Civil Eng.','#9fd6d0',14.1],['Statistics','#f0cf94',null],['Economics','#ff6a9f',14.9],['Medicine','#ff6a6a',15.7],['Business','#a0c4ff',null],['Law','#d0b07a',null],['Humanities','#e8a0ff',16.6]];
+const DE=[];{const w=document.getElementById('doms');const svg=document.getElementById('dl');DOMS.forEach(([n,c],i)=>{const d=document.createElement('div');d.className='dom';d.innerHTML=`<i style="background:${c};box-shadow:0 0 10px ${c}"></i>${n}`;w.appendChild(d);const ln=document.createElementNS('http://www.w3.org/2000/svg','line');ln.setAttribute('stroke',c);ln.setAttribute('stroke-width','2');ln.setAttribute('stroke-opacity','.55');svg.appendChild(ln);DE.push({d,ln,c});});}
+window.render=function(t){
+ // bg drift
+ $('bg').style.transform=`translate(${Math.sin(t*.13)*60}px,${Math.cos(t*.1)*40}px) scale(${1.05+Math.sin(t*.07)*.04})`;
+ $('grid').style.backgroundPosition=`${t*6}px ${t*4}px`;
+ for(const p of P){const y=((p.y-t*p.v)%1180+1180)%1180-50;p.d.style.transform=`translate(${p.x+Math.sin(t*.5+p.ph)*30}px,${y}px)`;p.d.style.opacity=p.o*(0.6+0.4*Math.sin(t+p.ph));}
+ $('prog').style.width=(t/TOTAL*100)+'%';
+ // scene opacity (0.5s crossfades)
+ for(const [id] of SC){const [a,b]=T[id];const o=Math.min(seg(t,a-0.25,a+0.35),1-seg(t,b-0.35,b+0.25));$(id).style.opacity=o;$(id).style.display=o<=0?'none':'block';}
+ // whoosh flash
+ let fl=0;for(const [id] of SC){const a=T[id][0];if(a>0)fl=Math.max(fl,0.10*(1-Math.abs(t-a)/0.25));}$('flash').style.opacity=cl(fl);
+ {const inS=(id)=>t>T[id][0]-0.3&&t<T[id][1]+0.3;$('lower').style.opacity=(t<T.s9[0]-0.3&&!inS('s4')&&!inS('s5')&&!inS('s8')&&!inS('s8d'))?0.9:0;}
+ let l;
+ // S1
+ l=t-T.s1[0];pop($('s1k'),eo(seg(l,0.3,1.1)));pop($('s1a'),eo(seg(l,0.6,1.6)),60);pop($('s1b'),eo(seg(l,2.2,3.2)),60);
+ $('s1u').style.transform=`scaleX(${eio(seg(l,3.1,4.2))})`;pop($('s1c'),eo(seg(l,4.0,5.0)),20);
+ $('s1').style.transform=`scale(${1+l*0.006})`;
+ // S2
+ l=t-T.s2[0];for(let i=1;i<=4;i++)pop($('k'+i),back(seg(l,0.5+i*0.45,1.2+i*0.45)),60,0.1);
+ pop($('idxh'),eo(seg(l,5.6,6.2)),10);
+ for(let i=1;i<=6;i++){const p=eo(seg(l,6.0+i*0.5,6.6+i*0.5));const e=$('i'+i);e.style.opacity=p;e.style.transform=`translateX(${(1-p)*80}px)`;}
+ pop($('s2q'),eo(seg(l,10.2,11.0)),20);
+ // S3
+ l=t-T.s3[0];['u1','u2','u3','u4'].forEach((id,i)=>pop($(id),back(seg(l,0.5+i*0.3,1.3+i*0.3)),80,0.1));
+ let k=0;document.querySelectorAll('#s3 .dot').forEach((d,i)=>{const p=eo(seg(l,2.2+i*0.12,2.5+i*0.12));d.style.opacity=p;d.style.transform=`scale(${0.3+0.7*back(p)})`;if(p>0.5)k++;});
+ $('cnt').textContent=k;pop($('s3o'),eo(seg(l,7.2,8.0)),20);
+ // S4
+ l=t-T.s4[0];const tp=eo(seg(l,0,0.7));const zz=1+0.035*eio(seg(l,11.5,13.5))-0.035*eio(seg(l,17.5,19));$('term').style.transform=`perspective(1600px) rotateX(${(1-tp)*14}deg) scale(${(0.9+0.1*tp)*zz})`;termTo(l-1.0);pop($('s4t'),eo(seg(l,1.2,1.8)),20);
+ // S5 slides carousel
+ l=t-T.s5[0];const per=1.62;const idx=cl(Math.floor((l-0.4)/per),0,SL.length-1);
+ SLE.forEach((e,i)=>{const rel=(l-0.4-i*per)/per; // 0..1 while featured
+   let x,y,w,rot,o,z;const W=1500,H=844;
+   if(rel<0){const q=eo(cl(1+rel*2));x=1920+200-q*420;y=150;w=W*0.55;rot=-25;o=q*0.0;z=1}
+   else if(rel<1){const q=eio(seg(rel,0,0.25));x=1920*0.5-W/2+(1-q)*900;y=150+(1-q)*40;w=W*(0.7+0.3*q);rot=-18*(1-q);o=1;z=5;
+     const kb=1+rel*0.05;e.style.transform=`perspective(2000px) rotateY(${rot}deg) scale(${kb})`;}
+   else{const q=eo(seg(rel,1,1.5));x=1920*0.5-W/2-q*900;y=150+q*60;w=W*(1-0.3*q);rot=18*q;o=1-q;z=3}
+   e.style.left=x+'px';e.style.top=y+'px';e.style.width=w+'px';e.style.height=w*H/W+'px';e.style.opacity=o;e.style.zIndex=z;
+   if(!(rel>=0&&rel<1))e.style.transform=`perspective(2000px) rotateY(${rot}deg)`;});
+ const tr=(l-0.4)/per-idx;$('stag').textContent=SL[idx][1];$('stag').style.opacity=l<0.6?0:cl(Math.min(tr*6,(1-tr)*6));$('stag').style.left=(210)+'px';
+ // S6
+ l=t-T.s6[0];for(let i=1;i<=4;i++){const p=back(seg(l,0.5+i*0.9,1.4+i*0.9));const e=$('d'+i);e.style.opacity=cl(p*1.5);e.style.transform=`translateY(${(1-p)*260+Math.sin(t*1.3+i)*6}px) rotate(${(1-p)*((i%2)?-12:12)+(i-2.5)*1.2}deg)`;pop($('l'+i),eo(seg(l,1.0+i*0.9,1.6+i*0.9)),20);}
+ // S3K skills
+ l=t-T.s3k[0];pop($('pk1'),eo(seg(l,0.4,1.1)),40);
+ for(let i=0;i<6;i++){const p=seg(l,1.6+i*0.45,2.0+i*0.45);const e=$('st'+i);e.style.background=p>0?`rgba(127,209,122,${0.06+0.22*p})`:'rgba(127,209,122,.06)';e.style.boxShadow=`0 0 ${18*p*(1-seg(l,2.2+i*0.45,3+i*0.45))}px rgba(127,209,122,.8)`;e.style.transform=`scale(${1+0.06*Math.sin(Math.PI*p)})`;}
+ pop($('pk2'),eo(seg(l,5.6,6.3)),40);
+ for(let i=0;i<8;i++){const e=$('cp'+i);const p=back(seg(l,6.6+i*0.38,7.1+i*0.38));e.style.opacity=cl(p);e.style.transform=`scale(${0.7+0.3*p})`;}
+ for(let i=0;i<3;i++){const e=$('ip'+i);const p=back(seg(l,11.2+i*0.4,11.7+i*0.4));e.style.opacity=cl(p);e.style.transform=`scale(${0.7+0.3*p})`;}
+ // S6H handout
+ l=t-T.s6h[0];{const p=eo(seg(l,0.4,1.3));$('hd').style.opacity=p;$('hd').style.transform=`translateY(${(1-p)*120+Math.sin(t)*4}px) rotate(${-2.5+(1-p)*-8}deg)`;}
+ pop($('hh'),eo(seg(l,1.0,1.6)),10);
+ for(let i=1;i<=7;i++){const p=eo(seg(l,1.5+i*1.55,2.1+i*1.55));const e=$('h'+i);e.style.opacity=0.25+0.75*p;e.style.transform=`translateX(${(1-p)*30}px)`;e.querySelector('.bx').style.background=p>0.5?'#2f7d34':'transparent';e.querySelector('.bx').style.color=p>0.5?'#fff':'transparent';}
+ // S7V video engine
+ l=t-T.s7v[0];pop($('vk'),eo(seg(l,0.2,0.8)),20);pop($('vt'),eo(seg(l,0.4,1.1)),30);
+ {const p=back(seg(l,1.0,1.6));$('vlock').style.opacity=cl(p);$('vlock').style.transform=`scale(${0.6+0.4*p})`;}
+ {const p=eo(seg(l,0.6,1.5));$('vp').style.opacity=p;$('vp').style.transform=`perspective(1800px) rotateX(${(1-p)*12}deg) translateY(${(1-p)*60}px)`;}
+ {const fi=cl(Math.floor((l-1.0)*30),0,EXN-1);if(l>0&&l<T.s7v[1]-T.s7v[0]+0.5)setImg($('exf'),`img/ex/${String(fi+1).padStart(4,'0')}.jpg`);}
+ {const so=Math.min(seg(l,13.8,14.3),1-seg(l,20.6,21.0));$('vsub').style.opacity=so;$('vaud').style.opacity=so;}
+ pop($('vcap'),eo(seg(l,1.6,2.3)),15);pop($('vreq'),back(seg(l,9.0,9.7)),20,0.2);
+ {const g=0.5+0.5*Math.sin(t*4);$('vreq').style.boxShadow=`0 0 ${10+20*g*seg(l,9.7,10)}px rgba(212,164,100,${0.4*g})`;}
+ // S8
+ l=t-T.s8[0];const bp=eo(seg(l,0,0.8));$('brw').style.transform=`perspective(1800px) rotateX(${(1-bp)*16}deg) translateY(${(1-bp)*80}px)`;
+ const bfi=cl(Math.floor((l-0.5)*30),0,BRN-1);setImg($('brf'),`img/br/${String(bfi+1).padStart(4,'0')}.jpg`);
+ $('url').textContent=(l-0.5)<7.9?'auqib92.github.io/Dr-Lones-Academic-Engine/':'auqib92.github.io/Dr-Lones-Academic-Engine/courses/cs502/';
+ pop($('s8t'),eo(seg(l,1.0,1.6)),20);
+ // S8D any field
+ l=t-T.s8d[0];pop($('fd0'),eo(seg(l,0.2,0.8)));pop($('fd1'),eo(seg(l,0.4,1.2)),30);
+ {const p=back(seg(l,0.6,1.5));$('dcore').style.opacity=cl(p);$('dcore').style.transform=`scale(${0.5+0.5*p+0.015*Math.sin(t*2.2)})`;}
+ {const p=back(seg(l,2.0,2.6));$('hcs').style.opacity=cl(p);$('hcs').style.transform=`translate(-50%,-50%) scale(${0.6+0.4*p})`;const q=back(seg(l,2.8,3.4));$('hma').style.opacity=cl(q);$('hma').style.transform=`translate(-50%,-50%) scale(${0.6+0.4*q})`;}
+ {const rot=l*0.035;DE.forEach((o,i)=>{const a=-Math.PI/2+i*2*Math.PI/DE.length+rot+0.13;const x=960+720*Math.cos(a),y=580+300*Math.sin(a);const st=6.6+i*0.42;const p=back(seg(l,st,st+0.5));const lp=eo(seg(l,st-0.3,st+0.3));
+   const hl=DOMS[i][2];const k=hl?Math.max(0,1-Math.abs(l-hl-0.25)/0.55):0;
+   o.d.style.left=x+'px';o.d.style.top=y+'px';o.d.style.opacity=cl(p);o.d.style.transform=`translate(-50%,-50%) scale(${(0.6+0.4*p)*(1+0.18*k)})`;o.d.style.borderColor=k>0.05?o.c:'rgba(255,255,255,.16)';o.d.style.boxShadow=`0 0 ${40*k}px ${o.c}`;
+   const cx=960+150*Math.cos(a),cy=580+150*Math.sin(a);o.ln.setAttribute('x1',cx);o.ln.setAttribute('y1',cy);o.ln.setAttribute('x2',cx+(x-cx)*lp);o.ln.setAttribute('y2',cy+(y-cy)*lp);o.ln.setAttribute('stroke-opacity',(0.35+0.5*k)*lp);});}
+ pop($('fd2'),eo(seg(l,9.8,10.6)),20);
+ // S8X shout-out
+ l=t-T.s8x[0];pop($('x0'),eo(seg(l,0.3,0.9)));pop($('x1'),eo(seg(l,0.6,1.5)),50,0.06);pop($('x2'),eo(seg(l,1.8,2.6)),25);pop($('x3'),back(seg(l,3.0,3.7)),30,0.15);pop($('x4'),eo(seg(l,4.2,4.9)),15);pop($('x5'),eo(seg(l,5.2,5.9)),15);
+ // S9
+ l=t-T.s9[0];pop($('c0'),eo(seg(l,0.3,1.0)));pop($('c1'),eo(seg(l,0.9,1.9)),60,0.08);pop($('c2'),eo(seg(l,12.0,13.0)),30);pop($('c3'),back(seg(l,9.0,9.8)),40,0.2);pop($('c3b'),back(seg(l,5.0,5.8)),40,0.2);pop($('c4'),eo(seg(l,14.0,14.8)),20);pop($('c5'),eo(seg(l,15.0,15.8)),20);pop($('c6'),eo(seg(l,16.0,16.8)),20);
+ const gl=0.5+0.5*Math.sin(t*3);document.querySelector('#c3 .pill').style.boxShadow=`0 0 ${20+30*gl}px rgba(212,164,100,${0.25+0.3*gl})`;
+};
+</script></body></html>
