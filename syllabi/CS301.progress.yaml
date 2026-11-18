@@ -1,6 +1,6 @@
 course: CS301
 lab_mode: coding-assignment   # P1-P13 C programming practicals map to weeks -> /coding-assignment
-last_updated: 2026-10-15
+last_updated: 2026-11-18
 weeks:
   "00":
     deck: "00-course-motivation-overview"
@@ -88,11 +88,12 @@ weeks:
   "09":
     deck: "09-efficient-sorting"
     stages:
-      slides:     { status: absent, score: null, note: "" }
-      notes:      { status: absent, score: null, note: "" }
-      assignment: { status: absent, score: null, note: "" }
-      lab:        { status: absent, score: null, note: "P9 (quick sort), P10 (shell sort), P11 (merge sort)" }
-      gate:       { status: absent, score: null, note: "" }
+      slides:     { status: deployed, score: 100, note: "55 pp; 3-pass XeLaTeX clean, 0 errors/overfull/undefined; 9 TikZ; quality_score 100/100; published to docs/slides/CS301/" }
+      notes:      { status: deployed, score: null, note: "derived Notes, 14 pp; 9 TikZ reused verbatim; every trace expanded, Exercises + Solutions; published to docs/notes/CS301/" }
+      assignment: { status: deployed, score: null, note: "Assignment 9; 6 problems (2C/2N/2D, fresh instances); solutions key present (gitignored); merge/partition/heap/inversion traces mechanically verified (Python); published to docs/assignments/CS301/ (solutions excluded)" }
+      lab:        { status: deployed, score: null, note: "coding-assignment P9+P10+P11 (merge/quick/shell + O(n log n) inversion count); gcc -Werror clean; visible 14/14 + hidden suite PASS (incl. 200k sorted/reverse/all-equal); autograder PASS; write-up published" }
+      gate:       { status: deployed, score: null, note: "10Q (6 CoVe-verified PYQ: GATE 1996/2014-S1/2008/2019/2013/IT-2008 + 4 original); Q1/Q2/Q7/Q8/Q9 mechanically re-derived; published to docs/competitive-exam/CS301/" }
+      hub:        { status: deployed, score: null, note: "docs/courses/cs301/index.html regenerated: 9/12 published; tag-balance + link-resolution PASS" }
       quarto:     { status: absent, score: null, note: "" }
   "10":
     deck: "10-file-organization-hashing"

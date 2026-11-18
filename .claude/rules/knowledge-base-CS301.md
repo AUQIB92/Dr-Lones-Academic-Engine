@@ -115,8 +115,14 @@ paths:
 | Circular-list closure | Last node's `\texttt{next}` points back to `\texttt{head}` (no `\texttt{NULL}`); in a doubly circular list `\texttt{head->prev}` is the last node; traversal terminates on returning to `\texttt{head}` | **Week 7 (new)** |
 | Two-link invariant | For every interior node `\texttt{p}`: `\texttt{p->next->prev == p}` and `\texttt{p->prev->next == p}` --- a DLL operation is correct only if it restores both | **Week 7 (new)** |
 | Polynomial node | `\texttt{(coeff, exp)}` node kept in strictly descending exponent order; zero-coefficient terms are never stored (the sparsity payoff) | **Week 7 (new)** |
-| Stable sort | A sort preserving the relative order of equal keys — the property that makes radix sort work | **Week 8–9 (projected)** |
-| In-place / auxiliary space | Sorting with $O(1)$ extra space vs. requiring $\Theta(n)$ (merge sort's merge buffer) | **Week 9 (projected)** |
+| Stable sort | A sort preserving the relative order of equal keys — the property that makes radix sort work | **Week 8 (confirmed 08-searching-elementary-sorting) / Week 9 (confirmed 09-efficient-sorting: merge's `<=`, radix's per-digit pass)** |
+| In-place / auxiliary space | Sorting with $O(1)$ extra space vs. requiring $\Theta(n)$ (merge sort's merge buffer) or $O(\log n)$ (quicksort's stack) | **Week 9 (confirmed 09-efficient-sorting)** |
+| $T(n) = 2T(n/2) + \Theta(n)$ | The divide-and-conquer recurrence; the recursion tree has $\log_2 n + 1$ levels of $\Theta(n)$ work | **Week 9 (new)** |
+| Pivot | The element a partition places in its final position; every element left is $\le$ it, every element right is $>$ it | **Week 9 (new)** |
+| Heap property | Complete binary tree in an array: $A[i] \ge A[2i+1]$ and $A[i] \ge A[2i+2]$ (0-based); the max is $A[0]$ | **Week 9 (new)** |
+| Gap sequence | Decreasing strides $h_1 > \dots > h_t = 1$; each pass insertion-sorts every $h$-subsequence | **Week 9 (new)** |
+| Radix digit | One positional digit of a key; LSD radix sorts digit $0$ (units) first, with a stable pass per digit | **Week 9 (new)** |
+| Comparison lower bound | Any comparison sort makes $\Omega(n\log n)$ comparisons in the worst case (decision tree, $n!$ leaves) | **Week 9 (new)** |
 | Load factor $\alpha$ | $\alpha = n/m$ — entries over table slots; drives expected probe count in hashing | **Week 10 (projected)** |
 | Open / closed hashing | Open (separate chaining): collisions in per-slot lists. Closed (open addressing): collisions probed into other slots. **The names are historically confusing — define both explicitly every time.** | **Week 10 (projected)** |
 | `\texttt{root}` | Handle to a tree's root node; `\texttt{NULL}` for the empty tree | **Week 11 (projected)** |
@@ -137,7 +143,7 @@ paths:
 | 6 | Singly Linked Lists | When is a pointer chain worth the loss of random access? | `\texttt{head}`, `\texttt{p->next}` | Pointer surgery: insert, delete, reverse |
 | 7 | Doubly Linked Lists & Applications | What does a backward link buy, and what does it cost? | `\texttt{p->prev}` | Two-link invariant maintenance; polynomial merge |
 | 8 | Searching & Elementary Sorting | How much does sorted order accelerate search, and what is the cheapest way to get it? | $O(\log n)$, stability | Loop-invariant argument; comparison counting |
-| 9 | Efficient Sorting | Why can't a comparison sort beat $n \log n$, and what escapes that bound? | in-place, auxiliary space | Divide-and-conquer recurrences; partition traces |
+| 9 | Efficient Sorting | Why can't a comparison sort beat $n \log n$, and what escapes that bound? | pivot, heap property, gap, radix digit | Recurrence/recursion-tree analysis; partition, heap, and radix traces; decision-tree lower bound |
 | 10 | File Organization & Hashing | How do we find a record in one probe instead of $n$? | load factor $\alpha$, open/closed hashing | Hash-function design; collision-resolution tracing |
 | 11 | Trees, BSTs & AVL | How do we keep search logarithmic when the data keeps changing? | `\texttt{root}`, height $h$, balance factor | Traversal recursion; rotation case analysis |
 | 12 | Graphs: Traversal, MST, Shortest Paths | How do we reason about arbitrary connections rather than a fixed shape? | $G = (V,E)$, adjacency matrix/list | BFS/DFS frontier tracing; greedy-choice arguments |

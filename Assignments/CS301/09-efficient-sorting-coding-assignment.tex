@@ -1,0 +1,115 @@
+% =============================================================================
+% Assignments/CS301/09-efficient-sorting-coding-assignment.tex
+% Coding Assignment 9: Merge, Quick, and Shell Sort
+% (Week 9, syllabi/CS301.md Week 9 row: P9 quick sort, P10 shell sort,
+% P11 merge sort)
+%
+% Student-facing problem statement. Instructor-only files live in
+% Assignments/CS301/09-efficient-sorting-coding/:
+%   reference_solution.c  (NEVER published, gitignored)
+%   test_hidden.c         (NEVER published, gitignored)
+%   autograder.sh         (NEVER published, gitignored)
+%   sorting.h, starter_sorting.c, test_visible.c  (provided to students)
+%
+% Fresh instances: the deck's own examples (merge [3,8,15]+[2,9,11];
+% partition [7,2,9,4,3,8,5]; quick on [1..6]; radix [170,45,75,90,802,24];
+% shell [7,3,9,1,8,2,6,4]; heap [50,30,40,10,20,35,25]) and the written
+% Assignment 9 instances (merge [2,6,11]+[1,4,9,10]; partition
+% [8,3,7,4,2,9,5]; quick [2,4,6,8,10]) are NOT reused. Visible tests use
+% [1,4,7 | 2,5,8], [5,1,4,2,8,0,3], [3,1,2,1,3,2], and inversion arrays.
+%
+% Compile with (macOS/Linux): cd Assignments/CS301 &&
+%   TEXINPUTS=../../Preambles:$TEXINPUTS xelatex -interaction=nonstopmode 09-efficient-sorting-coding-assignment.tex (3 passes)
+% =============================================================================
+
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\input{../../Preambles/header}
+\coursecode{CS301}
+\renewcommand{\thesection}{9.\arabic{section}}
+\setlength{\emergencystretch}{3em}
+
+\title{Coding Assignment 9: Merge, Quick, and Shell Sort}
+\author{Auqib Hamid Lone\\[0.3em]
+  \emph{Department of Computer Science \& Engineering}, \emph{GCET Ganderbal}}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\noindent\textbf{Due:} two weeks from issue. There is no automatic late penalty --- if you need more time, ask before the deadline and an extension will be granted (see the course policy in the syllabus).
+
+\noindent This assignment autogrades Week~9's institute practicals \key{P9 (quick sort)}, \key{P10 (shell sort)}, and \key{P11 (merge sort)}. The contract is given to you in \texttt{sorting.h} --- \emph{do not modify it}. Copy \texttt{starter\_sorting.c} to \texttt{sorting.c} and fill in the five functions. The setting is the running calculator: its symbol table is an integer array, sorted once at startup and searched many times afterwards, so this module is the startup sort --- plus one measurement, the inversion count, that tells the profiler how far the table was from sorted.
+
+\section{Why this problem}
+
+Week~9's argument is that the elementary $\Theta(n^2)$ sorts are not wrong, only mispriced. Merge sort buys a guaranteed $\Theta(n\log n)$ with a linear buffer; quick sort buys in-place operation but must defend its pivot against sorted input; shell sort buys in-place simplicity with a gap-dependent bound. The lecture builds all three, proves that no comparison sort can beat $\Omega(n\log n)$, and shows two ways around the wall (heap sort's $O(1)$ space and radix sort's changed model). This assignment is the three comparison sorts as running code. The one extension beyond the deck's listings is \texttt{countInversions}, which uses the merge step to count out-of-order pairs in $O(n\log n)$ --- a measurement that a naive double loop would take $\Theta(n^2)$.
+
+\section{Your task}
+
+Implement the five functions declared in \texttt{sorting.h}, all operating on \texttt{A[0..n-1]}, \texttt{n >= 0}:
+
+\begin{verbatim}
+void mergeRuns(int *A, int lo, int mid, int hi, int *tmp);
+void mergeSort(int *A, int n);
+void quickSort(int *A, int n);
+void shellSort(int *A, int n);
+long long countInversions(const int *A, int n);
+\end{verbatim}
+
+\textbf{Merge sort (P11).} \texttt{mergeRuns} merges two adjacent sorted runs using the caller's buffer \texttt{tmp}; on equal keys, take the \emph{left} run first (the stable merge). \texttt{mergeSort} allocates one buffer for the whole sort, recurses on the two halves, merges on the way back up, and frees the buffer. It must be $\Theta(n\log n)$ in every case and stable.
+
+\textbf{Quick sort (P9).} \texttt{quickSort} is in-place and must not degrade to quadratic time on the inputs a symbol table actually produces: \emph{sorted}, \emph{reverse-sorted}, and \emph{all-equal}. Use median-of-three or a randomized pivot, and bound the recursion stack to $O(\log n)$ by recursing on the smaller side first. A three-way partition is one clean way to survive the all-equal case.
+
+\textbf{Shell sort (P10).} \texttt{shellSort} is in-place with $O(1)$ auxiliary space and uses a decreasing gap sequence ending at \texttt{gap = 1}. Shell's halving sequence is acceptable; Knuth's $(3^k-1)/2$ sequence (1, 4, 13, 40, \dots) is better. The final gap-1 pass must be ordinary insertion sort.
+
+\textbf{Inversion count.} \texttt{countInversions} returns the number of pairs $i<j$ with $A[i]>A[j]$, in $O(n\log n)$ worst case, \emph{without modifying} \texttt{A}. Use the merge step: when the right run's element is taken before the left run is exhausted, every remaining left element forms an inversion with it. Return a \texttt{long long} --- $n$ can reach $200{,}000$, where $n(n-1)/2$ exceeds \texttt{int}.
+
+\section{Constraints}
+
+\begin{itemize}
+  \item Compile with \texttt{gcc -std=c11 -Wall -Wextra -Werror}: no errors and no warnings. No global or static mutable state.
+  \item \texttt{n == 0} is the empty array (\texttt{A} may be \texttt{NULL}); every function must handle it. \texttt{n == 1} leaves the array unchanged.
+  \item \texttt{mergeSort}: $\Theta(n\log n)$ worst case, $\Theta(n)$ auxiliary, stable, at most a constant number of allocations.
+  \item \texttt{quickSort}: no $O(n)$ allocation; $O(\log n)$ stack; must finish on $200{,}000$ sorted, reverse-sorted, and all-equal elements within the autograder's timeout.
+  \item \texttt{shellSort}: no \texttt{malloc}; gap sequence ends at $1$.
+  \item \texttt{countInversions}: $O(n\log n)$; treats \texttt{A} as read-only (copy it if you need to sort); returns \texttt{long long}.
+  \item Every array is sorted in \emph{ascending} (nondecreasing) order. Duplicates and negative values are legal.
+\end{itemize}
+
+\section{Worked examples (these are the visible tests)}
+
+\textbf{Example 1 --- the merge step.} On \texttt{A = [1, 4, 7, 2, 5, 8]} with \texttt{lo = 0}, \texttt{mid = 2}, \texttt{hi = 5}, \texttt{mergeRuns} produces \texttt{[1, 2, 4, 5, 7, 8]}.
+
+\textbf{Example 2 --- merge sort.} \texttt{mergeSort([5, 1, 4, 2, 8, 0, 3])} produces \texttt{[0, 1, 2, 3, 4, 5, 8]}; a single element is unchanged.
+
+\textbf{Example 3 --- quick sort on adversarial input.} \texttt{quickSort} sorts \texttt{[1,2,3,4,5,6,7,8]}, \texttt{[8,7,6,5,4,3,2,1]}, \texttt{[4,4,4,4,4]}, and \texttt{[3,1,2,1,3,2]} to \texttt{[1,1,2,2,3,3]} for the last. A last-element Lomuto pivot passes the random cases but fails the sorted case's timeout --- that is the point of the constraint.
+
+\textbf{Example 4 --- shell sort.}
+\begin{verbatim}
+shellSort([9,8,7,6,5,4,3,2,1]) -> [1,2,3,4,5,6,7,8,9]
+shellSort([3,1,2,1,3,2])       -> [1,1,2,2,3,3]
+\end{verbatim}
+
+\textbf{Example 5 --- inversion count.} \texttt{countInversions([2,4,1,3])} is $3$: the pairs are $(2,1)$, $(4,1)$, $(4,3)$. \texttt{[1,2,3]} gives $0$; \texttt{[3,2,1]} gives $3$; \texttt{[2,2,2]} gives $0$ (equal values are not inversions); \texttt{[5,4,3,2,1]} gives $10 = 5\cdot4/2$.
+
+\section{How to work}
+
+\begin{enumerate}
+  \item Copy \texttt{starter\_sorting.c} to \texttt{sorting.c}; keep \texttt{sorting.h} unchanged.
+  \item Build and run the visible tests:
+\begin{verbatim}
+gcc -std=c11 -Wall -Wextra -Werror -o test_visible test_visible.c sorting.c
+./test_visible
+\end{verbatim}
+  \item Trace one merge, one partition, and one gap pass on paper before coding --- the deck's figures are the model.
+  \item Run the hidden suite only through the autograder; it adds random, sorted, reverse, all-equal, duplicate-heavy, organ-pipe, and $200{,}000$-element cases.
+\end{enumerate}
+
+\section{Submission and grading}
+
+Submit \texttt{sorting.c} through the course submission form. Grading is by the autograder (correctness on the hidden suite) plus a short code read for the three complexity requirements: merge sort's $\Theta(n\log n)$ every case, quick sort's bounded stack on adversarial input, and the inversion count's merge-based $O(n\log n)$ with an unmodified input. A working sort that violates a stated complexity is partially credited; a warning under \texttt{-Werror} is a compile failure.
+
+\bibliography{../../Bibliography_base}
+\bibliographystyle{plain}
+\end{document}

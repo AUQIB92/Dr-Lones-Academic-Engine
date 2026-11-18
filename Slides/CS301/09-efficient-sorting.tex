@@ -1,0 +1,1313 @@
+% CS301 Week 9 -- Efficient sorting: divide-and-conquer and partition (merge
+% sort, quick sort), the comparison-sort lower bound, and the three ways past
+% the quadratic wall -- heap sort (guaranteed n log n, O(1) space), radix sort
+% (leaves the comparison model), and shell sort (diminishing increments) --
+% closing with a comparative analysis.
+% Difficulty: intro (course-wide default per knowledge-base-CS301.md).
+% Page-grounded in Sedgewick2011 Sec.2.2 (Mergesort, p.270), Sec.2.3
+% (Quicksort, p.288), Sec.2.4 (Priority Queues / heapsort, p.308), Sec.5.1
+% (String Sorts / radix, p.702), and the order-of-growth table p.187;
+% Wirth2004 Sec.2.3.1 (Insertion Sort by Diminishing Increment, p.52),
+% Sec.2.3.3 (Partition Sort, p.57), Sec.2.3.5 (Comparison of Array Sorting
+% Methods, p.62), Sec.2.4.1 (Straight Merging, p.63); Karumanchi2017 Ch.10
+% (Sorting, pp.504-546 PDF: merge/quick/shell/radix) and Ch.7 (Priority
+% Queues and Heaps, pp.369-408 PDF, heapsort Sec.7.7). Aho-Hopcroft-Ullman
+% Ch.8, Horowitz & Sahni Ch.7, Knuth Vol.3, and Neapolitan Ch.2 are cited at
+% chapter level only (not page-indexed) -- no page numbers are asserted.
+% Handoff: Week 8 closed on elementary sorting and promised "Why can no
+% comparison sort beat Theta(n log n), and which algorithms escape that bound?
+% Efficient sorting: quick, merge, shell, radix, heap." This deck pays that
+% off. It reuses Week 2's O/Theta/Omega and recurrences, Week 3's array
+% address arithmetic, Week 7's linked-list merge, and Week 8's stable/in-place
+% vocabulary; it does not re-teach them. Continues the expression-processor
+% thread: the calculator's 2,000-identifier table is sorted once at startup
+% and searched many times, so the sorting cost is the startup pause to remove.
+% Sets up Week 10 (file organization and hashing) and Week 11 (heaps are the
+% array-as-tree idea that becomes the binary tree).
+
+\documentclass[aspectratio=169]{beamer}
+\input{header}
+\coursecode{CS301}
+
+\title{Beyond the Quadratic Wall}
+\subtitle{Week 9 --- Efficient Sorting \& the Comparison Lower Bound}
+\author[Dr. Auqib Hamid Lone]{\textbf{Dr. Auqib Hamid Lone}}
+\institute[GCET Ganderbal]{PCC CS-301: Data Structures\\GCET, Ganderbal}
+\date[Week 9]{\small Week 9}
+
+\begin{document}
+
+\frame{\titlepage}
+
+% =============================================================================
+% ACT 0 --- MOTIVATION + HANDOFF
+% =============================================================================
+\section{Motivation and the Handoff}
+
+\begin{frame}{Today's Five Questions}
+  \begin{enumerate}
+    \item Merge and quick both promise $n \log n$ --- where does the $\log$
+      come from, and when does quick break that promise?
+    \item Is there a ceiling that \emph{no} comparison sort can pass?
+    \item How does heap sort guarantee $n \log n$ with only $O(1)$ extra
+      space?
+    \item How does radix sort beat a bound that supposedly applies to every
+      sort?
+    \item Shell sort sits between insertion and quick --- when is it the
+      right tool?
+  \end{enumerate}
+  \vspace{0.2cm}
+  \begin{exampleblock}{Plan}
+    Climb from quadratic to $n \log n$ twice --- once by dividing, once by
+    partitioning. Prove the wall. Then go around it three ways: a guarantee,
+    a changed model, and a better insertion sort.
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}{Handoff: What Week 8 Left Open}
+  \begin{itemize}
+    \item Week 8 built the search contract (binary search is
+      $\Theta(\log n)$ \emph{once the data is sorted}) and the four
+      elementary sorts --- insertion, selection, bubble, counting --- all
+      priced at $\Theta(n^2)$ worst case except counting.
+    \item It closed on one promise: ``Why can no \emph{comparison} sort beat
+      $\Theta(n \log n)$, and which algorithms escape that bound? Efficient
+      sorting: quick, merge, shell, radix, heap.''
+    \item The deficiency it left: the calculator's $2{,}000$-identifier
+      table is sorted once at startup. Insertion sort pays about
+      $2{,}000^2/2 = 2{,}000{,}000$ comparisons --- a visible pause before
+      the first prompt.
+    \item New symbols today: the recurrence $T(n) = 2T(n/2) + \Theta(n)$;
+      the \key{pivot}; the \key{heap property}; the radix \key{digit} and the
+      shell \key{gap}.
+  \end{itemize}
+  \begin{exampleblock}{This week's job}
+    Turn that $2{,}000{,}000$ into roughly $2{,}000 \times 11 \approx
+    22{,}000$ comparisons --- and learn exactly which assumption buys the
+    difference.
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}{The Bill for Order, at Two Sizes}
+  \begin{center}
+  {\footnotesize
+  \begin{tabular}{rrrr}
+    \toprule
+    $n$ & $\dfrac{n(n-1)}{2}$ (insertion, worst) & $n\log_2 n$ & ratio \\
+    \midrule
+    $2{,}000$ & $1{,}999{,}000$ & $\approx 22{,}000$ & $\approx 91\times$ \\
+    $1{,}000{,}000$ & $\approx 5\times 10^{11}$ & $\approx 2\times 10^{7}$ &
+      $\approx 25{,}000\times$ \\
+    \bottomrule
+  \end{tabular}}
+  \end{center}
+  \begin{itemize}
+    \item The elementary sorts are not \emph{wrong} --- they are priced for a
+      different $n$. At $n = 2{,}000$ the pause is annoying; at
+      $n = 10^6$ it is the difference between a program that runs and one
+      that does not.
+    \item Every efficient sort this week answers one question: \emph{what
+      work can be avoided by looking at the whole input at once, instead of
+      one adjacent pair at a time?}
+  \end{itemize}
+  \muted{Running application (Weeks 3--10): one calculator, rebuilt each
+    week. Week 9 asks how its identifier table gets sorted fast enough to be
+    worth sorting.}
+\end{frame}
+
+\transitionslide{Insertion sort is a fine sort. It is just a quadratic one.}
+
+% =============================================================================
+% ACT 1 --- DIVIDE AND CONQUER: MERGE SORT
+% =============================================================================
+\section{Merge Sort}
+
+\sectiondivider{Section 1}{Divide and Conquer: Merge Sort}
+
+\begin{frame}{Divide and Conquer: Three Questions}
+  \begin{itemize}
+    \item Sorting $2{,}000$ records in one go is hard. Sorting two
+      $1{,}000$-record halves is easier. Combining two \emph{sorted} halves
+      is easier still --- and costs one linear pass.
+    \item That is the whole divide-and-conquer pattern: \key{divide} the
+      input, \key{conquer} each part recursively, \key{combine} the answers.
+  \end{itemize}
+  \begin{block}{Definition --- divide-and-conquer sorting
+    (Aho--Hopcroft--Ullman Ch.~8, standard treatment)}
+    A sorting algorithm is divide-and-conquer when it (1) splits the input
+    into independent subproblems, (2) sorts each recursively, and (3)
+    combines the sorted parts without re-examining more than a constant
+    number of times per element. The recurrence is then
+    $T(n) = a\,T(n/b) + \Theta(\text{combine})$.
+  \end{block}
+  \begin{itemize}
+    \item Merge sort answers the three questions: split at the midpoint;
+      conquer two halves; combine by \emph{merging} two sorted runs. The
+      combine step is the only new machinery.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{The Merge Step: Two Sorted Runs, One Output}
+  \begin{itemize}
+    \item If both halves are already sorted, we do not need to sort again ---
+      we need to \emph{interleave} them. Compare the two front elements, take
+      the smaller, advance that run, repeat.
+  \end{itemize}
+  \begin{block}{Definition --- \texttt{merge(A, lo, mid, hi)}
+    (Sedgewick Sec.~2.2, p.~270; Wirth Sec.~2.4.1, p.~63)}
+    Precondition: $A[\texttt{lo}..\texttt{mid}]$ and
+    $A[\texttt{mid}+1..\texttt{hi}]$ are each sorted. Postcondition:
+    $A[\texttt{lo}..\texttt{hi}]$ is sorted. Ties take the \emph{left} run
+    first --- that one comparison is what makes the merge stable.
+  \end{block}
+  \begin{itemize}
+    \item Worked example: merge $[3,8,15]$ with $[2,9,11]$.
+      Compare $3$ vs.\ $2$ $\to$ take $2$; $3$ vs.\ $9$ $\to$ take $3$;
+      $8$ vs.\ $9$ $\to$ take $8$; $15$ vs.\ $9$ $\to$ take $9$;
+      $15$ vs.\ $11$ $\to$ take $11$; drain $15$.
+      Result: $[2,3,8,9,11,15]$.
+    \item Cost: every element is copied once into the output, so the merge
+      is $\Theta(n)$ on a range of $n$ elements.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Merge, Drawn}
+  \begin{center}
+    % Diagram: merging left run [3,8,15] with right run [2,9,11]. Each run is
+    % a row of three cells; the output row below receives the smaller front
+    % element. Coordinates: cells 0.9 cm wide at x = 0,1.1,2.2 (left) and
+    % x = 3.6,4.7,5.8 (right); output cells at x = 0..5.5, y = -0.9.
+    \begin{tikzpicture}[every node/.style={font=\scriptsize}]
+      \foreach \i/\v in {0/3,1/8,2/15}
+        \node[draw, fill=light-bg, minimum width=0.9cm,
+          minimum height=0.6cm, align=center] (l\i) at (\i*1.1, 0.9) {\v};
+      \foreach \i/\v in {0/2,1/9,2/11}
+        \node[draw, fill=light-bg, minimum width=0.9cm,
+          minimum height=0.6cm, align=center] (r\i) at (3.6+\i*1.1, 0.9) {\v};
+      \node[anchor=east, text=neutral] at (-0.65, 0.9) {left run};
+      \node[anchor=west, text=neutral] at (7.0, 0.9) {right run};
+      \foreach \i/\v in {0/2,1/3,2/8,3/9,4/11,5/15}
+        \node[draw, fill=primary-gold!20, minimum width=0.9cm,
+          minimum height=0.6cm, align=center] (o\i) at (\i*1.1, -0.9) {\v};
+      \node[anchor=east, text=neutral] at (-0.65, -0.9) {output};
+      \draw[->, thick, primary-blue] (0.0, 0.45) -- (0.0, -0.35);
+      \draw[->, thick, primary-blue] (3.6, 0.45) -- (0.0, -0.35);
+      \node[text=primary-gold, align=center] at (2.9, -1.65)
+        {compare the two fronts; take the smaller; repeat};
+    \end{tikzpicture}
+  \end{center}
+  \vspace{-0.1cm}
+  \begin{itemize}
+    \item At most five comparisons, six output slots: the final element is
+      drained without a comparison. The arrows show the first step --- front
+      $3$ vs.\ front $2$, take $2$.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{The Merge Step in C}
+  \footnotesize
+  \begin{block}{Merging with one shared buffer (Sedgewick Sec.~2.2, p.~270;
+    Wirth Sec.~2.4.1, p.~63)
+    \cite{Sedgewick2011_algorithms,Wirth2004_algorithms_data_structures}}
+\begin{semiverbatim}
+void merge(int A[], int lo, int mid, int hi, int *tmp) {
+  int i = lo, j = mid + 1, k = lo;
+  while (i <= mid && j <= hi)
+    tmp[k++] = (A[i] <= A[j]) ? A[i++] : A[j++];  // <= keeps it stable
+  while (i <= mid) tmp[k++] = A[i++];             // drain the left run
+  while (j <= hi)  tmp[k++] = A[j++];             // drain the right run
+  for (k = lo; k <= hi; k++) A[k] = tmp[k];       // copy back
+}
+\end{semiverbatim}
+  \end{block}
+  \begin{itemize}
+    \item The \texttt{<=} is load-bearing: on a tie, taking the \emph{left}
+      element first preserves the original relative order --- stability, the
+      Week 8 property, decided by one character.
+    \item The buffer \texttt{tmp} is allocated once for the whole sort, not
+      once per merge --- Week 1's discipline: one \texttt{malloc}, one
+      \texttt{free}.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Merge Sort in C}
+  \scriptsize
+  \begin{block}{Recursive merge sort (Sedgewick Sec.~2.2, p.~270; Karumanchi
+    Ch.~10, pp.504--546 PDF)
+    \cite{Sedgewick2011_algorithms,Karumanchi2017_data_structures_algorithms_made_easy}}
+\begin{semiverbatim}
+void msort(int A[], int lo, int hi, int *tmp) {
+  if (lo >= hi) return;                 // 0 or 1 element is sorted
+  int mid = lo + (hi - lo) / 2;
+  msort(A, lo, mid, tmp);               // sort the left half
+  msort(A, mid + 1, hi, tmp);           // sort the right half
+  merge(A, lo, mid, hi, tmp);           // combine
+}
+void mergeSort(int A[], int n) {
+  if (n < 2) return;
+  int *tmp = malloc(n * sizeof(int));   // one buffer for the whole sort
+  if (!tmp) return;                     // handle the allocation failure
+  msort(A, 0, n - 1, tmp);
+  free(tmp);
+}
+\end{semiverbatim}
+  \end{block}
+  \vspace{-0.25cm}
+  \begin{itemize}
+    \item Recursion depth $\log_2 n$: the \emph{stack} costs $\Theta(\log n)$;
+      the \emph{heap} buffer $\Theta(n)$ --- two memories, two bills.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{The Recurrence and Its Tree}
+  \begin{itemize}
+    \item Let $T(n)$ be the worst-case cost of sorting $n$ elements. Split
+      costs $\Theta(1)$; two halves of size $n/2$; merge costs $\Theta(n)$:
+      \[ T(1) = \Theta(1), \qquad T(n) = 2\,T(n/2) + \Theta(n). \]
+    \item Unroll it as a tree. Every level does $\Theta(n)$ total work ---
+      level $0$ merges one range of $n$, level $1$ merges two ranges of
+      $n/2$, and so on. There are $\log_2 n + 1$ levels, so
+      $T(n) = \Theta(n \log n)$.
+  \end{itemize}
+  \begin{center}
+    % Diagram: recursion tree for T(n) = 2T(n/2) + cn. Root at (0,3.2);
+    % children at (+-2.2,2.0); grandchildren at (+-3.2,+-1.2,0.8). Edges are
+    % drawn between named nodes so they stop at the circle borders instead of
+    % cutting through the labels. The right margin annotates the cn per level.
+    \begin{tikzpicture}[every node/.style={font=\scriptsize}]
+      \node[circle, draw=primary-blue, fill=light-bg, inner sep=2pt]
+        (t0) at (0, 3.2) {$T(n)$};
+      \node[circle, draw=primary-blue, fill=light-bg, inner sep=2pt]
+        (t1) at (-2.2, 2.0) {$T(n/2)$};
+      \node[circle, draw=primary-blue, fill=light-bg, inner sep=2pt]
+        (t2) at (2.2, 2.0) {$T(n/2)$};
+      \foreach \x/\lab/\nm in {-3.2/{$T(n/4)$}/g1,-1.2/{$T(n/4)$}/g2,
+                                1.2/{$T(n/4)$}/g3,3.2/{$T(n/4)$}/g4}
+        \node[circle, draw=primary-blue, fill=light-bg, inner sep=1.5pt]
+          (\nm) at (\x, 0.8) {\lab};
+      \draw[thick, primary-blue] (t0) -- (t1);
+      \draw[thick, primary-blue] (t0) -- (t2);
+      \draw[thick, primary-blue] (t1) -- (g1);
+      \draw[thick, primary-blue] (t1) -- (g2);
+      \draw[thick, primary-blue] (t2) -- (g3);
+      \draw[thick, primary-blue] (t2) -- (g4);
+      \node[text=neutral, anchor=west] at (3.9, 3.2) {level $0$: $cn$};
+      \node[text=neutral, anchor=west] at (3.9, 2.0) {level $1$: $2\cdot c(n/2) = cn$};
+      \node[text=neutral, anchor=west] at (3.9, 0.8) {level $2$: $cn$};
+      \node[text=primary-gold, align=center] at (0, -0.4)
+        {$\log_2 n + 1$ levels, each $\Theta(n)$ $\;\Rightarrow\;$
+          $T(n) = \Theta(n\log n)$};
+    \end{tikzpicture}
+  \end{center}
+  \vspace{-0.35cm}
+\end{frame}
+
+\begin{frame}{Merge Sort, Drawn: Split Down, Merge Up}
+  \begin{center}
+    % Diagram: merge sort of [38,27,43,3,9,82,10,19]. Four rows show the
+    % split from one 8-cell array to eight singleton arrays; the merge phase
+    % runs the same ladder upward. Cells 0.8 cm wide at x = 0..7.
+    \begin{tikzpicture}[every node/.style={font=\scriptsize}]
+      % row 1: whole array
+      \draw[rounded corners, fill=light-bg, draw=neutral!40]
+        (-0.45, 2.25) rectangle (7.45, 2.85);
+      \foreach \i/\v in {0/38,1/27,2/43,3/3,4/9,5/82,6/10,7/19}
+        \node at (\i, 2.55) {\v};
+      % row 2: two halves of four
+      \draw[rounded corners, fill=light-bg, draw=neutral!40]
+        (-0.45, 1.45) rectangle (3.45, 2.05);
+      \draw[rounded corners, fill=light-bg, draw=neutral!40]
+        (3.55, 1.45) rectangle (7.45, 2.05);
+      \foreach \i/\v in {0/38,1/27,2/43,3/3,4/9,5/82,6/10,7/19}
+        \node at (\i, 1.75) {\v};
+      % row 3: four pairs
+      \foreach \s in {0,2,4,6}
+        \draw[rounded corners, fill=light-bg, draw=neutral!40]
+          (\s-0.45, 0.65) rectangle (\s+1.45, 1.25);
+      \foreach \i/\v in {0/38,1/27,2/43,3/3,4/9,5/82,6/10,7/19}
+        \node at (\i, 0.95) {\v};
+      % row 4: singletons
+      \foreach \i/\v in {0/38,1/27,2/43,3/3,4/9,5/82,6/10,7/19}
+        \node[draw, fill=white, minimum width=0.72cm, minimum height=0.5cm,
+          inner sep=0] at (\i, 0.05) {\v};
+      % merge-up arrow on the right
+      \draw[->, thick, primary-gold] (7.9, -0.15) -- (7.9, 2.85);
+      \node[text=primary-gold, rotate=90, anchor=south] at (8.45, 1.35)
+        {merge up};
+      \node[text=neutral, anchor=east] at (-0.7, 2.85) {\tiny split};
+    \end{tikzpicture}
+  \end{center}
+  \vspace{-0.1cm}
+  \begin{itemize}
+    \item Splitting is free (index arithmetic); all the work is in the
+      upward merges. Each level merges every element once, which is the
+      $cn$ per level in the recurrence.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Merge Sort: The Bill}
+  \begin{center}
+  {\footnotesize
+  \begin{tabular}{lll}
+    \toprule
+    \textbf{case} & \textbf{comparisons} & \textbf{note} \\
+    \midrule
+    best & $\Theta(n\log n)$ & even sorted input must be merged \\
+    average & $\Theta(n\log n)$ & no input shape helps or hurts \\
+    worst & $\Theta(n\log n)$ & predictable --- no adversarial input \\
+    \bottomrule
+  \end{tabular}}
+  \end{center}
+  \begin{itemize}
+    \item \good{Stable} (ties take the left run) and \good{predictable}: the
+      cost does not depend on the input's order. That predictability is worth
+      real money in a library sort.
+    \item \bad{Not in-place}: a $\Theta(n)$ auxiliary buffer, plus
+      $\Theta(\log n)$ recursion stack.
+    \item \good{The right tool for linked lists}: merging two sorted lists
+      needs no buffer at all --- just pointer splicing, which is why Week 7's
+      list merge is the model for external sorting in Week 10.
+  \end{itemize}
+  \muted{Sedgewick's standard implementation uses about $n\log_2 n$ compares
+    in the worst case (Sec.~2.2, p.~270); the exact count differs by a small
+    constant, the $\Theta$ class does not.}
+\end{frame}
+
+\transitionslide{Merge sort guarantees the bound. Can we reach it without the buffer?}
+
+% =============================================================================
+% ACT 2 --- PARTITION: QUICK SORT
+% =============================================================================
+\section{Quick Sort}
+
+\sectiondivider{Section 2}{Partition: Quick Sort}
+
+\begin{frame}{The Partition Idea}
+  \begin{itemize}
+    \item Merge sort does its work \emph{after} the recursion, in the merge.
+      Quick sort does its work \emph{before}: choose one element as a
+      \key{pivot}, rearrange the array so everything smaller sits left of it
+      and everything larger sits right, then recurse on the two sides.
+    \item There is no merge step. Once the pivot is placed, it is in its
+      \emph{final} position and never moves again.
+  \end{itemize}
+  \begin{block}{Definition --- partition (Wirth Sec.~2.3.3, p.~57;
+    Sedgewick Sec.~2.3, p.~288)}
+    Choose a pivot $p$. Rearrange $A[\texttt{lo}..\texttt{hi}]$ so that some
+    index $q$ holds $p$, every element in $A[\texttt{lo}..q-1]$ is $\le p$,
+    and every element in $A[q+1..\texttt{hi}]$ is $\ge p$. Return $q$. The
+    partition costs one linear pass, $\Theta(n)$, with $O(1)$ extra space.
+  \end{block}
+  \begin{itemize}
+    \item Then: quick sort left of $q$, quick sort right of $q$. The
+      recurrence has the same \emph{shape} as merge sort's,
+      $T(n) = T(k) + T(n-1-k) + \Theta(n)$, but the split $k$ is now
+      data-dependent --- and that is where the danger lives.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Lomuto Partition in C}
+  \footnotesize
+  \begin{block}{Partition around the last element (Wirth Sec.~2.3.3, p.~57;
+    Sedgewick Sec.~2.3, p.~288)
+    \cite{Wirth2004_algorithms_data_structures,Sedgewick2011_algorithms}}
+\begin{semiverbatim}
+int partition(int A[], int lo, int hi) {
+  int pivot = A[hi];            // last element as the pivot
+  int i = lo - 1;               // boundary of the <= pivot region
+  for (int j = lo; j < hi; j++)
+    if (A[j] <= pivot) {        // <= keeps equal keys on the left
+      i++;
+      swap(&A[i], &A[j]);
+    }
+  swap(&A[i + 1], &A[hi]);      // pivot into its final slot
+  return i + 1;
+}
+\end{semiverbatim}
+  \end{block}
+  \begin{itemize}
+    \item Invariant before each iteration: $A[\texttt{lo}..i] \le$ pivot,
+      $A[i+1..j-1] >$ pivot, and $A[\texttt{hi}]$ holds the pivot.
+      One pass, $O(1)$ extra space.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Partition, Drawn}
+  \begin{center}
+    % Diagram: Lomuto partition of [7,2,9,4,3,8,5] with pivot 5.
+    % Three rows: initial, after j=4, final. Cells at x = 0..6 (1 cm apart),
+    % rows y = 1.5, 0.4, -0.7. Green = <= pivot region, gold = pivot.
+    \begin{tikzpicture}[every node/.style={font=\scriptsize}]
+      \foreach \i/\v in {0/7,1/2,2/9,3/4,4/3,5/8,6/5}
+        \node[draw, fill=white, minimum width=0.8cm, minimum height=0.6cm,
+          align=center] at (\i, 1.5) {\v};
+      \node[draw, fill=primary-gold!30, minimum width=0.8cm,
+        minimum height=0.6cm, align=center] at (6, 1.5) {5};
+      \node[anchor=east, text=neutral] at (-0.6, 1.5) {start};
+      \node[text=negative, anchor=south] at (6, 1.85) {\tiny pivot};
+      \foreach \i/\v in {0/2,1/4,2/3,3/7,4/9,5/8,6/5}
+        \node[draw, fill=white, minimum width=0.8cm, minimum height=0.6cm,
+          align=center] at (\i, 0.4) {\v};
+      \foreach \i in {0,1,2}
+        \node[draw, fill=positive!25, minimum width=0.8cm,
+          minimum height=0.6cm, align=center] at (\i, 0.4) {\tiny $\le 5$};
+      \node[draw, fill=primary-gold!30, minimum width=0.8cm,
+        minimum height=0.6cm, align=center] at (6, 0.4) {5};
+      \node[anchor=east, text=neutral] at (-0.6, 0.4) {after $j=4$};
+      \foreach \i/\v in {0/2,1/4,2/3,3/5,4/9,5/8,6/7}
+        \node[draw, fill=white, minimum width=0.8cm, minimum height=0.6cm,
+          align=center] at (\i, -0.7) {\v};
+      \foreach \i in {0,1,2}
+        \node[draw, fill=positive!25, minimum width=0.8cm,
+          minimum height=0.6cm, align=center] at (\i, -0.7) {\tiny $\le 5$};
+      \node[draw, fill=primary-gold!30, minimum width=0.8cm,
+        minimum height=0.6cm, align=center] at (3, -0.7) {5};
+      \node[anchor=east, text=neutral] at (-0.6, -0.7) {final};
+      \node[text=primary-gold, align=center] at (3.0, -1.45)
+        {pivot at index $3$: left $\le 5$, right $> 5$ --- final position};
+    \end{tikzpicture}
+  \end{center}
+  \vspace{-0.1cm}
+  \begin{itemize}
+    \item Scanning $7,2,9,4,3,8$ moves each element $\le 5$ into the green
+      region. The last swap puts $5$ between the regions, at index $3$.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Quick Sort in C}
+  \footnotesize
+  \begin{block}{Quick sort with a bounded recursion stack (Sedgewick
+    Sec.~2.3, p.~288; Karumanchi Ch.~10, pp.504--546 PDF)
+    \cite{Sedgewick2011_algorithms,Karumanchi2017_data_structures_algorithms_made_easy}}
+\begin{semiverbatim}
+void qsortRange(int A[], int lo, int hi) {
+  while (lo < hi) {                 // loop = tail-call elimination
+    int p = partition(A, lo, hi);
+    if (p - lo < hi - p) {          // recurse on the SMALLER side
+      qsortRange(A, lo, p - 1);
+      lo = p + 1;                   // iterate on the larger side
+    } else {
+      qsortRange(A, p + 1, hi);
+      hi = p - 1;
+    }
+  }
+}
+\end{semiverbatim}
+  \end{block}
+  \begin{itemize}
+    \item Recursing on the smaller side first bounds the stack depth to
+      $O(\log n)$ even when the splits are badly unbalanced.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Best and Average: Balanced Partitions}
+  \begin{itemize}
+    \item If every pivot lands near the middle, the two sides are about
+      $n/2$ each and the recurrence is the merge-sort recurrence:
+      \[ T(n) = 2\,T(n/2) + \Theta(n) = \Theta(n\log n). \]
+    \item The average case is also $\Theta(n\log n)$ over random pivots.
+      More strongly, the splits need not be even: with a $9{:}1$ split at
+      every level,
+      \[ T(n) = T(9n/10) + T(n/10) + \Theta(n) = \Theta(n\log n). \]
+    \item The reason: each level still does $\Theta(n)$ total work; only the
+      \emph{number of levels} grows, and it stays $\Theta(\log n)$ as long as
+      every split removes a constant fraction. Constant-factor imbalance is
+      harmless --- a split that removes only \emph{one} element is not.
+  \end{itemize}
+  \begin{exampleblock}{The takeaway}
+    Quick sort's $\log$ comes from halving the \emph{problem count}, not from
+    the pivot being the median. Any split that keeps shrinking the pieces
+    geometrically keeps the $\log$.
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}{Worst Case: Sorted Input, Last-Element Pivot}
+  \begin{itemize}
+    \item Take the sorted array $[1,2,3,4,5,6]$ and the code above. The
+      pivot is always \texttt{A[hi]}, which is always the \emph{largest}
+      remaining element.
+    \item The partition then produces a left side of $n-1$ elements and a
+      right side of $0$. The recurrence collapses to
+      \[ T(n) = T(n-1) + \Theta(n) = \Theta(n^2), \]
+      because the levels are a chain of lengths $n, n-1, \dots, 1$, not a
+      tree of depth $\log n$.
+  \end{itemize}
+  \begin{center}
+    % Diagram: the chain of partitions for sorted input. Each row shows the
+    % live range; the gold cell is the pivot, placed at the right end. Cells
+    % at x = 0..5, rows y = 1.4, 0.7, 0.0, -0.7; only the first three rows
+    % are labelled.
+    \begin{tikzpicture}[every node/.style={font=\scriptsize}]
+      % row n=6: live cells 0..5, pivot at 5
+      \draw[rounded corners, fill=light-bg, draw=neutral!40]
+        (-0.38, 1.18) rectangle (4.62, 1.62);
+      \draw[rounded corners, fill=primary-gold!30, draw=neutral!60]
+        (4.65, 1.18) rectangle (5.38, 1.62);
+      \node[anchor=east, text=neutral] at (-0.55, 1.4) {$n=6$};
+      % row n=5: live cells 0..4, pivot at 4
+      \draw[rounded corners, fill=light-bg, draw=neutral!40]
+        (-0.38, 0.48) rectangle (3.62, 0.92);
+      \draw[rounded corners, fill=primary-gold!30, draw=neutral!60]
+        (3.65, 0.48) rectangle (4.38, 0.92);
+      \node[anchor=east, text=neutral] at (-0.55, 0.7) {$n=5$};
+      % row n=4: live cells 0..3, pivot at 3
+      \draw[rounded corners, fill=light-bg, draw=neutral!40]
+        (-0.38, -0.22) rectangle (2.62, 0.22);
+      \draw[rounded corners, fill=primary-gold!30, draw=neutral!60]
+        (2.65, -0.22) rectangle (3.38, 0.22);
+      \node[anchor=east, text=neutral] at (-0.55, 0.0) {$n=4$};
+      % row n=3: live cells 0..2, pivot at 2
+      \draw[rounded corners, fill=light-bg, draw=neutral!40]
+        (-0.38, -0.92) rectangle (1.62, -0.48);
+      \draw[rounded corners, fill=primary-gold!30, draw=neutral!60]
+        (1.65, -0.92) rectangle (2.38, -0.48);
+      \node[anchor=east, text=neutral] at (-0.55, -0.7) {$n=3$};
+      \node[text=primary-gold, align=center] at (2.5, -1.55)
+        {each partition removes one pivot: $n + (n-1) + \cdots + 1$ work};
+    \end{tikzpicture}
+  \end{center}
+\end{frame}
+
+\begin{frame}{Choosing a Pivot}
+  \begin{itemize}
+    \item The worst case is not exotic: \emph{sorted input} is exactly what
+      our identifier table arrives as after the tokenizer has run. A naive
+      quicksort would undo the whole point of sorting.
+    \item Two standard defences:
+      \begin{enumerate}
+        \item \key{Median-of-three}: take the median of $A[\texttt{lo}]$,
+          $A[\text{mid}]$, $A[\texttt{hi}]$ as pivot. On sorted or
+          reverse-sorted input this picks the middle and restores balanced
+          splits --- the two most common adversarial shapes are removed.
+        \item \key{Randomized pivot}: swap a uniformly random index into
+          \texttt{hi} before partitioning. No fixed input can force the worst
+          case; the expected cost over the algorithm's own randomness is
+          $\Theta(n\log n)$.
+      \end{enumerate}
+    \item Neither removes the $\Theta(n^2)$ worst case from the
+      \emph{adversary's} model --- but randomization makes hitting it
+      astronomically unlikely, and median-of-three makes the natural bad
+      inputs good.
+  \end{itemize}
+  \muted{Practical libraries go one step further: \emph{introsort} runs quick
+    sort, tracks recursion depth, and switches to heap sort if the depth
+    exceeds $2\log_2 n$ --- quick sort's speed with heap sort's guarantee.}
+\end{frame}
+
+\begin{frame}{Quick Sort: The Bill}
+  \begin{center}
+  {\footnotesize
+  \begin{tabular}{lll}
+    \toprule
+    \textbf{case} & \textbf{comparisons} & \textbf{example input} \\
+    \midrule
+    best & $\Theta(n\log n)$ & balanced pivots \\
+    average & $\Theta(n\log n)$ & random order \\
+    worst & $\Theta(n^2)$ & sorted / reverse-sorted, last-element pivot \\
+    \bottomrule
+  \end{tabular}}
+  \end{center}
+  \begin{itemize}
+    \item \good{In-place}: $O(1)$ extra space for the partition, $O(\log n)$
+      recursion stack with the smaller-side rule. No $\Theta(n)$ buffer.
+    \item \bad{Not stable}: the long-range swaps leap equal keys over each
+      other, exactly as selection sort did in Week 8.
+    \item \good{Cache-friendly}: the partition scans the array sequentially,
+      which is why quick sort usually beats merge sort in wall-clock time
+      despite the same $\Theta$ class --- and why it is the default
+      general-purpose sort in most libraries.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Check Your Prediction: Sorted Input}
+  \begin{block}{You quick sort $[1,2,3,4,5,6]$ with the last-element pivot.
+    How many comparisons does \texttt{partition} perform in total?}
+    A: $15$ \quad B: $6$ \quad C: $30$
+  \end{block}
+  \begin{enumerate}
+    \item A --- the first partition scans $5$ elements, the next $4$, then
+      $3, 2, 1$: $5+4+3+2+1 = 15 = n(n-1)/2$.
+    \item B --- that is only one comparison per element, the cost of a single
+      pass; it ignores the $n-1$ recursive partitions.
+    \item C --- that is $n(n-1)$, double-counting each partition.
+  \end{enumerate}
+  \muted{Correct: A. The sorted input forces the worst case; the total is
+    $\Theta(n^2)$. With median-of-three on the same input the pivot is the
+    middle and the count drops to $\Theta(n\log n)$.}
+\end{frame}
+
+\transitionslide{Two sorts reach $n\log n$. Is that a coincidence, or a ceiling?}
+
+% =============================================================================
+% ACT 3 --- THE COMPARISON LOWER BOUND
+% =============================================================================
+\section{The Comparison Lower Bound}
+
+\sectiondivider{Section 3}{The Comparison-Sort Lower Bound}
+
+\begin{frame}{Count Comparisons, Not Seconds}
+  \begin{itemize}
+    \item Wall-clock time depends on the machine. The portable question is:
+      how many \emph{comparisons} must a sort make before it can be sure of
+      the order?
+    \item Every comparison sort --- insertion, merge, quick, heap --- learns
+      about the data only by asking questions of the form ``is $A[i] <
+      A[j]$?''. Each answer is yes or no.
+    \item So a run on a fixed input follows one path from the root of a
+      \key{decision tree} to a leaf, where each internal node is one
+      comparison and each leaf is the output permutation the algorithm
+      believes.
+  \end{itemize}
+  \begin{block}{The model (Aho--Hopcroft--Ullman Ch.~8, standard treatment;
+    Knuth Vol.~3, standard treatment)}
+    Only key comparisons are counted. Moving, copying, or indexing is free.
+    A correct comparison sort must reach a \emph{different} leaf for each of
+    the $n!$ possible input orderings --- otherwise two orderings that end at
+    the same leaf get the same output, and one of them is wrong.
+    \cite{AhoHopcroftUllman1983_data_structures_algorithms,Knuth1998_taocp_volume3}
+  \end{block}
+\end{frame}
+
+\begin{frame}{The Decision Tree}
+  \begin{center}
+    % A full binary decision tree with six leaves, the count a correct
+    % comparison sort of n=3 must distinguish. Every internal node has two
+    % children (a comparison has two outcomes). Root at (0,3.0); height 3.
+    \begin{tikzpicture}[every node/.style={font=\scriptsize}]
+      \node[circle, draw=primary-blue, fill=light-bg, inner sep=1.5pt]
+        (r) at (0, 3.0) {};
+      \node[circle, draw=primary-blue, fill=light-bg, inner sep=1.5pt]
+        (l) at (-2.0, 2.1) {};
+      \node[circle, draw=primary-blue, fill=light-bg, inner sep=1.5pt]
+        (rr) at (2.0, 2.1) {};
+      \node[draw, rounded corners, fill=positive!15, inner sep=2pt]
+        (l1) at (-3.0, 1.2) {$\pi_1$};
+      \node[circle, draw=primary-blue, fill=light-bg, inner sep=1.5pt]
+        (l2) at (-1.0, 1.2) {};
+      \node[draw, rounded corners, fill=positive!15, inner sep=2pt]
+        (r1) at (1.0, 1.2) {$\pi_4$};
+      \node[circle, draw=primary-blue, fill=light-bg, inner sep=1.5pt]
+        (r2) at (3.0, 1.2) {};
+      \node[draw, rounded corners, fill=positive!15, inner sep=2pt]
+        (l21) at (-1.5, 0.3) {$\pi_2$};
+      \node[draw, rounded corners, fill=positive!15, inner sep=2pt]
+        (l22) at (-0.5, 0.3) {$\pi_3$};
+      \node[draw, rounded corners, fill=positive!15, inner sep=2pt]
+        (r21) at (2.5, 0.3) {$\pi_5$};
+      \node[draw, rounded corners, fill=positive!15, inner sep=2pt]
+        (r22) at (3.5, 0.3) {$\pi_6$};
+      \draw[thick, primary-blue] (r) -- node[fill=white, inner sep=1pt,
+        font=\tiny, text=primary-blue] {$\le$} (l);
+      \draw[thick, primary-blue] (r) -- node[fill=white, inner sep=1pt,
+        font=\tiny, text=primary-blue] {$>$} (rr);
+      \draw[thick, primary-blue] (l) -- (l1);
+      \draw[thick, primary-blue] (l) -- (l2);
+      \draw[thick, primary-blue] (rr) -- (r1);
+      \draw[thick, primary-blue] (rr) -- (r2);
+      \draw[thick, primary-blue] (l2) -- (l21);
+      \draw[thick, primary-blue] (l2) -- (l22);
+      \draw[thick, primary-blue] (r2) -- (r21);
+      \draw[thick, primary-blue] (r2) -- (r22);
+      \node[text=primary-gold, align=center] at (0.2, -0.7)
+        {$n=3$: $3! = 6$ leaves, so height $\ge \lceil\log_2 6\rceil = 3$};
+    \end{tikzpicture}
+  \end{center}
+  \vspace{-0.1cm}
+  \begin{itemize}
+    \item A binary tree with $L$ leaves has height at least
+      $\lceil\log_2 L\rceil$. With $L = n!$ leaves, the worst-case number of
+      comparisons is at least $\log_2(n!)$.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{The Bound: $\log_2(n!) = \Theta(n\log n)$}
+  \begin{itemize}
+    \item A lower bound on $\log_2(n!)$ is enough. Keep only the larger half
+      of the factors:
+      \[ \log_2(n!) = \sum_{k=1}^{n}\log_2 k
+         \;\ge\; \sum_{k=\lceil n/2\rceil}^{n}\log_2\!\left(\frac{n}{2}\right)
+         \;=\; \frac{n}{2}\log_2\!\left(\frac{n}{2}\right)
+         \;=\; \Omega(n\log n). \]
+    \item The matching upper bound is immediate, $\log_2(n!) \le n\log_2 n$,
+      so $\log_2(n!) = \Theta(n\log n)$.
+    \item Stirling's approximation says the same thing more sharply:
+      \[ \log_2(n!) = n\log_2 n - \frac{n}{\ln 2} + O(\log n)
+         \approx n\log_2 n - 1.44\,n. \]
+  \end{itemize}
+  \begin{alertblock}{The comparison-sort lower bound}
+    Every comparison sort makes at least $\Omega(n\log n)$ comparisons in the
+    worst case. Merge sort and heap sort \emph{reach} this bound, which is
+    why they are optimal among comparison sorts.
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}{What the Wall Does and Does Not Say}
+  \begin{itemize}
+    \item It is a \key{worst-case} bound over all inputs. An adaptive sort
+      can be $O(n)$ on a particular input --- insertion sort on sorted data
+      does $n-1$ comparisons --- but \emph{some} input still forces
+      $\Omega(n\log n)$.
+    \item It applies only to algorithms that learn about keys \emph{by
+      comparing them}. It says nothing about a sort that reads the bits of a
+      key directly.
+    \item It does not say $n\log n$ is the fastest possible sorting time ---
+      only the fastest possible \emph{comparison} sorting time.
+  \end{itemize}
+  \begin{center}
+  {\footnotesize
+  \begin{tabular}{rrrr}
+    \toprule
+    $n$ & $n!$ & $\log_2(n!)$ & $n\log_2 n$ \\
+    \midrule
+    $10$ & $3{,}628{,}800$ & $\approx 22$ & $\approx 33$ \\
+    $20$ & $\approx 2.4\times10^{18}$ & $\approx 61$ & $\approx 86$ \\
+    \bottomrule
+  \end{tabular}}
+  \end{center}
+  \muted{The table is a sanity check, not a proof: the bound is asymptotic,
+    and the constants above are not tight for small $n$.}
+\end{frame}
+
+\transitionslide{To go faster than the wall, stop comparing whole keys.}
+
+% =============================================================================
+% ACT 4 --- HEAP, RADIX, AND SHELL SORT
+% =============================================================================
+\section{Heap, Radix, and Shell Sort}
+
+\sectiondivider{Section 4}{Three Ways Past the Wall}
+
+\begin{frame}{Heap Sort: An Array That Thinks It Is a Tree}
+  \begin{itemize}
+    \item Merge sort has the guarantee but pays $\Theta(n)$ space. Quick sort
+      has the space but loses the guarantee. Can we have both?
+    \item Yes --- if we store a \emph{complete binary tree} in the array
+      itself, with no pointers. A \key{max-heap} is such a tree where every
+      parent is at least as large as its children.
+  \end{itemize}
+  \begin{block}{Definition --- binary max-heap (Karumanchi Ch.~7,
+    pp.369--408 PDF, Sec.~7.7; Sedgewick Sec.~2.4, p.~308)}
+    A binary max-heap is a complete binary tree with the \key{heap property}:
+    for every node $i$, $A[i] \ge A[\text{left}(i)]$ and
+    $A[i] \ge A[\text{right}(i)]$. In a 0-based array,
+    $\text{left}(i)=2i+1$, $\text{right}(i)=2i+2$,
+    $\text{parent}(i)=\lfloor(i-1)/2\rfloor$. The maximum is always
+    $A[0]$.
+  \end{block}
+  \begin{itemize}
+    \item No pointers, no allocation: the tree structure is pure index
+      arithmetic, the same address arithmetic as Week 3's arrays. That is
+      what makes the $O(1)$ space possible.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Heap Sort, Drawn: The Same Seven Values, Two Views}
+  \begin{center}
+    % Diagram: max-heap [50,30,40,10,20,35,25] drawn as a tree over the same
+    % array. Tree root (0,2.5), children (+-1.6,1.6), grandchildren
+    % (-2.4,-0.8,0.8,2.4 at y=0.7). Array cells at x = 0..6, y = -0.6.
+    \begin{tikzpicture}[every node/.style={font=\scriptsize}]
+      \node[circle, draw=primary-blue, fill=light-bg, inner sep=2pt]
+        (n0) at (0, 2.5) {50};
+      \node[circle, draw=primary-blue, fill=light-bg, inner sep=2pt]
+        (n1) at (-1.6, 1.6) {30};
+      \node[circle, draw=primary-blue, fill=light-bg, inner sep=2pt]
+        (n2) at (1.6, 1.6) {40};
+      \node[circle, draw=primary-gold, fill=light-bg, inner sep=2pt]
+        (n3) at (-2.4, 0.7) {10};
+      \node[circle, draw=primary-gold, fill=light-bg, inner sep=2pt]
+        (n4) at (-0.8, 0.7) {20};
+      \node[circle, draw=primary-gold, fill=light-bg, inner sep=2pt]
+        (n5) at (0.8, 0.7) {35};
+      \node[circle, draw=primary-gold, fill=light-bg, inner sep=2pt]
+        (n6) at (2.4, 0.7) {25};
+      \foreach \a/\b in {n0/n1,n0/n2,n1/n3,n1/n4,n2/n5,n2/n6}
+        \draw[thick, primary-blue] (\a) -- (\b);
+      \foreach \i/\v in {0/50,1/30,2/40,3/10,4/20,5/35,6/25}
+        \node[draw, fill=light-bg, minimum width=0.72cm,
+          minimum height=0.55cm, inner sep=0] at (\i, -0.6) {\v};
+      \foreach \i in {0,...,6}
+        \node[text=neutral] at (\i, -1.15) {\tiny \i};
+      \node[text=neutral, anchor=east] at (-0.55, -0.6) {array};
+      \node[text=primary-gold, align=center] at (4.05, 1.6)
+        {gold leaves: no children,\\ so no sift-down work};
+    \end{tikzpicture}
+  \end{center}
+  \vspace{-0.1cm}
+  \begin{itemize}
+    \item Check the property: $50 \ge 30,40$; $30 \ge 10,20$;
+      $40 \ge 35,25$. The maximum sits at index $0$, which is why extracting
+      it is cheap to locate --- the work is in restoring the property.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Sift Down: Restore the Heap Property}
+  \footnotesize
+  \begin{block}{Sift-down (heapify) in $O(\log n)$ (Karumanchi Ch.~7,
+    pp.369--408 PDF; Sedgewick Sec.~2.4, p.~308)
+    \cite{Karumanchi2017_data_structures_algorithms_made_easy,Sedgewick2011_algorithms}}
+\begin{semiverbatim}
+void siftDown(int A[], int i, int n) {
+  for (;;) {
+    int l = 2 * i + 1, r = l + 1, m = i;
+    if (l < n && A[l] > A[m]) m = l;   // larger child
+    if (r < n && A[r] > A[m]) m = r;
+    if (m == i) return;                // heap property restored
+    swap(&A[i], &A[m]);
+    i = m;                             // keep sinking
+  }
+}
+\end{semiverbatim}
+  \end{block}
+  \begin{itemize}
+    \item Only one subtree can violate the property after a swap, so each
+      step follows a single root-to-leaf path: at most the tree height,
+      $\lfloor\log_2 n\rfloor$ swaps.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Build a Heap in $\Theta(n)$, Not $\Theta(n\log n)$}
+  \begin{itemize}
+    \item The obvious build is $n$ insertions, each sifting up $O(\log n)$:
+      $O(n\log n)$. It works, but it is not tight.
+    \item The tight build sifts \emph{down} every internal node, from the last
+      parent $\lfloor n/2\rfloor - 1$ back to index $0$. Leaves need no work
+      at all.
+    \item Count the work by height. About $n/2$ nodes are leaves (height
+      $0$), $n/4$ have height $1$, $n/8$ height $2$, and so on:
+      \[ \sum_{h \ge 0} \frac{n}{2^{h+1}}\,h
+         \;=\; \frac{n}{2}\sum_{h\ge 0}\frac{h}{2^{h}}
+         \;=\; \frac{n}{2}\cdot 2 \;=\; \Theta(n). \]
+  \end{itemize}
+  \begin{exampleblock}{Why most nodes are cheap}
+    Half the nodes never move, a quarter move at most one level, an eighth at
+    most two. The expensive top-of-tree nodes are few. This is the classic
+    case where the obvious bound is off by a log factor --- the same
+    amortized-counting habit Week 2 built.
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}[fragile]{Heap Sort in C}
+  \footnotesize
+  \begin{block}{Heap sort (Karumanchi Ch.~7, pp.369--408 PDF, Sec.~7.7;
+    Sedgewick Sec.~2.4, p.~308)
+    \cite{Karumanchi2017_data_structures_algorithms_made_easy,Sedgewick2011_algorithms}}
+\begin{semiverbatim}
+void heapSort(int A[], int n) {
+  for (int i = n / 2 - 1; i >= 0; i--)   // build max-heap: Theta(n)
+    siftDown(A, i, n);
+  for (int end = n - 1; end > 0; end--) {
+    swap(&A[0], &A[end]);                // max to its final slot
+    siftDown(A, 0, end);                 // restore on the shrinking heap
+  }
+}
+\end{semiverbatim}
+  \end{block}
+  \begin{itemize}
+    \item Phase 1 is $\Theta(n)$ by the height sum. Phase 2 performs $n-1$
+      extractions, each $O(\log n)$: $\Theta(n\log n)$.
+    \item Total: $\Theta(n\log n)$ in the \emph{worst} case, with
+      $\Theta(1)$ auxiliary space. That combination is unique among the sorts
+      in this course.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Heap Sort: The Bill}
+  \begin{center}
+  {\footnotesize
+  \begin{tabular}{lll}
+    \toprule
+    \textbf{property} & \textbf{heap sort} & \textbf{note} \\
+    \midrule
+    best / average / worst & $\Theta(n\log n)$ & the guarantee merge sort has \\
+    auxiliary space & $\Theta(1)$ & the space quick sort has \\
+    stable & no & long-range swaps across the heap \\
+    cache behaviour & poor & sift-down jumps by powers of two \\
+    \bottomrule
+  \end{tabular}}
+  \end{center}
+  \begin{itemize}
+    \item \good{Worst-case guarantee plus bounded memory}: the reason heap
+      sort is used in real-time and embedded systems, and as the fallback in
+      introsort.
+    \item \bad{Not stable}, and \bad{not cache-friendly}: index arithmetic
+      jumps across the array, so each sift-down touches memory far from the
+      previous access. In practice quick sort is often several times faster
+      despite the same $\Theta$ class.
+  \end{itemize}
+  \muted{The heap itself returns in Week 11 as a priority queue, and in
+    Week 12 inside Dijkstra's algorithm --- the structure is worth more than
+    this one sort.}
+\end{frame}
+
+\begin{frame}{Radix Sort: Stop Comparing Whole Keys}
+  \begin{itemize}
+    \item The lower bound assumed the only thing a sort may do is compare two
+      whole keys. But a $3$-digit number already tells you a lot about where
+      it belongs --- the hundreds digit is more significant than the tens.
+    \item \key{LSD radix sort} sorts by the least-significant digit first,
+      then the next, and so on to the most significant. Each digit pass is a
+      \emph{stable} counting sort (Week 8).
+  \end{itemize}
+  \begin{block}{Definition --- LSD radix sort (Sedgewick Sec.~5.1, p.~702;
+    Karumanchi Ch.~10, pp.504--546 PDF)}
+    For $d$ digits and a base-$k$ alphabet, run a stable counting sort on
+    digit $0$ (units), then digit $1$ (tens), up to digit $d-1$. After pass
+    $t$, the array is sorted by its last $t+1$ digits. After the final pass,
+    it is fully sorted.
+  \end{block}
+  \begin{itemize}
+    \item The passes must go least-significant first, and each must be
+      stable: a later, more-significant pass must not disturb the order the
+      earlier passes established within equal digits.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Radix Sort, Drawn: Three Stable Passes}
+  \begin{center}
+    % Diagram: LSD radix sort of [170,45,75,90,802,24], base 10, 3 digits.
+    % Four rows: input, after units, after tens, after hundreds. Cells 1.1 cm
+    % wide at x = 0..5; rows y = 2.5, 1.6, 0.7, -0.2.
+    \begin{tikzpicture}[every node/.style={font=\scriptsize}]
+      \foreach \i/\v in {0/170,1/45,2/75,3/90,4/802,5/24}
+        \node[draw, fill=white, minimum width=1.0cm, minimum height=0.55cm,
+          inner sep=1pt] at (\i*1.15, 2.5) {\v};
+      \node[anchor=east, text=neutral] at (-0.65, 2.5) {input};
+      \foreach \i/\v in {0/170,1/90,2/802,3/24,4/45,5/75}
+        \node[draw, fill=light-bg, minimum width=1.0cm,
+          minimum height=0.55cm, inner sep=1pt] at (\i*1.15, 1.6) {\v};
+      \node[anchor=east, text=neutral] at (-0.65, 1.6) {units};
+      \foreach \i/\v in {0/802,1/24,2/45,3/75,4/170,5/90}
+        \node[draw, fill=light-bg, minimum width=1.0cm,
+          minimum height=0.55cm, inner sep=1pt] at (\i*1.15, 0.7) {\v};
+      \node[anchor=east, text=neutral] at (-0.65, 0.7) {tens};
+      \foreach \i/\v in {0/24,1/45,2/75,3/90,4/170,5/802}
+        \node[draw, fill=positive!20, minimum width=1.0cm,
+          minimum height=0.55cm, inner sep=1pt] at (\i*1.15, -0.2) {\v};
+      \node[anchor=east, text=neutral] at (-0.65, -0.2) {hundreds};
+      \node[text=primary-gold, align=center] at (2.9, -1.05)
+        {after pass $t$, the last $t+1$ digits are in order};
+    \end{tikzpicture}
+  \end{center}
+  \vspace{-0.1cm}
+  \begin{itemize}
+    \item Units pass groups by last digit; the tens pass re-groups by tens
+      \emph{within} each group; the hundreds pass finishes. Only stability
+      keeps the earlier grouping intact.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Radix Sort in C: One Counting-Sort Pass per Digit}
+  \footnotesize
+  \begin{block}{LSD radix sort, base $\le 10$ for clarity (Sedgewick
+    Sec.~5.1, p.~702; Karumanchi Ch.~10, pp.504--546 PDF)
+    \cite{Sedgewick2011_algorithms,Karumanchi2017_data_structures_algorithms_made_easy}}
+\begin{semiverbatim}
+void radixSort(int A[], int n, int digits, int base) {
+  int *out = malloc(n * sizeof(int));
+  for (int d = 0, div = 1; d < digits; d++, div *= base) {
+    int count[10] = {0};                 // base <= 10 here
+    for (int i = 0; i < n; i++)
+      count[(A[i] / div) % base]++;
+    for (int v = 1; v < base; v++) count[v] += count[v - 1];
+    for (int i = n - 1; i >= 0; i--)     // reverse => stable
+      out[--count[(A[i] / div) % base]] = A[i];
+    for (int i = 0; i < n; i++) A[i] = out[i];
+  }
+  free(out);
+}
+\end{semiverbatim}
+  \end{block}
+  \vspace{-0.4cm}
+  \begin{itemize}
+    \item Each pass is Week 8's counting sort on one digit: tally, prefix
+      sums, stable reverse scatter. The outer loop advances the digits.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Radix: Beating a Bound by Leaving Its Assumptions}
+  \begin{center}
+  {\footnotesize
+  \begin{tabular}{lll}
+    \toprule
+    \textbf{cost} & \textbf{value} & \textbf{note} \\
+    \midrule
+    time & $\Theta(d(n+k))$ & $d$ digits, base $k$ \\
+    space & $\Theta(n+k)$ & output buffer + tally \\
+    32-bit keys, 8-bit digits & $d=4$, $k=256$ & four linear passes \\
+    \bottomrule
+  \end{tabular}}
+  \end{center}
+  \begin{itemize}
+    \item It makes \emph{zero} comparisons of whole keys, so the
+      $\Omega(n\log n)$ comparison bound simply does not apply. For fixed
+      width keys with a small base, $\Theta(d(n+k))$ is linear in $n$.
+    \item \good{Stable}; \bad{not in-place} ($\Theta(n+k)$ auxiliary).
+    \item The precondition is real: keys must have a positional
+      representation with a known width --- integers, fixed-length strings.
+      Arbitrary objects with only a comparison function cannot use it.
+  \end{itemize}
+  \begin{exampleblock}{The lesson}
+    A lower bound is only as strong as its model. Radix sort does not break
+    the mathematics --- it changes the question from ``compare two keys'' to
+    ``read one digit''.
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}{Shell Sort: Insertion Sort with a Head Start}
+  \begin{itemize}
+    \item Insertion sort is $O(n)$ on nearly-sorted input and $\Theta(n^2)$
+      on random input. Shell sort manufactures ``nearly sorted'' cheaply: it
+      insertion-sorts widely spaced subsequences first, then narrows the
+      spacing.
+  \end{itemize}
+  \begin{block}{Definition --- diminishing-increment sort
+    (Wirth Sec.~2.3.1, p.~52; Sedgewick Sec.~2.1, p.~244)}
+    Choose a decreasing \key{gap sequence} $h_1 > h_2 > \cdots > h_t = 1$.
+    For each gap $h$, insertion-sort every subsequence
+    $A[i], A[i+h], A[i+2h], \dots$. The final pass with $h=1$ is ordinary
+    insertion sort, so correctness is automatic.
+  \end{block}
+  \begin{itemize}
+    \item Why it helps: a gap of $n/2$ can move an element halfway across the
+      array in one shift. By the time $h=1$, few inversions remain, so the
+      final insertion pass is close to linear.
+    \item Shell's original sequence $n/2, n/4, \dots, 1$ is simple but has a
+      $\Theta(n^2)$ worst case. Knuth's $(3^k-1)/2$ sequence gives
+      $O(n^{3/2})$; Sedgewick's gives $O(n^{4/3})$. No sequence is known to
+      be optimal.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Shell Sort, Drawn: Gaps $4$, then $2$, then $1$}
+  \begin{center}
+    % Diagram: shell sort of [7,3,9,1,8,2,6,4] with gaps 4, 2, 1. Four rows
+    % at y = 2.4, 1.5, 0.6, -0.3; cells 0.85 cm wide at x = 0..7. Colours
+    % group the subsequences touched by each gap pass.
+    \begin{tikzpicture}[every node/.style={font=\scriptsize}]
+      \foreach \i/\v in {0/7,1/3,2/9,3/1,4/8,5/2,6/6,7/4}
+        \node[draw, fill=white, minimum width=0.75cm, minimum height=0.5cm,
+          inner sep=0] at (\i, 2.4) {\v};
+      \node[anchor=east, text=neutral] at (-0.55, 2.4) {input};
+      % gap 4 result
+      \foreach \i/\v/\c in {0/7/1,1/2/2,2/6/3,3/1/4,4/8/1,5/3/2,6/9/3,7/4/4}
+        \node[draw, fill=primary-gold!\c0, minimum width=0.75cm,
+          minimum height=0.5cm, inner sep=0] at (\i, 1.5) {\v};
+      \node[anchor=east, text=neutral] at (-0.55, 1.5) {gap $4$};
+      % gap 2 result: two interleaved groups
+      \foreach \i/\v in {0/6,1/1,2/7,3/2,4/8,5/3,6/9,7/4}
+        \node[draw, fill=light-bg, minimum width=0.75cm,
+          minimum height=0.5cm, inner sep=0] at (\i, 0.6) {\v};
+      \foreach \i in {0,2,4,6}
+        \node[text=positive] at (\i, 0.95) {\tiny $\bullet$};
+      \foreach \i in {1,3,5,7}
+        \node[text=negative] at (\i, 0.95) {\tiny $\bullet$};
+      \node[anchor=east, text=neutral] at (-0.55, 0.6) {gap $2$};
+      % gap 1 result
+      \foreach \i/\v in {0/1,1/2,2/3,3/4,4/6,5/7,6/8,7/9}
+        \node[draw, fill=positive!15, minimum width=0.75cm,
+          minimum height=0.5cm, inner sep=0] at (\i, -0.3) {\v};
+      \node[anchor=east, text=neutral] at (-0.55, -0.3) {gap $1$};
+      \node[text=primary-gold, align=center] at (3.5, -1.05)
+        {each pass is insertion sort on one residue class mod the gap};
+    \end{tikzpicture}
+  \end{center}
+  \vspace{-0.1cm}
+  \begin{itemize}
+    \item Row 2 groups positions $\{0,4\}$, $\{1,5\}$, $\{2,6\}$,
+      $\{3,7\}$; row 3 groups the even and odd positions separately; row 4 is
+      plain insertion sort.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Shell Sort in C}
+  \scriptsize
+  \begin{block}{Shell sort with the halving sequence (Wirth Sec.~2.3.1,
+    p.~52; Karumanchi Ch.~10, pp.504--546 PDF)
+    \cite{Wirth2004_algorithms_data_structures,Karumanchi2017_data_structures_algorithms_made_easy}}
+\begin{semiverbatim}
+void shellSort(int A[], int n) {
+  for (int gap = n / 2; gap > 0; gap /= 2) {  // Shell's halving sequence
+    for (int i = gap; i < n; i++) {
+      int key = A[i], j = i;
+      while (j >= gap && A[j - gap] > key) {  // shifted insertion
+        A[j] = A[j - gap];
+        j -= gap;
+      }
+      A[j] = key;
+    }
+  }
+}
+\end{semiverbatim}
+  \end{block}
+  \vspace{-0.3cm}
+  \begin{itemize}
+    \item Compare with Week 8's insertion sort: the only change is the stride
+      \texttt{gap} in place of $1$; with \texttt{gap = 1} the code is exactly
+      the old insertion sort, which is the correctness argument.
+    \item \good{In-place}, \bad{unstable}, simpler than quick sort --- but
+      the worst case depends on the gap sequence, so it carries no guarantee.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Check Your Prediction: Choose the Sort}
+  \begin{block}{Match each workload to the best sort, and name the property
+    that decides it.}
+    (i) $10^7$ 32-bit integers, memory tight, worst case must be guaranteed.
+    \quad (ii) $10^6$ 16-bit IDs, base-256 digits available.
+    \quad (iii) $2{,}000$ records already almost sorted.
+    \quad (iv) a general-purpose library sort facing adversarial input.
+  \end{block}
+  \begin{enumerate}
+    \item (i) \key{heap sort}: $\Theta(n\log n)$ worst case with $O(1)$
+      auxiliary space --- the only sort with both.
+    \item (ii) \key{radix sort}: two base-256 passes, $\Theta(2(n+256))$,
+      linear in $n$; the keys are fixed-width integers.
+    \item (iii) \key{insertion sort} (or shell sort): nearly sorted input is
+      insertion sort's $O(n)$ best case.
+    \item (iv) \key{quick sort} with a randomized pivot, plus a heap-sort
+      fallback (introsort): fast average, and the guarantee restored when
+      recursion gets too deep.
+  \end{enumerate}
+\end{frame}
+
+\transitionslide{Five sorts, one wall, and a decision to make.}
+
+% =============================================================================
+% ACT 5 --- COMPARATIVE ANALYSIS AND THE CLOSE
+% =============================================================================
+\section{Comparative Analysis and Close}
+
+\sectiondivider{Section 5}{Comparative Analysis and the Close}
+
+\begin{frame}{The Efficient Sorts, Side by Side}
+  \begin{center}
+  {\scriptsize
+  \begin{tabular}{l l l l l c c}
+    \toprule
+    \textbf{sort} & \textbf{best} & \textbf{average} & \textbf{worst} &
+      \textbf{space} & \textbf{stable} & \textbf{in-place} \\
+    \midrule
+    merge & $\Theta(n\log n)$ & $\Theta(n\log n)$ & $\Theta(n\log n)$ &
+      $\Theta(n)$ & yes & no \\
+    quick & $\Theta(n\log n)$ & $\Theta(n\log n)$ & $\Theta(n^2)$ &
+      $O(\log n)$ & no & yes \\
+    heap & $\Theta(n\log n)$ & $\Theta(n\log n)$ & $\Theta(n\log n)$ &
+      $O(1)$ & no & yes \\
+    shell & $O(n\log n)$ & depends on gaps & $\Theta(n^2)$ / $O(n^{3/2})$ &
+      $O(1)$ & no & yes \\
+    radix & $\Theta(d(n+k))$ & $\Theta(d(n+k))$ & $\Theta(d(n+k))$ &
+      $\Theta(n+k)$ & yes & no \\
+    \bottomrule
+  \end{tabular}}
+  \end{center}
+  \vspace{0.1cm}
+  \begin{itemize}
+    \item The shell row's two worst-case entries are Shell's halving sequence
+      ($\Theta(n^2)$) and Knuth's $(3^k-1)/2$ sequence ($O(n^{3/2})$); the
+      cost is a property of the gap sequence, not of ``shell sort'' alone.
+    \item Read the table by \emph{which cell is guaranteed}. Only merge and
+      heap guarantee $\Theta(n\log n)$; only heap combines that with
+      $O(1)$ space.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Choosing: Read the Workload, Then the Sort}
+  \begin{center}
+  {\footnotesize
+  \begin{tabular}{p{6.6cm} p{5.2cm}}
+    \toprule
+    \textbf{workload} & \textbf{choose} \\
+    \midrule
+    worst-case guarantee + tight memory & heap sort \\
+    raw average speed, in-place, cache-friendly & quick sort (randomized) \\
+    stability needed, or linked / external data & merge sort \\
+    fixed-width integer or string keys, known range & radix sort \\
+    nearly sorted, or small $n$ & insertion sort \\
+    simple in-place, no guarantee required & shell sort \\
+    \bottomrule
+  \end{tabular}}
+  \end{center}
+  \begin{itemize}
+    \item No single winner. Every row is correct for \emph{some} input, and
+      the exam question is always ``state the workload, then justify the
+      choice'' --- never ``rank the sorts''.
+    \item The three properties that decide it are the same three Week 8
+      introduced: the case, stability, and space. Week 9 only adds the
+      guarantee that a $\Theta(n\log n)$ worst case is even possible.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Three Classic Mistakes}
+  \begin{itemize}
+    \item \bad{``Quick sort is $O(n\log n)$'' with no case.} Its worst case
+      is $\Theta(n^2)$ --- and the input that triggers it (sorted data with a
+      last-element pivot) is exactly the input a tokenizer produces. State
+      the case, then name the pivot rule.
+    \item \bad{``Merge sort is in-place'' / ``quick sort is $O(1)$ space''.}
+      Merge sort needs a $\Theta(n)$ buffer; quick sort needs $O(\log n)$
+      recursion stack (unless tail-call optimisation removes it). Heap sort
+      is the one efficient sort that is genuinely $O(1)$ auxiliary.
+    \item \bad{``Radix sort is $O(n)$, so it always beats merge sort.''} It is
+      $\Theta(d(n+k))$, linear only when $d$ and $k$ are treated as
+      constants, and it needs $\Theta(n+k)$ space and fixed-width keys.
+      Neither statement is true for arbitrary comparable objects.
+  \end{itemize}
+  \begin{exampleblock}{How to revise}
+    For each of the five sorts, write one line: the idea, the recurrence or
+    pass count, the worst case, stability, and space. Then trace a partition
+    and a heap extraction by hand. The test is traces and cases, not names.
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}{Week 9 Summary}
+  \begin{itemize}
+    \item \key{Divide and conquer} --- merge sort splits, sorts, and merges.
+      $T(n)=2T(n/2)+\Theta(n)=\Theta(n\log n)$ in every case; stable; needs
+      $\Theta(n)$ space.
+    \item \key{Partition} --- quick sort places a pivot and recurses.
+      $\Theta(n\log n)$ average, $\Theta(n^2)$ worst on sorted input with a
+      last-element pivot; in-place and unstable; randomize or use
+      median-of-three.
+    \item \key{The wall} --- any comparison sort needs $\Omega(n\log n)$
+      comparisons, because a decision tree must distinguish all $n!$ orders.
+      Merge and heap reach the bound; they cannot beat it.
+    \item \key{Three ways past it} --- heap sort keeps the guarantee in
+      $O(1)$ space; radix sort leaves the comparison model with stable digit
+      passes, $\Theta(d(n+k))$; shell sort buys simplicity and in-place
+      operation with a gap-dependent bound.
+  \end{itemize}
+  \begin{exampleblock}{Next week}
+    The table is now sorted and searchable in $O(\log n)$. Week 10 asks a
+    stronger question: can we find a record in \emph{one} probe, without
+    sorting at all? File organization and hashing.
+  \end{exampleblock}
+  \vspace{-0.2cm}
+\end{frame}
+
+\begin{frame}{Before You Go: Predict}
+  \begin{block}{Three one-line predictions}
+    Answer from the algorithms, then check in the lab.
+  \end{block}
+  \begin{enumerate}
+    \item Merge sort on $8$ elements: how many levels of merging, and does an
+      already-sorted input reduce the number of comparisons?
+    \item Quick sort $[5,4,3,2,1]$ with the last-element pivot: how many
+      comparisons does \texttt{partition} perform in total?
+    \item You must sort $10^6$ 16-bit student IDs with memory to spare. Which
+      sort, and how many digit passes at base $256$?
+  \end{enumerate}
+  \muted{Answers: $\log_2 8 = 3$ merging levels; no --- sorted input still
+    costs $\Theta(n\log n)$ comparisons, because every merge walk is
+    unchanged. $4+3+2+1 = 10$ comparisons --- the reverse-sorted worst case.
+    Radix sort: $16$ bits $/\,8$ bits per digit $= 2$ passes, each linear,
+    with $\Theta(n+256)$ extra space.}
+\end{frame}
+
+\begin{frame}[allowframebreaks]{References}
+  \tiny
+  \bibliographystyle{plain}
+  \bibliography{../../Bibliography_base}
+\end{frame}
+
+\end{document}

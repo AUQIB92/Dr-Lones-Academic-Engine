@@ -1,0 +1,110 @@
+% =============================================================================
+% CompetitiveExam/CS301/09-efficient-sorting-questions.tex
+% Competitive Exam Practice 9 — GATE (Computer Science) Pattern
+% Efficient sorting: merge sort, quick sort (pivot choice, worst case), the
+% comparison-sort lower bound, heap sort, radix sort, and shell sort.
+%
+% Student-facing — NO answers. Answer key: 09-efficient-sorting-answers.tex.
+%
+% Provenance (Tier 2: web-sourced PYQ + inline Chain-of-Verification; the
+% local GATEOverflow Vol.2 sorting cluster pp.99-102 does not carry these
+% particular questions, and no forked claim-verifier Task tool exists here):
+%   - Q1 [GATE CSE 1996 Q40, verified — web: GeeksforGeeks GATE-CS-1996 Q40
+%     + ExamSIDE re-derivation]. Quicksort on sorted vs reverse input with the
+%     first element as pivot: C1 = C2. Answer (C).
+%   - Q2 [GATE CSE 2014 Set 1 Q7, verified — web: GeeksforGeeks GATE-CS-2014-
+%     Set-1 Q7 + ExamSIDE worked answer]. t1 = 10, t2 = 7, so t1 > t2.
+%     Answer (C).
+%   - Q3 [GATE CSE 2008 Q43, verified — web: GeeksforGeeks GATE-CS-2008 Q43
+%     + GateQA answer B]. Pivot splits into at least 1/5 and at most 4/5:
+%     T(n) <= T(n/5) + T(4n/5) + n. Answer (B).
+%   - Q4 [GATE CSE 2019 Q32, verified — web: GeeksforGeeks GATE-CS-2019 Q32].
+%     Random pivot in 25 distinct elements lands in a worst position with
+%     probability 2/25 = 0.08. Answer 0.08.
+%   - Q5 [GATE CSE 2013 Q30, verified — web: official GATE 2013 CS paper
+%     (Q.32 in the paper) + pyqbox Option C]. Heap sort in Theta(log n) sorts
+%     Theta(log n / log log n) elements. Answer (C).
+%   - Q6 [GATE IT 2008 Q41, verified — web: GeeksforGeeks GATE-IT-2008 Q41 +
+%     GATEOverflow]. Radix sort of n integers in (n^{k/2}, n^k] with base n
+%     takes Theta(kn). Answer (B). (IT paper, labelled as such.)
+%   - Q7-Q10 [Original, GATE-pattern] — fresh instances that do not reuse the
+%     deck's or the written assignment's arrays. Each answer independently
+%     re-derived in the answers file.
+%
+% Compile with: cd CompetitiveExam/CS301 &&
+%   TEXINPUTS=../../Preambles:$TEXINPUTS xelatex -interaction=nonstopmode 09-efficient-sorting-questions.tex
+% =============================================================================
+
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\input{../../Preambles/header}
+\coursecode{CS301}
+\renewcommand{\thesection}{9.\arabic{section}}
+
+\title{Competitive Exam Practice 9: Efficient Sorting\\\large GATE (Computer Science) Pattern}
+\author{Auqib Hamid Lone\\[0.3em]
+  \emph{Department of Computer Science \& Engineering}, \emph{GCET Ganderbal}}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\noindent Each question carries 1--2 marks. MCQ = single correct option; NAT = Numerical Answer Type. Arrays are 0-indexed unless the question states otherwise. Unless a question says otherwise, ``comparisons'' means key comparisons, as in the comparison-sort model.
+
+\begin{enumerate}
+\item[\textbf{Q1}] \textit{[GATE CSE 1996 Q40, verified --- web]} \textbf{[MCQ, 2 marks]} Quicksort is run on two inputs shown below to sort in ascending order, taking the \emph{first} element as pivot:
+\[
+\text{(i) } 1,2,3,\dots,n \qquad \text{(ii) } n,n-1,n-2,\dots,2,1.
+\]
+Let $C_1$ and $C_2$ be the number of comparisons made for inputs (i) and (ii) respectively. Then
+\begin{enumerate}
+  \item[(A)] $C_1 < C_2$
+  \item[(B)] $C_1 > C_2$
+  \item[(C)] $C_1 = C_2$
+  \item[(D)] we cannot say anything for arbitrary $n$
+\end{enumerate}
+
+\item[\textbf{Q2}] \textit{[GATE CSE 2014 Set 1 Q7, verified --- web]} \textbf{[MCQ, 1 mark]} Let $P$ be a quicksort program to sort numbers in ascending order using the \emph{first} element as pivot. Let $t_1$ and $t_2$ be the number of comparisons made by $P$ for the inputs $\{1,2,3,4,5\}$ and $\{4,1,5,3,2\}$ respectively. Which one of the following holds?
+\begin{enumerate}
+  \item[(A)] $t_1 = 5$
+  \item[(B)] $t_1 < t_2$
+  \item[(C)] $t_1 > t_2$
+  \item[(D)] $t_1 = t_2$
+\end{enumerate}
+
+\item[\textbf{Q3}] \textit{[GATE CSE 2008 Q43, verified --- web]} \textbf{[MCQ, 2 marks]} Consider the quicksort algorithm. Suppose there is a procedure for finding a pivot element that splits the list into two sub-lists, each of which contains at least one-fifth of the elements. Let $T(n)$ be the number of comparisons required to sort $n$ elements. Then
+\begin{enumerate}
+  \item[(A)] $T(n) \le 2T(n/5) + n$
+  \item[(B)] $T(n) \le T(n/5) + T(4n/5) + n$
+  \item[(C)] $T(n) \le 2T(4n/5) + n$
+  \item[(D)] $T(n) \le 2T(n/2) + n$
+\end{enumerate}
+
+\item[\textbf{Q4}] \textit{[GATE CSE 2019 Q32, verified --- web]} \textbf{[NAT, 2 marks]} An array of $25$ distinct elements is to be sorted using quicksort. Assume that the pivot element is chosen uniformly at random. The probability that the pivot element gets placed in the worst possible location in the first round of partitioning (rounded off to two decimal places) is \underline{\hspace{1.2cm}}.
+
+\item[\textbf{Q5}] \textit{[GATE CSE 2013 Q30, verified --- web]} \textbf{[MCQ, 2 marks]} The number of elements that can be sorted in $\Theta(\log n)$ time using heap sort is
+\begin{enumerate}
+  \item[(A)] $\Theta(1)$
+  \item[(B)] $\Theta(\sqrt{\log n})$
+  \item[(C)] $\Theta\!\left(\dfrac{\log n}{\log\log n}\right)$
+  \item[(D)] $\Theta(\log n)$
+\end{enumerate}
+
+\item[\textbf{Q6}] \textit{[GATE IT 2008 Q41, verified --- web]} \textbf{[MCQ, 2 marks]} If we use radix sort to sort $n$ integers in the range $(n^{k/2}, n^k]$, for some $k>0$ which is independent of $n$, the time taken would be
+\begin{enumerate}
+  \item[(A)] $\Theta(n)$
+  \item[(B)] $\Theta(kn)$
+  \item[(C)] $\Theta(n\log n)$
+  \item[(D)] $\Theta(n^2)$
+\end{enumerate}
+
+\item[\textbf{Q7}] \textit{[Original, GATE-pattern]} \textbf{[Trace, 2 marks]} Sort $[6,2,9,1,5,3]$ with merge sort. Draw the split tree down to singletons, then give the array after each level of merging on the way back up, and the final array. State the total number of merge levels and whether the sorted-input case would reduce the comparison count.
+
+\item[\textbf{Q8}] \textit{[Original, GATE-pattern]} \textbf{[Trace, 2 marks]} Quick sort $[3,7,2,8,5,1]$ using \emph{median-of-three} on $A[\texttt{lo}]$, $A[\text{mid}]$, $A[\texttt{hi}]$, with the median swapped to the last position before Lomuto partitioning. Give the pivot value, the array after the first partition, the returned index, and the sizes of the two sides.
+
+\item[\textbf{Q9}] \textit{[Original, GATE-pattern]} \textbf{[Trace, 2 marks]} Build a max-heap from $[4,10,3,5,1,2]$ using the linear-time $\Theta(n)$ build (sift down every internal node from the last parent to index $0$). Give the array after the build. Then extract the maximum once and give the resulting array and its heap property.
+
+\item[\textbf{Q10}] \textit{[Original, GATE-pattern]} \textbf{[Design, 2 marks]} A system must sort $10^6$ 16-bit student IDs. Memory is available, and the IDs are unsigned integers. Using radix sort with base $256$: (a) how many digit passes are needed; (b) give the time and auxiliary-space bounds with their variables; (c) explain in one sentence why the $\Omega(n\log n)$ comparison-sort bound does not apply.
+\end{enumerate}
+
+\end{document}

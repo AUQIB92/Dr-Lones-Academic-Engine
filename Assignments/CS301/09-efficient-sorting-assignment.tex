@@ -1,0 +1,103 @@
+% =============================================================================
+% Assignments/CS301/09-efficient-sorting-assignment.tex
+% Assignment 9 (Week 9): Efficient Sorting & the Comparison Lower Bound
+%
+% Student set — NO answers. Solution key:
+% 09-efficient-sorting-solutions.tex (gitignored via **/*-solutions.tex,
+% never deployed). Sourced from Slides/CS301/09-efficient-sorting.tex and
+% Notes/CS301/09-efficient-sorting-notes.tex.
+%
+% Fresh instances throughout — no problem re-asks a deck/notes worked
+% example verbatim. Deck/notes instances avoided: merge [3,8,15]+[2,9,11];
+% merge [4,9,13]+[1,7,10]; partition [7,2,9,4,3,8,5] and [6,3,8,1,5,2,7];
+% quick sorted [1..6] and [1..5]; radix [170,45,75,90,802,24] and
+% [31,4,15,20,9,48]; shell [7,3,9,1,8,2,6,4]; heap [50,30,40,10,20,35,25]
+% and [12,5,9,2,7,4].
+% This set uses: Q3 merge [2,6,11]+[1,4,9,10], merge sort [9,4,7,1,8,3];
+% Q4 partition [8,3,7,4,2,9,5], quick sorted [2,4,6,8,10]; Q5 heap
+% [7,1,9,4,2,8] for kth largest; Q6 records by section then name.
+%
+% Compile with (macOS/Linux): cd Assignments/CS301 &&
+%   TEXINPUTS=../../Preambles:$TEXINPUTS xelatex -interaction=nonstopmode 09-efficient-sorting-assignment.tex
+%   BIBINPUTS=../..:$BIBINPUTS bibtex 09-efficient-sorting-assignment
+%   TEXINPUTS=../../Preambles:$TEXINPUTS xelatex -interaction=nonstopmode 09-efficient-sorting-assignment.tex (x2)
+% =============================================================================
+
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\input{../../Preambles/header}
+\coursecode{CS301}
+\renewcommand{\thesection}{9.\arabic{section}}
+
+% Emergency stretch so long \texttt{} tokens in prose do not spill the margin.
+\setlength{\emergencystretch}{2.5em}
+
+\title{Assignment 9 (Week 9): Efficient Sorting \& the Comparison Lower Bound}
+\author{Auqib Hamid Lone\\[0.3em]
+  \emph{Department of Computer Science \& Engineering}, \emph{GCET Ganderbal}}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\noindent\textbf{Due:} two weeks from issue. There is no automatic late penalty --- if you need more time, ask before the deadline and an extension will be granted (see the course policy in the syllabus).
+
+\noindent Answer every question. Show all working for Numerical and Design questions. Each problem states its own assumptions; everything you need is in Week~9's Notes chapter alone. Notation matches the lecture exactly: arrays are 0-based and written $A[0..n-1]$; $T(n)$ is the exact worst-case cost; $n$ is the number of elements and $\log$ means $\log_2$; a sort is \key{stable} if equal keys keep their original relative order, \key{in-place} if it uses $O(1)$ auxiliary space, and a \key{comparison sort} if it learns about keys only by comparing them. For every bound, name the operation, give the bound, and state the case (Week~2 shape).
+
+\section{Conceptual}
+
+\textbf{Q1.} Merge sort is the cleanest example of divide and conquer in the course (Sedgewick Sec.~2.2, p.~270; Wirth Sec.~2.4.1, p.~63) \cite{Sedgewick2011_algorithms,Wirth2004_algorithms_data_structures}.
+\begin{enumerate}
+  \item[(a)] State the three parts of the divide-and-conquer pattern and say exactly what merge sort does for each. Then explain why the \emph{combine} step is the only part that needs new machinery.
+  \item[(b)] Write the worst-case recurrence $T(n)$ for merge sort, state its base case, and unroll the recursion tree to show $T(n)=\Theta(n\log n)$. In your unrolling, say how many levels the tree has and what each level costs.
+  \item[(c)] Merge sort is $\Theta(n\log n)$ in the best case as well. Explain why an already-sorted input does \emph{not} reduce the comparison count, and contrast this with insertion sort's $O(n)$ best case (Week~8).
+\end{enumerate}
+Why this matters: the recurrence and the tree are the general tools for every divide-and-conquer algorithm, not just this one --- this question makes you derive the bound rather than quote it.
+
+\textbf{Q2.} The comparison lower bound is the central negative result of the course (Aho--Hopcroft--Ullman Ch.~8, standard treatment; Knuth \emph{TAOCP} Vol.~3, standard treatment) \cite{AhoHopcroftUllman1983_data_structures_algorithms,Knuth1998_taocp_volume3}.
+\begin{enumerate}
+  \item[(a)] Describe the decision-tree model of a comparison sort. What does an internal node represent, what does a leaf represent, and why must a correct sort have a \emph{distinct} leaf for each of the $n!$ input orderings?
+  \item[(b)] Use the fact that a binary tree with $L$ leaves has height at least $\lceil\log_2 L\rceil$ to show that every comparison sort makes $\Omega(n\log n)$ comparisons in the worst case. Then state why $\log_2(n!)=\Theta(n\log n)$.
+  \item[(c)] Radix sort is $\Theta(d(n+k))$ and makes no whole-key comparisons. Explain precisely which assumption of the lower-bound model it violates, and why that is not a contradiction. Then give one precondition that makes radix sort inapplicable.
+\end{enumerate}
+Why this matters: a bound is only as strong as its model. This question asks you to state the model, use it, and then say exactly where its edge is --- the exam's favourite place to test understanding.
+
+\section{Numerical}
+
+\textbf{Q3.} Trace the merge step and the merge-sort recurrence on fresh inputs (Sedgewick Sec.~2.2, p.~270; Karumanchi Ch.~10, pp.504--546 PDF) \cite{Sedgewick2011_algorithms,Karumanchi2017_data_structures_algorithms_made_easy}.
+\begin{enumerate}
+  \item[(a)] Merge the sorted runs $[2,6,11]$ and $[1,4,9,10]$ by the two-finger method. Write the output after each comparison, give the total number of comparisons, and name the element(s) drained without a comparison.
+  \item[(b)] Sort $[9,4,7,1,8,3]$ with merge sort. Draw the split tree down to singletons, then show the array after each level of merging on the way back up. Give the final array.
+  \item[(c)] For $n=8$, how many levels does the merge-sort recursion tree have, and what is the total merge work at each level in big-Theta? Use this to evaluate $T(8)$ up to a constant factor.
+\end{enumerate}
+Why this matters: the merge is the one linear pass that makes the $\log$ affordable --- a trace is the only way to see that every element is copied once per level.
+
+\textbf{Q4.} Trace the partition and the quick-sort worst case (Wirth Sec.~2.3.3, p.~57; Sedgewick Sec.~2.3, p.~288) \cite{Wirth2004_algorithms_data_structures,Sedgewick2011_algorithms}.
+\begin{enumerate}
+  \item[(a)] Run the lecture's Lomuto \texttt{partition} on $[8,3,7,4,2,9,5]$ with pivot $5$ (the last element). Write the array after every swap triggered by \texttt{A[j] <= pivot}, then give the final array and the returned index.
+  \item[(b)] Using the same last-element pivot rule, quick sort the sorted array $[2,4,6,8,10]$. Give the number of comparisons performed by \texttt{partition} at each level, the total, and the resulting $\Theta$ class. Explain which structural property of the input causes it.
+  \item[(c)] Suppose the same array is sorted with median-of-three instead. Which element is chosen as the first pivot, and why does the recursion become balanced? You do not need to complete the trace.
+\end{enumerate}
+Why this matters: the worst case is not hypothetical --- sorted input is exactly what a symbol table looks like after tokenizing, so the pivot rule is a correctness-of-performance decision.
+
+\section{Design}
+
+\textbf{Q5.} A min-heap answers ``what is the smallest?'' in $O(1)$; the same structure can answer ``what is the $k$-th largest?'' without sorting everything (Karumanchi Ch.~7, pp.369--408 PDF, Sec.~7.7; Sedgewick Sec.~2.4, p.~308) \cite{Karumanchi2017_data_structures_algorithms_made_easy,Sedgewick2011_algorithms}. The calculator's profiler needs the $k$ slowest identifiers, and $k$ is small.
+\begin{enumerate}
+  \item[(a)] Design \texttt{kthLargest(A, n, k)} using a \emph{min}-heap of at most $k$ elements. Give pseudocode: build the heap from the first $k$ elements, then scan the rest, replacing the root when an element is larger. State the heap operations you use and their costs.
+  \item[(b)] Give the worst-case time and auxiliary-space bounds of your design in terms of $n$ and $k$, and compare with sorting the whole array first. For which $k$ is the heap design clearly better?
+  \item[(c)] Trace your design on $A=[7,1,9,4,2,8]$ with $k=3$: show the heap after the initial build, then the heap after each replacement, and give the final answer. State one reason a max-heap would be the wrong choice here.
+\end{enumerate}
+Why this matters: the heap's value is not only heap sort --- a bounded-size heap turns an $O(n\log n)$ sort into an $O(n\log k)$ selection, which is the same trade Week~12's Dijkstra will use.
+
+\textbf{Q6.} Stability is not decoration: it is what lets one sort do a multi-key sort in passes (Sedgewick Sec.~2.2, p.~270; Sec.~5.1, p.~702) \cite{Sedgewick2011_algorithms}. The registrar holds records \texttt{(name, section, score)} and wants them ordered by \emph{section}, and within a section by \emph{name}.
+\begin{enumerate}
+  \item[(a)] Design a two-pass stable sort: first sort by name, then sort by section. Explain why the second pass must be stable for the final order to be correct, using a small example with two records in the same section.
+  \item[(b)] State the total time bound of the design if each pass is merge sort, and the auxiliary space. Explain why doing the passes in the opposite order (section first, then name) produces the wrong answer.
+  \item[(c)] The registrar's sections are small integers $1..20$ and names are fixed-length 10-character strings. Explain how LSD radix sort would implement the same two-key order in one integrated pass sequence, and give its time bound in terms of $d$, $n$, and $k$. Why is stability still essential?
+\end{enumerate}
+Why this matters: the ``sort by the least significant key first'' rule is the same argument as LSD radix sort --- this question connects the two and prices the stability both depend on.
+
+\bibliography{../../Bibliography_base}
+\bibliographystyle{plain}
+\end{document}
