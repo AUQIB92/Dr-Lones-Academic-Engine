@@ -1,0 +1,106 @@
+% =============================================================================
+% Assignments/CS301/10-file-organization-hashing-assignment.tex
+% Assignment 10 (Week 10): File Organization & Hashing
+%
+% Student set - NO answers. Solution key:
+% 10-file-organization-hashing-solutions.tex (gitignored via **/*-solutions.tex,
+% never deployed). Sourced from Slides/CS301/10-file-organization-hashing.tex
+% and Notes/CS301/10-file-organization-hashing-notes.tex.
+%
+% Fresh instances throughout - no problem re-asks a deck/notes worked example
+% verbatim. Instances avoided: division keys 34,18,50,32 (m=16 vs 11);
+% multiplication k=12345,m=100; mid-square 4321; folding 202503117;
+% cat/act polynomial; four-functions table 54,26,93,17,77,31 (m=11,13);
+% chaining 22,12,15,8,29,19,5,26 (m=7); linear probing
+% 54,26,93,17,77,31,44,55,20 (m=11); quadratic key 20; double hashing k=55
+% (m=11); load factor 5000 in 8192/4096; predict 19,28,37,46 (m=11).
+% This set uses: Q1 division keys 20,44,68,92 (m=8 vs 13); Q3 linear probing
+% 18,44,78,26,59,31,40,7 (m=13); Q4 double hashing 27,53,14,66,40 (m=13,
+% h2 = 1 + k mod 11); Q2/Q5/Q6 use 4000/5000 load factors and a 10,000-record
+% file, none of which appear in the deck.
+%
+% Compile with (Windows/MiKTeX, ';'-joined TEXINPUTS/BIBINPUTS):
+%   cd Assignments/CS301 &&
+%   TEXINPUTS="../../Preambles;" xelatex -interaction=nonstopmode 10-file-organization-hashing-assignment.tex
+%   BIBINPUTS="../../;" bibtex 10-file-organization-hashing-assignment
+%   TEXINPUTS="../../Preambles;" xelatex ... (x2)
+% =============================================================================
+
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\input{../../Preambles/header}
+\coursecode{CS301}
+\renewcommand{\thesection}{10.\arabic{section}}
+
+% Emergency stretch so long \texttt{} tokens in prose do not spill the margin.
+\setlength{\emergencystretch}{2.5em}
+
+\title{Assignment 10 (Week 10): File Organization \& Hashing}
+\author{Auqib Hamid Lone\\[0.3em]
+  \emph{Department of Computer Science \& Engineering}, \emph{GCET Ganderbal}}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\noindent\textbf{Due:} two weeks from issue. There is no automatic late penalty --- if you need more time, ask before the deadline and an extension will be granted (see the course policy in the syllabus).
+
+\noindent Answer every question. Show all working for Numerical and Design questions. Each problem states its own assumptions; everything you need is in Week~10's Notes chapter alone. Notation matches the lecture exactly: keys are integers unless stated otherwise, $h(k)$ is the hash function, $m$ is the number of slots, $n$ the number of stored entries, and $\alpha = n/m$ is the \key{load factor}. A probe count includes the first slot examined. For every bound, name the operation, give the bound, and state the case (Week~2 shape) --- hashing has an \emph{expected} cost and a \emph{worst} cost, and they are not the same claim.
+
+\section{Conceptual}
+
+\textbf{Q1.} A hash function is judged on determinism, uniformity, whole-key use, and avalanche (Wirth Sec.~5.2, p.~177; Sedgewick Sec.~3.4, p.~458) \cite{Wirth2004_algorithms_data_structures,Sedgewick2011_algorithms}.
+\begin{enumerate}
+  \item[(a)] State all four properties in your own words, and say which one the probe-cost formulas actually depend on. What happens to the formulas when that property fails --- is the mathematics wrong, or is an assumption wrong?
+  \item[(b)] The division method needs a prime $m$. Compute $20, 44, 68, 92$ modulo $8$ and modulo $13$. Explain the mod-$8$ outcome structurally (what property of these four numbers causes it), and say how many of the eight slots are reachable.
+  \item[(c)] The multiplication method allows any $m$, including a power of two. Explain why the fractional-part construction removes the factor-sharing problem that afflicts the division method, and state the one thing the multiplication method still depends on for good behaviour.
+\end{enumerate}
+Why this matters: ``the hash function is good'' is a claim about four testable properties, not a feeling. Part (b) is the smallest possible demonstration that a bad $m$ silently deletes most of your table.
+
+\textbf{Q2.} The two collision families, and the single number that predicts their cost (Sedgewick Sec.~3.4, p.~458; Wirth Sec.~5.3, p.~178) \cite{Sedgewick2011_algorithms,Wirth2004_algorithms_data_structures}.
+\begin{enumerate}
+  \item[(a)] Define \key{open hashing} and \key{closed} hashing, giving the alternative name for each. Which one permits $\alpha \ge 1$, and why can the other not? State the memory each family spends per entry that the other avoids.
+  \item[(b)] A table holds $4{,}000$ keys in $5{,}000$ slots. Compute $\alpha$. Using the lecture's formulas, give the expected probes for a successful and an unsuccessful search under separate chaining, and say whether open addressing could hold the same load with a clean margin.
+  \item[(c)] Why can a record not simply be deleted by blanking its slot in an open-addressed table? Name the three slot states that repair this, say how search and insert treat the new one differently, and state when the table must be rehashed.
+\end{enumerate}
+Why this matters: the names are inverted relative to intuition, and the load factor is the only design parameter that appears in every formula. Getting either wrong makes the cost analysis meaningless.
+
+\section{Numerical}
+
+\textbf{Q3.} Linear probing on a fresh table (Wirth Sec.~5.3, p.~178; Sedgewick Sec.~3.4, p.~458) \cite{Wirth2004_algorithms_data_structures,Sedgewick2011_algorithms}. Use $m = 13$ slots, $h(k) = k \bmod 13$, and insert at the first free slot.
+\begin{enumerate}
+  \item[(a)] Insert $18, 44, 78, 26, 59, 31, 40, 7$ in that order. For each key give $h(k)$, the slots probed, and the number of probes; then draw the final table.
+  \item[(b)] Give the total number of probes for the eight insertions, compute $\alpha$, and give the average number of probes per \emph{successful} search over the eight stored keys.
+  \item[(c)] Identify the two runs (clusters) in the final table, give each run's length, and explain why the key $31$ paid four probes while $78$ paid one --- neither key's hash value is "wrong".
+\end{enumerate}
+Why this matters: linear probing's cost is created by the probe sequence, not by the hash function. Only a trace shows the difference between the two.
+
+\textbf{Q4.} Double hashing with a deliberately shared start (Wirth Sec.~5.3, p.~178; Sedgewick Sec.~3.4, p.~458) \cite{Wirth2004_algorithms_data_structures,Sedgewick2011_algorithms}. Use $m = 13$, $h_1(k) = k \bmod 13$, $h_2(k) = 1 + (k \bmod 11)$, and probe $p_i(k) = (h_1(k) + i\,h_2(k)) \bmod 13$.
+\begin{enumerate}
+  \item[(a)] Insert $27, 53, 14, 66, 40$ in that order. For each key give $h_1$, $h_2$, the full probe sequence until the landing slot, and the number of probes; then draw the final table.
+  \item[(b)] All five keys share the same $h_1$. Explain why they nevertheless do not form one long cluster, and what would have happened to them under linear probing with the same $h_1$.
+  \item[(c)] One of the five keys has $h_2(k) = 1$. Identify it, say what its probe sequence degenerates to, and explain why $h_2$ must never be allowed to return $0$ or a value sharing a factor with $m$.
+\end{enumerate}
+Why this matters: double hashing is worth its second hash function only when the stride genuinely depends on the key. Part (c) shows the failure mode in a single row of the trace.
+
+\section{Design}
+
+\textbf{Q5.} The calculator's identifier table has outgrown its fixed array and must be rebuilt as a chained hash table in C (Sedgewick Sec.~3.1, p.~362; Karumanchi Ch.~14, pp.610--639 PDF) \cite{Sedgewick2011_algorithms,Karumanchi2017_data_structures_algorithms_made_easy}. The table starts empty and grows to about $10{,}000$ identifiers; deletions do not occur, but the identifier count is unknown at compile time.
+\begin{enumerate}
+  \item[(a)] Give the C data structures (\texttt{struct} for the node, the table array, the load-factor bookkeeping) and pseudocode for \texttt{put} and \texttt{get}. State the invariant your \texttt{put} maintains on re-insertion of an existing key.
+  \item[(b)] Choose a target load factor, derive the initial slot count for the expected $10{,}000$ identifiers, and give the resizing rule. State the expected probes at your chosen $\alpha$ from the lecture's formula, and the worst-case cost of one \texttt{get}.
+  \item[(c)] Justify choosing chaining over open addressing for this workload in two sentences, naming the two properties of the workload that decide it. Then name one workload change that would flip the decision.
+\end{enumerate}
+Why this matters: the exam asks for a data structure, not a hash function. The load-factor policy is the part students omit and the part that decides whether the published cost is honest.
+
+\textbf{Q6.} A hospital keeps $10{,}000$ patient records. It needs (i) lookup by patient ID, (ii) a monthly report printed in ascending patient-ID order, and (iii) roughly $20$ new records inserted per day (Horowitz \& Sahni Ch.~8, chapter-level; standard treatment) \cite{HorowitzSahni2008_fundamentals_data_structures}.
+\begin{enumerate}
+  \item[(a)] Choose one of the four file organizations from the lecture (sequential, direct, indexed sequential, hashed) and justify the choice against each of the other three, naming the operation each rejected alternative would make expensive.
+  \item[(b)] For your chosen organization, state the cost of lookup, of the monthly ordered report, and of one insertion, in block transfers, and say what maintenance operation it requires and when.
+  \item[(c)] The hospital now also wants statistics over ranges of patient IDs (for example, all patients with IDs in $[40{,}000, 45{,}000]$). Re-evaluate your answer: does the choice change, and if so, to what? Then state the one requirement that would make a hash table the correct answer and say what it would cost.
+\end{enumerate}
+Why this matters: an organization is a promise about which operations are cheap. Part (c) is the exam's standard twist --- one new requirement invalidates the choice, and the reasoning must name which promise broke.
+
+\bibliography{../../Bibliography_base}
+\bibliographystyle{plain}
+\end{document}

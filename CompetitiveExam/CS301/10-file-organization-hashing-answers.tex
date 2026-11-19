@@ -1,0 +1,155 @@
+% =============================================================================
+% CompetitiveExam/CS301/10-file-organization-hashing-answers.tex
+% Answer key for 10-file-organization-hashing-questions.tex.
+%
+% Provenance of the real PYQs (both Tier 1: the local GATEOverflow compilation
+% CompetitiveExam/Books/GATE-PYQs/filter1_volume2.pdf, hashing chapter 3.8):
+%   Q1  GATE CSE 1996 Question 1.13 - PDF p.228, text layer complete.
+%   Q2  GATE CSE 1990 Question 13b  - PDF p.228, text layer complete.
+% Neither book key is printed in the volume, so both answers were derived
+% independently below. Q3-Q10 are original; every number was produced by a
+% Python simulation of the stated probe sequence before the question was
+% written, and re-derived by hand here.
+%
+% Re-derivation log (2026-11-19):
+%   Q1  chaining unlinks in O(1) given the node; open addressing needs
+%       tombstones that lengthen later searches -> (C). Worst-case search is
+%       Theta(n) in both, so (A) false. Chaining uses MORE space, (B) false.
+%   Q2  insert scans the chain for a duplicate first -> Theta(n) worst case;
+%       instance: every key hashes to one bucket.
+%   Q3  alpha = 1500/2000 = 0.75; 1 + 0.75/2 = 1.375 -> 1.38. PASS
+%   Q4  open = chaining, closed = open addressing; chaining permits alpha>=1
+%       -> (C). PASS
+%   Q5  10, 17, 24, 31 all have residue 3 mod 7 -> slots 3,4,5,6 ->
+%       1+2+3+4 = 10 probes. PASS (Python trace agrees)
+%   Q6  30 mod 11 = 8; 8+1=9, 8+4=12=1, 8+9=17=6 -> 8,9,1,6 -> (C). PASS
+%   Q7  all five keys are 6 mod 13; h2 = 7,9,11,2,4; 58 lands in slot 10
+%       after 2 probes. PASS (Python trace: table 2:19, 4:32, 6:6, 8:45,
+%       10:58)
+%   Q8  a blanked slot stops the probe walk early -> live keys reported
+%       absent; the tombstone keeps the chain -> (B). PASS
+%   Q9  keys are multiples of 2^d, so the low d bits are zero and only the
+%       p-d remaining bits vary -> 2^{p-d} slots -> (B). PASS
+%   Q10 order + lookup + insertion -> indexed sequential -> (C). PASS
+%
+% Compile with (Windows/MiKTeX, ';'-joined TEXINPUTS):
+%   cd CompetitiveExam/CS301 &&
+%   TEXINPUTS="../../Preambles;" xelatex -interaction=nonstopmode 10-file-organization-hashing-answers.tex
+% =============================================================================
+
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\input{../../Preambles/header}
+\coursecode{CS301}
+\renewcommand{\thesection}{10.\arabic{section}}
+\setlength{\emergencystretch}{2.5em}
+
+\title{Competitive Exam Practice 10: File Organization \& Hashing\\\large Answer Key}
+\author{Auqib Hamid Lone\\[0.3em]
+  \emph{Department of Computer Science \& Engineering}, \emph{GCET Ganderbal}}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\noindent Answers with full working. MCQ option letters refer to the student question paper.
+
+\section*{Q1 --- Answer (C)}
+
+Deletion is the operation that separates the two families. In a chained table the entry is a node in a list: given the key (or the node), unlinking it is a constant number of pointer assignments, and nothing else in the table is disturbed. In an open-addressed table the entry \emph{is} a slot, and a search stops at the first empty slot, so simply blanking the slot severs every probe chain that passed through it and makes live records unreachable. The repair --- a tombstone --- is extra state, extra bookkeeping, and a slower table as tombstones accumulate.
+
+The other options are traps. Worst-case search (A) is $\Theta(n)$ in \emph{both} families (one chain, or one long probe run), so chaining is not better there. Chaining uses more space (B), not less: $m$ slot pointers plus a link, an allocation header, and a copied key per entry, where open addressing stores the key inline. (D) is false because deletion is exactly the differentiator.
+
+\section*{Q2 --- Answer}
+
+\textbf{(a)} $\Theta(n)$ worst case per insertion, for $n$ elements already stored. The reason is the duplicate check: before inserting, the implementation walks the target chain to see whether the key is already present, and a chain can hold every stored key. \muted{If the specification says insertion may blindly push a new node without checking for duplicates, the cost is $\Theta(1)$; say which contract you are analysing. The GATE question expects the duplicate-checking answer.}
+
+\textbf{(b)} The worst instance is the one in which \emph{every key hashes to the same bucket}: all $n$ entries form one chain, which is a linked list in disguise, and the insert becomes a linear scan. This is not hypothetical --- a constant hash, a modulus with a common factor to the keys, or a deliberate adversary all produce it, which is why the lecture pairs ``$\Theta(1)$ expected'' with ``$\Theta(n)$ worst case'' and why hash-flooding is a real denial-of-service attack.
+
+\section*{Q3 --- Answer: $1.38$}
+
+\[
+  \alpha = \frac{n}{m} = \frac{1{,}500}{2{,}000} = 0.75,
+  \qquad
+  1 + \frac{\alpha}{2} = 1 + 0.375 = 1.375 \approx 1.38 .
+\]
+The unsuccessful cost would be $\alpha = 0.75$ probes. Both are linear in $\alpha$: chaining degrades gracefully and never fills.
+
+\section*{Q4 --- Answer (C)}
+
+The names are historically inverted, and the exam tests exactly that. \key{Open hashing} is \key{separate chaining} --- the address space stays open because entries live outside the table, in lists, so a chain may hold many entries and $\alpha \ge 1$ is legal. \key{Closed hashing} is \key{open addressing} --- entries live closed inside the array, one per slot, so the table is full at $n = m$ and $\alpha < 1$ is required. (A) and (B) swap the names; (D) is false because chaining has no upper bound on $\alpha$.
+
+\section*{Q5 --- Answer: $10$}
+
+All four keys share the residue $3$ modulo $7$: $10 = 7+3$, $17 = 14+3$, $24 = 21+3$, $31 = 28+3$. So the four insertions walk one run.
+
+\begin{center}
+{\small
+\begin{tabular}{rcccc}
+  \toprule
+  key & $h(k)$ & slots probed & probes & lands at \\
+  \midrule
+  $10$ & $3$ & $3$ & $1$ & $3$ \\
+  $17$ & $3$ & $3,4$ & $2$ & $4$ \\
+  $24$ & $3$ & $3,4,5$ & $3$ & $5$ \\
+  $31$ & $3$ & $3,4,5,6$ & $4$ & $6$ \\
+  \bottomrule
+\end{tabular}}
+\end{center}
+
+Total $1+2+3+4 = 10$ probes; final table $3{:}10$, $4{:}17$, $5{:}24$, $6{:}31$, slots $0,1,2$ empty and $\alpha = 4/7 \approx 0.57$. This is primary clustering in its purest form: the hash function is perfect in the sense of being uniform on these keys, and the probe sequence still turns four insertions into ten probes.
+
+\section*{Q6 --- Answer (C)}
+
+$h(30) = 30 \bmod 11 = 8$, so $p_0 = 8$. Then
+\[
+  p_1 = (8 + 1^2) \bmod 11 = 9,\qquad
+  p_2 = (8 + 2^2) \bmod 11 = 12 \bmod 11 = 1,
+\]
+\[
+  p_3 = (8 + 3^2) \bmod 11 = 17 \bmod 11 = 6 .
+\]
+The sequence is $8, 9, 1, 6$.
+
+The traps are informative. (A) is the linear-probing sequence, which is what a student writes when the $i^2$ is forgotten. (B) adds the \emph{square} of the hash start rather than of the step, or forgets to reduce $12$ modulo $11$ before adding again. (D) subtracts the squares instead of adding. Note also that quadratic probing visits only about half the slots, which is why safe implementations keep $m$ prime and the table at most half full.
+
+\section*{Q7 --- Answer: slot $10$}
+
+Every key is congruent to $6$ modulo $13$ ($6, 19 = 13+6, 32 = 26+6, 45 = 39+6, 58 = 52+6$), so all five share the start $h_1 = 6$; the strides separate them.
+
+\begin{center}
+{\small
+\begin{tabular}{rcccc}
+  \toprule
+  key & $h_1$ & $h_2 = 1 + (k \bmod 11)$ & probe sequence & probes \\
+  \midrule
+  $6$  & $6$ & $7$  & $6$ & $1$ \\
+  $19$ & $6$ & $9$  & $6 \to 2$ & $2$ \\
+  $32$ & $6$ & $11$ & $6 \to 4$ & $2$ \\
+  $45$ & $6$ & $2$  & $6 \to 8$ & $2$ \\
+  $58$ & $6$ & $4$  & $6 \to 10$ & $2$ \\
+  \bottomrule
+\end{tabular}}
+\end{center}
+
+The check on each stride: $19 \bmod 11 = 8$ so $h_2 = 9$ and $(6+9) \bmod 13 = 2$; $32 \bmod 11 = 10$ so $h_2 = 11$ and $(6+11) \bmod 13 = 4$; $45 \bmod 11 = 1$ so $h_2 = 2$ and $8$; $58 \bmod 11 = 3$ so $h_2 = 4$ and $(6+4) \bmod 13 = 10$. All five keys take $9$ probes in total, against $1+2+3+4+5 = 15$ under linear probing with the same starts --- the second hash function is what buys that.
+
+\section*{Q8 --- Answer (B)}
+
+A search in open addressing stops at the first \emph{empty} slot; that is how a miss is recognised. If a deleted record were removed by blanking its slot, every key that had been displaced past that slot during probing would become unreachable: the search would hit the new empty slot and report absent for a record that is still in the table. A \key{tombstone} is a third state that a search walks \emph{over} and an insertion may \emph{reuse}, so the probe chain survives the deletion.
+
+(A) is false (a tombstone occupies the slot exactly as the record did, and cannot be used for new insertions until reused), (C) is false (the hash function is untouched by deletion policy), and (D) is false (tombstones \emph{raise} the effective load, which is why the table is rehashed when live entries plus tombstones cross the ceiling).
+
+\section*{Q9 --- Answer (B)}
+
+Write the key as $k = q\cdot 2^d$. Its low $d$ bits are all zero, so $k \bmod 2^p$ ignores them and depends only on the remaining $p-d$ bits of $q$; there are $2^{p-d}$ distinct values those bits can take. Equivalently, $k \bmod 2^p = 2^d \cdot (q \bmod 2^{p-d})$, so every reachable slot index is a multiple of $2^d$ --- exactly $2^{p-d}$ of them. Choosing a prime $m$ avoids the collapse entirely, because a prime shares no factor with the keys.
+
+\section*{Q10 --- Answer (C)}
+
+Three requirements, three costs, and only one organization pays for all three. Lookup by account number rules out plain sequential only in the sense that sequential gives $O(\log b)$ block reads by binary search over blocks --- acceptable, but insertion is not: a new account must open a gap, rewriting on average half the file, $O(n)$ block traffic, and there are frequent insertions. Direct organization gives $O(1)$ lookup only if the key space is dense; account numbers are typically sparse, so the file would be as large as the number range and mostly empty. Hashed organization would make lookup and insertion cheap but destroys order, so the monthly sorted report would need a full read plus an external sort.
+
+Indexed sequential keeps the data in key order (the report is one sequential pass, free) and adds a sparse index of one entry per block (lookup is $O(\log b)$ index reads plus one block read), while insertions land in an overflow area at $O(1)$ and are folded back by periodic reorganization. It is the only option that does not make one of the three requirements expensive.
+
+\bibliography{../../Bibliography_base}
+\bibliographystyle{plain}
+\end{document}

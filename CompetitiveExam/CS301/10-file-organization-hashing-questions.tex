@@ -1,0 +1,120 @@
+% =============================================================================
+% CompetitiveExam/CS301/10-file-organization-hashing-questions.tex
+% Competitive Exam Practice 10 - GATE (Computer Science) Pattern
+% File organization and hashing: access schemes, hash-function design,
+% separate chaining, open addressing (linear/quadratic/double), tombstones,
+% load factor, and probe-cost analysis.
+%
+% Student-facing - NO answers. Answer key: 10-file-organization-hashing-answers.tex.
+%
+% Provenance (Tier 1 where possible: local GATEOverflow compilation
+% CompetitiveExam/Books/GATE-PYQs/filter1_volume2.pdf, whose hashing chapter
+% 3.8 spans PDF pp.228-231):
+%   - Q1 [GATE CSE 1996 | Question: 1.13, verified - GATEOverflow V2 p.228].
+%     Question text is fully present in the PDF's text layer; answer derived
+%     independently (Deletion is easier). Answer (C).
+%   - Q2 [GATE CSE 1990 | Question: 13b, verified - GATEOverflow V2 p.228].
+%     Descriptive; text fully present. Worst-case insertion Theta(n), worst
+%     instance = all keys hashing to one bucket.
+%   - Q3-Q10 [Original, GATE-pattern]. The remaining hashing PYQs in the local
+%     volume (3.8.4 GATE 2004 Q7, 3.8.5 GATE 2007 Q40, 3.8.6 GATE 2009 Q36,
+%     3.8.7/8 GATE 2010 Q52/Q53, 3.8.9 GATE 2014 S1 Q40, 3.8.11-12 GATE 2015,
+%     1.20.x GATE 1989/2021/2023/2026/IT-2005) carry their numeric data in
+%     IMAGES, which this PDF's text layer does not expose and no OCR is
+%     available for in this environment. They were therefore NOT reproduced:
+%     guessing the missing numbers would fabricate a question. Original items
+%     below cover the same topics with fully computed data instead.
+%
+% Every numeric answer in this set was computed mechanically (Python trace of
+% the specified probe sequences) before the question was written; the log is
+% in the answers file.
+%
+% Compile with (Windows/MiKTeX, ';'-joined TEXINPUTS):
+%   cd CompetitiveExam/CS301 &&
+%   TEXINPUTS="../../Preambles;" xelatex -interaction=nonstopmode 10-file-organization-hashing-questions.tex (3 passes)
+% =============================================================================
+
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\input{../../Preambles/header}
+\coursecode{CS301}
+\renewcommand{\thesection}{10.\arabic{section}}
+\setlength{\emergencystretch}{2.5em}
+
+\title{Competitive Exam Practice 10: File Organization \& Hashing\\\large GATE (Computer Science) Pattern}
+\author{Auqib Hamid Lone\\[0.3em]
+  \emph{Department of Computer Science \& Engineering}, \emph{GCET Ganderbal}}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\noindent Each question carries 1--2 marks. MCQ = single correct option; NAT = Numerical Answer Type. Unless a question says otherwise: slots are numbered from $0$, the hash function is applied first and probing second, and a probe count includes the slot in which the key is finally placed. $\alpha = n/m$ is the load factor.
+
+\begin{enumerate}
+
+\item[\textbf{Q1}] \textit{[GATE CSE 1996, Question 1.13 --- verified, GATEOverflow V2 p.228]} \textbf{[MCQ, 1 mark]} An advantage of a chained hash table (external hashing) over the open addressing scheme is
+\begin{enumerate}
+  \item[(A)] worst-case complexity of search operations is less
+  \item[(B)] space used is less
+  \item[(C)] deletion is easier
+  \item[(D)] none of the above
+\end{enumerate}
+
+\item[\textbf{Q2}] \textit{[GATE CSE 1990, Question 13b --- verified, GATEOverflow V2 p.228]} \textbf{[Short answer, 2 marks]} Consider a hash table with a chaining scheme for overflow handling.
+\begin{enumerate}
+  \item[(a)] What is the worst-case time complexity of inserting $n$ elements into such a table, stated per insertion?
+  \item[(b)] For what type of instance does this scheme take the worst-case time for insertion? State the instance in terms of the hash function and the keys.
+\end{enumerate}
+
+\item[\textbf{Q3}] \textit{[Original, GATE-pattern]} \textbf{[NAT, 1 mark]} A chained hash table has $m = 2{,}000$ slots and stores $n = 1{,}500$ keys. Under simple uniform hashing, the expected number of probes for a \emph{successful} search is $1 + \alpha/2$. Give that value to two decimal places.
+
+\item[\textbf{Q4}] \textit{[Original, GATE-pattern]} \textbf{[MCQ, 1 mark]} Which statement about the two collision-resolution families is TRUE?
+\begin{enumerate}
+  \item[(A)] Open hashing uses open addressing, and requires $\alpha < 1$.
+  \item[(B)] Closed hashing uses separate chaining, and permits $\alpha \ge 1$.
+  \item[(C)] Open hashing uses separate chaining, and permits $\alpha \ge 1$.
+  \item[(D)] Both families require $\alpha < 1$, but closed hashing has the lower constant factor.
+\end{enumerate}
+
+\item[\textbf{Q5}] \textit{[Original, GATE-pattern]} \textbf{[NAT, 2 marks]} A hash table has $m = 7$ slots, initially empty, with $h(k) = k \bmod 7$ and \emph{linear probing}. The keys $10, 17, 24, 31$ are inserted in that order. What is the total number of probes performed by the four insertions?
+
+\item[\textbf{Q6}] \textit{[Original, GATE-pattern]} \textbf{[MCQ, 1 mark]} A table has $m = 11$ slots with $h(k) = k \bmod 11$, and collisions are resolved by \emph{quadratic probing} with $p_i(k) = (h(k) + i^2) \bmod 11$. Which sequence gives the first four slots probed for the key $30$?
+\begin{enumerate}
+  \item[(A)] $8, 9, 10, 0$
+  \item[(B)] $8, 9, 2, 6$
+  \item[(C)] $8, 9, 1, 6$
+  \item[(D)] $8, 7, 4, 10$
+\end{enumerate}
+
+\item[\textbf{Q7}] \textit{[Original, GATE-pattern]} \textbf{[NAT, 2 marks]} A table has $m = 13$ slots, with $h_1(k) = k \bmod 13$ and $h_2(k) = 1 + (k \bmod 11)$, and \emph{double hashing} probes $p_i(k) = (h_1(k) + i\,h_2(k)) \bmod 13$. The keys $6, 19, 32, 45, 58$ are inserted in that order into an empty table. In which slot does the key $58$ end up?
+
+\item[\textbf{Q8}] \textit{[Original, GATE-pattern]} \textbf{[MCQ, 1 mark]} In an open-addressed table, a record is deleted by setting its slot to a \emph{tombstone} (a third state) rather than to empty. The reason is that
+\begin{enumerate}
+  \item[(A)] an empty slot wastes more space than a tombstone
+  \item[(B)] a search must be able to walk past the slot without stopping, or it would report live records as absent
+  \item[(C)] tombstones make the hash function uniform
+  \item[(D)] a tombstone reduces the load factor
+\end{enumerate}
+
+\item[\textbf{Q9}] \textit{[Original, GATE-pattern]} \textbf{[MCQ, 1 mark]} A table uses $h(k) = k \bmod 2^p$, and every key in the workload is a multiple of $2^d$ with $d < p$. How many of the $2^p$ slots can those keys ever occupy?
+\begin{enumerate}
+  \item[(A)] $2^p$
+  \item[(B)] $2^{p-d}$
+  \item[(C)] $2^{d}$
+  \item[(D)] $2^{p}/d$
+\end{enumerate}
+
+\item[\textbf{Q10}] \textit{[Original, GATE-pattern]} \textbf{[MCQ, 1 mark]} An accounts file must support (i) lookup by account number, (ii) a monthly report printed in ascending account-number order, and (iii) frequent insertions of new accounts. Which organization should be chosen?
+\begin{enumerate}
+  \item[(A)] sequential, because the report is the most expensive operation
+  \item[(B)] direct (relative), because lookup becomes $O(1)$
+  \item[(C)] indexed sequential, because it pays nothing extra for lookup and for ordered output
+  \item[(D)] hashed, because lookup is the most frequent single operation
+\end{enumerate}
+
+\end{enumerate}
+
+\bibliography{../../Bibliography_base}
+\bibliographystyle{plain}
+\end{document}

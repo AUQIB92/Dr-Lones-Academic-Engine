@@ -1,6 +1,6 @@
 course: CS301
 lab_mode: coding-assignment   # P1-P13 C programming practicals map to weeks -> /coding-assignment
-last_updated: 2026-11-18
+last_updated: 2026-11-19
 weeks:
   "00":
     deck: "00-course-motivation-overview"
@@ -98,11 +98,12 @@ weeks:
   "10":
     deck: "10-file-organization-hashing"
     stages:
-      slides:     { status: absent, score: null, note: "" }
-      notes:      { status: absent, score: null, note: "" }
-      assignment: { status: absent, score: null, note: "" }
-      lab:        { status: absent, score: null, note: "instructor-supplied (hash-table construction/collision handling)" }
-      gate:       { status: absent, score: null, note: "" }
+      slides:     { status: deployed, score: 100, note: "57 pp, 46 frames; 3-pass XeLaTeX clean, 0 overfull/errors/undefined; quality_score 100/100. Overlap audit fixed 7 TikZ defects (chains drawn one row low, probe-start on wrong slot, label-on-box crossings) and 3 wrong worked numbers (multiplication h=62, act->106->402, mid-square table). Published to docs/slides/CS301/." }
+      notes:      { status: deployed, score: null, note: "18 pp; 7 topic sections, 8 TikZ ported with the same overlap fixes, 12 worked examples, Exercises + Solutions, citations 1:1; 0 overfull/errors. Published to docs/notes/CS301/." }
+      assignment: { status: deployed, score: null, note: "Assignment 10; 6 problems (2C/2N/2D, fresh instances: keys 20/44/68/92 mod 8 vs 13; linear probing 18,44,78,26,59,31,40,7 at m=13 -> 16 probes, avg 2.0; double hashing 27,53,14,66,40 at m=13 -> 9 probes); solutions key present (gitignored, 4 pp); every trace re-derived in Python. Student set published to docs/assignments/CS301/ (solutions excluded)." }
+      lab:        { status: deployed, score: null, note: "coding-assignment (hash-table construction + collision handling): hash_str + separate chaining + open addressing with tombstones (12 functions). Visible 74 assertions PASS; hidden 16,285 checks PASS; ASan+UBSan clean under WSL gcc 13.3; measured probes at alpha=0.75: 1.445 successful vs 1.375 predicted, 0.765 failed vs 0.75. Write-up published to docs/assignments/CS301/." }
+      gate:       { status: deployed, score: null, note: "10Q (2 Tier-1 PYQ from local GATEOverflow V2: GATE CSE 1996 Q1.13 p.228 and GATE CSE 1990 Q13b p.228 + 8 original GATE-pattern); remaining local hashing PYQs have image-collapsed data and were not reproduced; every numeric answer re-derived mechanically; questions+answers PDFs clean. Published to docs/competitive-exam/CS301/." }
+      hub:        { status: deployed, score: null, note: "docs/courses/cs301/index.html regenerated: 10/12 published, ribbon 83%; tag-balance 81/81 divs, 26/26 rows; 0 broken links." }
       quarto:     { status: absent, score: null, note: "" }
   "11":
     deck: "11-trees-bst-avl"
