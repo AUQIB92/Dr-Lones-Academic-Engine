@@ -1,0 +1,126 @@
+% =============================================================================
+% Assignments/CS301/11-trees-bst-avl-assignment.tex
+% Assignment 11 (Week 11): Trees, Binary Search Trees & AVL
+%
+% Student set — NO answers. Solution key:
+% 11-trees-bst-avl-solutions.tex (gitignored via **/*-solutions.tex, never
+% deployed). Sourced from Slides/CS301/11-trees-bst-avl.tex (60 pp) and the
+% Week 11 topic list in syllabi/CS301.md.
+%
+% Fresh instances throughout — no problem re-asks a deck example. The deck's
+% trees (50,30,70,20,40,60,80; 8,3,10,1,6,14,4,7,13) and its AVL sequences
+% (30,20,10,25,28 and 10,20,30) are not reused. This set uses:
+%   T = insert 40,20,60,10,30,50,70,25,35
+%   AVL = insert 30,20,40,10,25,22,35,45
+%   symbol table = 2,000 calculator identifiers with rank/range
+%   tree sort = duplicates, stability, worst case.
+%
+% Compile with (macOS/Linux): cd Assignments/CS301 &&
+%   TEXINPUTS=../../Preambles:$TEXINPUTS xelatex -interaction=nonstopmode 11-trees-bst-avl-assignment.tex
+%   BIBINPUTS=../..:$BIBINPUTS bibtex 11-trees-bst-avl-assignment
+%   TEXINPUTS=../../Preambles:$TEXINPUTS xelatex -interaction=nonstopmode 11-trees-bst-avl-assignment.tex (x2)
+% =============================================================================
+
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\input{../../Preambles/header}
+\coursecode{CS301}
+\renewcommand{\thesection}{11.\arabic{section}}
+\setlength{\emergencystretch}{6em}
+
+\title{Assignment 11 (Week 11): Trees, Binary Search Trees \& AVL}
+\author{Auqib Hamid Lone\\[0.3em]
+  \emph{Department of Computer Science \& Engineering}, \emph{GCET Ganderbal}}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\noindent\textbf{Due:} two weeks from issue. There is no automatic late penalty --- if you need more time, ask before the deadline and an extension will be granted (see the course policy in the syllabus).
+
+\noindent Answer every question. Show all working for Numerical and Design questions. Each problem states its own assumptions; everything you need is in Week~11's lecture alone. Notation matches the lecture exactly: a \key{tree} has one \key{root} and no cycles; a \key{leaf} has no children; \key{depth} counts edges down from the root and \key{height} counts edges up from a leaf (a leaf has height $0$, the empty tree $-1$); a \key{binary search tree} (BST) satisfies, at \emph{every} node, left subtree $<$ node $<$ right subtree; the \key{balance factor} of a node is $\mathrm{height}(\text{left})-\mathrm{height}(\text{right})$, and an \key{AVL tree} keeps every factor in $\{-1,0,+1\}$. The \key{successor} of a node is the smallest key in its right subtree. Whenever a problem asks for a structure choice, name the workload property that decides it and give the cost that the property turns on.
+
+\section{Conceptual}
+
+\textbf{Q1.} The vocabulary is the argument (Wirth Sec.~4.4, pp.~126--131; Horowitz \& Sahni Ch.~5) \cite{Wirth2004_algorithms_data_structures,HorowitzSahni2008_fundamentals_data_structures}.
+\begin{enumerate}
+  \item[(a)] Insert
+  \[
+    40,\ 20,\ 60,\ 10,\ 30,\ 50,\ 70,\ 25,\ 35
+  \]
+  in that order into an empty BST. Draw the tree. Give its root, its leaves, the depth of every node, and the height of the tree. State the height convention you are using.
+  \item[(b)] For the same tree, give the inorder, preorder, postorder and level-order outputs. For each traversal, name one task it is the right tool for. Which output is sorted, and why is that a property of BSTs rather than of binary trees in general?
+  \item[(c)] Explain in one paragraph why the height, not the number of keys, controls the cost of search, insert and delete. Then compare a balanced tree of $1{,}000{,}000$ keys with a chain of the same keys: give the height of each (or a tight bound) and the number of comparisons a successful search needs in the worst case.
+  \item[(d)] Define \key{full}, \key{complete} and \key{perfect}. Is the tree from part (a) full? Complete? Perfect? Justify each answer with the definition, not with a picture alone.
+\end{enumerate}
+Why this matters: every later tree question is phrased in this vocabulary, and the height is the number that decides whether the answer is ``fast'' or ``a linked list with extra pointers''.
+
+\textbf{Q2.} The BST rule, the ordered operations, and the repair (Sedgewick Sec.~3.2, p.~396; Wirth Sec.~4.5, pp.~142--149) \cite{Sedgewick2011_algorithms,Wirth2004_algorithms_data_structures}.
+\begin{enumerate}
+  \item[(a)] State the BST invariant precisely. Then draw a binary tree in which every parent--child pair is correctly ordered, but the tree is \emph{not} a BST because one key violates the rule against an ancestor. Explain which ancestor is violated and why checking only parent--child pairs is insufficient.
+  \item[(b)] A hash table gives expected $O(1)$ point lookup. Name the four ordered operations it cannot answer directly, and explain the structural reason (what has been thrown away). Price the workaround on a hashed file of $n$ keys in $m$ buckets: what does ``report every key in $[a,b]$'' cost, and why can the scan not stop early after passing $b$?
+  \item[(c)] Define the balance factor and the AVL property. Explain why a rotation preserves the BST rule and the inorder sequence, and why that preservation is what makes the repair legal. List the four unbalanced cases (LL, RR, LR, RL) and the rotation sequence for each.
+  \item[(d)] Explain how a plain BST can degrade to $O(n)$ even though its search loop is the same as binary search. Then state exactly what an AVL tree guarantees that a plain BST does not, and give the height bound in terms of $n$.
+\end{enumerate}
+Why this matters: the exam tests the difference between a binary tree and a BST, and between a BST and a balanced BST; each is a one-line distinction that changes the cost.
+
+\section{Numerical}
+
+\textbf{Q3.} Traversals, deletion, and the cost of a shape (Wirth Sec.~4.4.2--4.4.4, pp.~132--139) \cite{Wirth2004_algorithms_data_structures}.
+Use the tree $T$ built by inserting
+\[
+  40,\ 20,\ 60,\ 10,\ 30,\ 50,\ 70,\ 25,\ 35
+\]
+in that order into an empty BST.
+\begin{enumerate}
+  \item[(a)] Draw $T$. Give the inorder, preorder, postorder and level-order outputs, and the height of $T$.
+  \item[(b)] Give the size, the number of leaves, and the number of \texttt{NULL} child slots of $T$. Give $\min(T)$ and $\max(T)$, and trace a search for $35$: list every comparison and the number of comparisons.
+  \item[(c)] Delete $20$ from $T$. State the successor used, show the tree after the deletion, and give its inorder. Then, from the \emph{original} $T$, delete $40$ instead: state the successor, show the tree, and give its inorder.
+  \item[(d)] Insert $45$ into the original $T$. Give the search path, the parent of the new node, the new height, and the new inorder. Does the insertion change the shape of any existing subtree? Explain in one sentence.
+\end{enumerate}
+Why this matters: deletion is the operation students most often get half right; the successor rule is the whole answer, and a trace exposes whether the three cases are actually understood.
+
+\textbf{Q4.} AVL insertion and the height recurrence (Wirth Sec.~4.5, pp.~142--149; Karumanchi Ch.~6, pp.~224--368 PDF) \cite{Wirth2004_algorithms_data_structures,Karumanchi2017_data_structures_algorithms_made_easy}.
+Insert
+\[
+  30,\ 20,\ 40,\ 10,\ 25,\ 22,\ 35,\ 45
+\]
+in that order into an initially empty AVL tree, repairing after every insertion.
+\begin{enumerate}
+  \item[(a)] After the first six keys, one node is unbalanced. Identify it, give its balance factor, name the case (LL/RR/LR/RL), and give the rotation sequence. Draw the tree after the repair.
+  \item[(b)] Insert $35$ next: a second rotation is triggered. Identify the unbalanced node, give the case and rotation, and draw the tree. Then insert $45$ and give the final tree, the balance factor of every node, and the height.
+  \item[(c)] Let $N(h)$ be the minimum number of nodes in an AVL tree of height $h$. Give $N(0)$ through $N(5)$, state the recurrence, and use it to find the maximum height of an AVL tree with $20$ nodes. Show the comparison that decides the answer.
+  \item[(d)] Explain why LR and RL need two rotations while LL and RR need one. In your answer, say what the first rotation turns the bad case into.
+\end{enumerate}
+Why this matters: the four rotation cases are examined as pictures and as traces; the recurrence is the only proof that the height stays logarithmic.
+
+\section{Design}
+
+\textbf{Q5.} Design an ordered symbol table for the calculator (Wirth Sec.~4.4.3, p.~135; Sedgewick Sec.~3.2, p.~396) \cite{Wirth2004_algorithms_data_structures,Sedgewick2011_algorithms}. The calculator has $2{,}000$ identifiers. The table must support:
+\begin{itemize}
+  \item[(i)] \texttt{insert(name, value)}, \texttt{lookup(name)}, \texttt{delete(name)};
+  \item[(ii)] \texttt{list()}: every identifier in alphabetical order;
+  \item[(iii)] \texttt{range(a, b)}: every identifier with \texttt{a} $\le$ name $\le$ \texttt{b};
+  \item[(iv)] \texttt{min()}, \texttt{max()}, and \texttt{next(name)} (the successor);
+  \item[(v)] \texttt{rank(name)}: the number of identifiers strictly smaller than \texttt{name}, and \texttt{select(i)}: the $i$-th smallest identifier.
+\end{itemize}
+\begin{enumerate}
+  \item[(a)] Choose the structure: a hash table, a sorted array, a plain BST, or an augmented AVL tree. Justify the choice against each alternative on \emph{this} workload, naming the operation that rules each alternative out.
+  \item[(b)] Give the node layout for your choice. It must support \texttt{rank} and \texttt{select}; state every field and what it stores. Give pseudocode for \texttt{rank} and \texttt{select}, and state their costs.
+  \item[(c)] State the cost of every operation in (i)--(v), including the range query in terms of the number $k$ of identifiers reported. Explain how \texttt{size} fields are maintained on insert, delete, and each rotation.
+  \item[(d)] The tokenizer can also \emph{rename} an identifier. Explain why a rename is a delete followed by an insert, not an in-place key change, and give the cost. State when you would rebuild the whole table instead.
+\end{enumerate}
+Why this matters: this is the first structure in the course that answers ``how many are smaller than $x$?'' in logarithmic time; the extra field is a small change with a large payoff, and it is the design pattern behind order-statistic trees.
+
+\textbf{Q6.} Design a tree sort (P8) and defend it against the sorts from Week~9 (Wirth Sec.~4.4.3, p.~135; Sedgewick Sec.~3.2, p.~396) \cite{Wirth2004_algorithms_data_structures,Sedgewick2011_algorithms}. You are given an array of $n$ integers with duplicates.
+\begin{enumerate}
+  \item[(a)] Give pseudocode for \texttt{tree\_sort(A)} that builds a BST, copies an inorder walk into the output, and frees the tree. State the duplicate policy and why it preserves all keys.
+  \item[(b)] Give the best-, average-, and worst-case time of your design, the extra space, and whether it is stable. Explain the worst case with a concrete input order, and say what a student who inserts the input as given will observe.
+  \item[(c)] Replace the plain BST with an AVL tree. Give the new worst-case time and the extra space, and explain which operation pays for the balancing. Does the AVL version become stable? Why or why not?
+  \item[(d)] Compare tree sort with merge sort, quicksort and heap sort on: worst-case time, extra space, stability, and cache behaviour. Name one workload where tree sort is the right choice and one where it is the wrong choice, and justify each with a cost, not a slogan.
+\end{enumerate}
+Why this matters: tree sort is the bridge between the two halves of the course --- it uses the search tree as a sorting machine, and the comparison makes clear that ``$O(n\log n)$'' is a property of the \emph{shape}, not of the word ``tree''.
+
+\bibliography{../../Bibliography_base}
+\bibliographystyle{plain}
+\end{document}

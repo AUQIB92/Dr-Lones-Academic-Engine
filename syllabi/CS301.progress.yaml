@@ -1,6 +1,6 @@
 course: CS301
 lab_mode: coding-assignment   # P1-P13 C programming practicals map to weeks -> /coding-assignment
-last_updated: 2026-11-18
+last_updated: 2026-11-25
 weeks:
   "00":
     deck: "00-course-motivation-overview"
@@ -98,20 +98,22 @@ weeks:
   "10":
     deck: "10-file-organization-hashing"
     stages:
-      slides:     { status: absent, score: null, note: "" }
-      notes:      { status: absent, score: null, note: "" }
-      assignment: { status: absent, score: null, note: "" }
-      lab:        { status: absent, score: null, note: "instructor-supplied (hash-table construction/collision handling)" }
-      gate:       { status: absent, score: null, note: "" }
+      slides:     { status: deployed, score: 100, note: "54 pp; 3-pass XeLaTeX clean, 0 errors/overfull/undefined; 6 TikZ (direct file, hash map, chaining, linear probing, tombstones, probe comparison); quality_score 100/100; published to docs/slides/CS301/" }
+      notes:      { status: deployed, score: null, note: "derived Notes, 18 pp; 6 TikZ reused verbatim; 9 exercises + full Solutions; 5 citations; 0 overfull; published to docs/notes/CS301/" }
+      assignment: { status: deployed, score: null, note: "Assignment 10; 6 problems (2C/2N/2D, fresh instances); solutions key present (gitignored); every probe/chain/offset re-derived in Python; published to docs/assignments/CS301/ (solutions excluded)" }
+      lab:        { status: deployed, score: null, note: "coding-assignment (separate chaining + linear-probing tables with tombstones); gcc -Werror clean; visible 71/71 + hidden 118/118 PASS; ASan/UBSan clean, 0 leaks; autograder PASS; 20k-key scale; write-up published" }
+      gate:       { status: deployed, score: null, note: "10Q (6 CoVe-verified PYQ: GATE 1996/2004/2014-S1/2007/2020/2023 + 4 original); every answer independently re-derived and Python-checked; published to docs/competitive-exam/CS301/" }
+      hub:        { status: deployed, score: null, note: "docs/courses/cs301/index.html regenerated: 10/12 published; tag-balance + link-resolution PASS" }
       quarto:     { status: absent, score: null, note: "" }
   "11":
     deck: "11-trees-bst-avl"
     stages:
-      slides:     { status: absent, score: null, note: "" }
-      notes:      { status: absent, score: null, note: "" }
-      assignment: { status: absent, score: null, note: "" }
-      lab:        { status: absent, score: null, note: "P8 (sort via BST), P12 (BST and traversals)" }
-      gate:       { status: absent, score: null, note: "" }
+      slides:     { status: deployed, score: 100, note: "60 pp; 3-pass XeLaTeX clean, 0 overfull/undefined; 15 TikZ (anatomy, shapes, traversal tree, expression, BST validity, search path, two-child delete, chain vs balanced, balance factors, rotation, LL/RR, LR, RL, final AVL); plain-language examples; quality_score 100/100; published to docs/slides/CS301/" }
+      notes:      { status: deployed, score: 100, note: "derived Notes, 16 pp; 15 TikZ reused verbatim; 11 worked examples + 5 exercises with full Solutions + 3 quick checks; 4 citations; 0 overfull; quality_score 100/100; published to docs/notes/CS301/" }
+      assignment: { status: deployed, score: null, note: "Assignment 11; 6 problems (2C/2N/2D, fresh instances); solutions key present (gitignored); every traversal, deletion, AVL rotation and N(h) re-derived in Python; published to docs/assignments/CS301/ (solutions excluded)" }
+      lab:        { status: deployed, score: null, note: "coding-assignment P8+P12 (BST multiset, four traversals, delete/remove_all, tree_sort, range); gcc -std=c11 -Werror clean; visible 56/56 + hidden 10,064/10,064 PASS; ASan/UBSan clean, 0 leaks; autograder PASS; write-up published" }
+      gate:       { status: deployed, score: null, note: "10Q (4 verified PYQ: GATE 2009 Q37, 2020 Q6, 2017-S1, 2015-S1 + 6 original); every answer independently re-derived; published to docs/competitive-exam/CS301/" }
+      hub:        { status: deployed, score: null, note: "docs/courses/cs301/index.html regenerated: 11/12 published; tag-balance + link-resolution PASS" }
       quarto:     { status: absent, score: null, note: "" }
   "12":
     deck: "12-graphs-traversal-mst-shortest-path"

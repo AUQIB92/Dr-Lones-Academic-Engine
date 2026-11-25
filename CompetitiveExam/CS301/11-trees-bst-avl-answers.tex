@@ -1,0 +1,46 @@
+% =============================================================================
+% CompetitiveExam/CS301/11-trees-bst-avl-answers.tex
+% Answer key for Competitive Exam Practice 11. GITIGNORED via the
+% CompetitiveExam answer-key rule; never deployed.
+% =============================================================================
+
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\input{../../Preambles/header}
+\coursecode{CS301}
+\renewcommand{\thesection}{11.\arabic{section}}
+\setlength{\emergencystretch}{3em}
+
+\title{Competitive Exam Practice 11 --- Answer Key\\\large Trees, BSTs and AVL}
+\author{Auqib Hamid Lone\\[0.3em]
+  \emph{Department of Computer Science \& Engineering}, \emph{GCET Ganderbal}}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\noindent Each answer gives the correct option/value and the one line that decides it. Heights are in edges; a single node has height $0$.
+
+\begin{enumerate}
+\item[\textbf{Q1}] \textbf{(B) $3$.} The minimum-node AVL recurrence gives $N(2)=4$ and $N(3)=7$, so height $3$ is possible with $7$ nodes; $N(4)=12>7$, so height $4$ is impossible.
+
+\item[\textbf{Q2}] \textbf{(C) $\Theta(n^{2}\log n)$.} There are $n^{2}$ insertions; after the first few the tree has $\Theta(n^{2})$ nodes, so each insert costs $O(\log(n^{2}))=O(\log n)$, and $n^{2}\cdot O(\log n)=\Theta(n^{2}\log n)$.
+
+\item[\textbf{Q3}] \textbf{(B) $3$ and $14$.} A complete BST on $15$ nodes has height $\lfloor\log_{2}15\rfloor=3$; a chain on $15$ nodes has $14$ edges.
+
+\item[\textbf{Q4}] \textbf{(A) $63$ and $6$.} A height-$5$ tree has levels $0,\dots,5$; the maximum is $2^{6}-1=63$, and the minimum is a chain of $6$ nodes (one per level).
+
+\item[\textbf{Q5}] \textbf{(A) $D,E,B,F,G,C,A$.} Preorder gives root $A$; inorder splits into left $D,B,E$ and right $F,C,G$. Recursing on each side gives postorder $D,E,B$ and $F,G,C$, then the root $A$.
+
+\item[\textbf{Q6}] \textbf{(A) $20,40,50,60,70,80$.} Deleting $30$ (two children) uses its successor $40$; $40$ replaces $30$ and the old $40$ leaf is removed. The tree is $50$ with left $40(20)$ and right $70(60,80)$.
+
+\item[\textbf{Q7}] \textbf{(C) two rotations; root $20$.} The path from $40$ is left ($10$) then right ($20$), an LR case: left-rotate $10$ around $20$, then right-rotate $40$ around $20$.
+
+\item[\textbf{Q8}] $\mathrm{bf}(30)=-1$, $\mathrm{bf}(40)=-1$, height $=3$, and \textbf{yes, it is AVL}. Node $30$ has left height $0$ and right height $1$; node $40$ has left height $-1$ (empty) and right height $0$; the longest path is $50\to30\to40\to35$ ($3$ edges), and every balance factor lies in $\{-1,0,+1\}$.
+
+\item[\textbf{Q9}] $N(4)=12$. The recurrence is $N(h)=N(h-1)+N(h-2)+1$ with $N(0)=1$, $N(1)=2$, giving $N(2)=4$, $N(3)=7$, $N(4)=12$.
+
+\item[\textbf{Q10}] \textbf{(A) $13$; postorder.} The tree is $-$ at the root, with left $*$ over $(4+6)$ and $2$, and right $7$: $(4+6)\times2-7=13$. A postorder walk prints left, right, node, which is exactly postfix.
+\end{enumerate}
+
+\end{document}

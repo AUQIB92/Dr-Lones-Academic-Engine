@@ -1,0 +1,1323 @@
+% CS301 Week 11 -- Trees: terminology; binary trees and their properties;
+% tree traversals; expression trees; binary search trees (search, insert,
+% delete, min/max); AVL trees and rotations; Unit-III review.
+% Difficulty: intro (course-wide default per knowledge-base-CS301.md).
+% Written in plain language with small hand-traced examples.
+% Page-grounded in Wirth2004 Sec.4.4 (Tree Structures, p.126), Sec.4.4.2
+% (Basic Operations, p.132), Sec.4.4.3 (Tree Search and Insertion, p.135),
+% Sec.4.4.4 (Tree Deletion, p.139), Sec.4.5 (Balanced Trees, p.142);
+% Sedgewick2011 Sec.3.2 (Binary Search Trees, p.396), Sec.3.3 (Balanced
+% Search Trees, p.424, for the balancing motivation; its balanced tree is
+% red-black, not AVL); Karumanchi2017 Ch.6 (Trees, pp.224-368 PDF).
+% Horowitz & Sahni Ch.5 and Aho-Hopcroft-Ullman Ch.3, 5 are cited at chapter
+% level only (not indexed) -- no page numbers are asserted for them.
+% Handoff: Week 10 closed on "hashing finds a key in one probe but cannot
+% answer the next key or all keys between a and b. Week 11 builds trees --
+% binary trees, BSTs and AVL rotations -- that keep order and logarithmic
+% search." This deck pays that off with the calculator's symbol table: the
+% same 2,000 identifiers, now printable in sorted order and searchable in
+% O(log n) even while inserts continue.
+% Sets up Week 12 (graphs): a tree is a graph with no cycles and one root.
+
+\documentclass[aspectratio=169]{beamer}
+\input{header}
+\coursecode{CS301}
+
+% Shared tree-drawing styles. Explicit sizes keep the P7 clearance audit easy:
+% every node has a declared minimum size, and each diagram has a coordinate map.
+\tikzset{
+  tnode/.style   = {circle, draw=primary-blue, fill=light-bg,
+                    minimum size=0.80cm, inner sep=0pt, font=\small},
+  tnodeg/.style  = {circle, draw=primary-gold, line width=1.1pt,
+                    fill=highlight-yellow!25, minimum size=0.80cm,
+                    inner sep=0pt, font=\small},
+  tnodesm/.style = {circle, draw=primary-blue, fill=light-bg,
+                    minimum size=0.55cm, inner sep=0pt, font=\scriptsize},
+  tnodesmg/.style= {circle, draw=primary-gold, line width=1pt,
+                    fill=highlight-yellow!25, minimum size=0.55cm,
+                    inner sep=0pt, font=\scriptsize},
+  tedge/.style   = {draw=neutral, thick}
+}
+
+\title{Keeping Order}
+\subtitle{Week 11 --- Trees, Binary Search Trees \& AVL}
+\author[Dr. Auqib Hamid Lone]{\textbf{Dr. Auqib Hamid Lone}}
+\institute[GCET Ganderbal]{PCC CS-301: Data Structures\\GCET, Ganderbal}
+\date[Week 11]{\small Week 11}
+
+\begin{document}
+
+\frame{\titlepage}
+
+% =============================================================================
+% ACT 0 --- MOTIVATION + HANDOFF
+% =============================================================================
+\section{Motivation and the Handoff}
+
+\begin{frame}{Today's Five Questions}
+  \begin{enumerate}
+    \item What is a tree, in words a first-year student can draw?
+    \item What are the four standard ways to visit every node, and what is
+      each one for?
+    \item How does a binary search tree keep keys ordered while they are
+      still being inserted and deleted?
+    \item Why can a plain BST slow down to a linked list --- and what does an
+      AVL tree do about it?
+    \item When is a tree the right choice, and when is a hash table still
+      better?
+  \end{enumerate}
+  \vspace{0.15cm}
+  \begin{exampleblock}{Plan}
+    Learn the vocabulary on one small tree. Walk it four ways. Turn an
+    expression into a tree. Then add one ordering rule to get a BST, and one
+    balancing rule to keep it fast.
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}{Handoff: What Week 10 Left Open}
+  \begin{itemize}
+    \item Week 10 found a record in about one probe with a hash table.
+      It closed with a promise: hashing cannot answer ``the next key'' or
+      ``all keys between $a$ and $b$''; Week 11 builds trees that keep
+      \emph{order} and \emph{logarithmic} search.
+    \item The bill Week 10 left unpaid:
+      \begin{itemize}
+        \item a sorted array searches in $O(\log n)$ but inserts in $O(n)$;
+        \item a hash table inserts in $O(1)$ expected but keeps no order;
+        \item a linked list keeps insertion order but searches in $O(n)$.
+      \end{itemize}
+    \item New words today: \key{root}, \key{leaf}, \key{height},
+      \key{traversal}, \key{binary search tree (BST)}, and
+      \key{balance factor}.
+  \end{itemize}
+  \begin{exampleblock}{This week's job}
+    Build a shape that keeps keys sorted \emph{and} keeps search short while
+    the data changes. A tree gives us both --- if we keep its height small.
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}{What We Want From a Dictionary}
+  \begin{center}
+  {\footnotesize
+  \begin{tabular}{l c c c}
+    \toprule
+    \textbf{structure} & \textbf{search} & \textbf{insert} & \textbf{ordered?} \\
+    \midrule
+    sorted array (Weeks 8--9) & $O(\log n)$ & $O(n)$ & yes \\
+    hash table (Week 10)      & $O(1)$ expected & $O(1)$ expected & no \\
+    linked list (Week 6)      & $O(n)$ & $O(1)$ at head & no \\
+    \midrule
+    balanced BST (this week)  & $O(\log n)$ & $O(\log n)$ & yes \\
+    \bottomrule
+  \end{tabular}}
+  \end{center}
+  \begin{itemize}
+    \item We want the last row: fast search, fast insert, and order.
+    \item A tree is the first structure in this course that can give all
+      three at once. The price is that we must keep its \emph{shape} under
+      control.
+  \end{itemize}
+  \muted{Running application (Weeks 3--11): the calculator's symbol table.
+    Week 10 could find an identifier fast but could not print the identifiers
+    in alphabetical order. This week's tree can do both.}
+\end{frame}
+
+\transitionslide{A list is a line. A tree is a shape.}
+
+% =============================================================================
+% ACT 1 --- TREE VOCABULARY
+% =============================================================================
+\section{Tree Vocabulary}
+
+\sectiondivider{Section 1}{Nodes, Edges, Depth, Height}
+
+\begin{frame}{One Picture, Seven Words}
+  \begin{center}
+    % Coordinate map: root (0,3); depth-1 nodes (+-1.7,1.8);
+    % depth-2 leaves (+-2.5 or +-0.9, 0.6). Node size 0.8 cm.
+    \begin{tikzpicture}[every node/.style={font=\small}]
+      \node[tnode] (n50) at (0,3)   {50};
+      \node[tnode] (n30) at (-1.7,1.8) {30};
+      \node[tnode] (n70) at (1.7,1.8)  {70};
+      \node[tnode] (n20) at (-2.5,0.6) {20};
+      \node[tnode] (n40) at (-0.9,0.6) {40};
+      \node[tnode] (n60) at (0.9,0.6)  {60};
+      \node[tnode] (n80) at (2.5,0.6)  {80};
+      \draw[tedge] (n50) -- (n30);
+      \draw[tedge] (n50) -- (n70);
+      \draw[tedge] (n30) -- (n20);
+      \draw[tedge] (n30) -- (n40);
+      \draw[tedge] (n70) -- (n60);
+      \draw[tedge] (n70) -- (n80);
+      \foreach \y/\t in {3/0, 1.8/1, 0.6/2}
+        \node[text=neutral, anchor=east, font=\scriptsize] at (-3.7,\y)
+          {depth \t};
+    \end{tikzpicture}
+  \end{center}
+  \vspace{-0.1cm}
+  \footnotesize
+  \begin{itemize}
+    \item \key{Root}: 50 --- the top node, with no parent.
+    \item \key{Leaf}: 20, 40, 60, 80 --- nodes with no children.
+    \item \key{Parent} of 20 is 30; \key{child} of 30 is 20;
+      \key{siblings} are 20 and 40.
+    \item A \key{subtree} is any node plus everything below it: 30, 20, 40
+      is the left subtree of 50.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Depth and Height Are Counted in Edges}
+  \vspace{-0.15cm}
+  \begin{itemize}
+    \item \key{Depth} of a node = number of edges from the root down to it.
+      The root has depth $0$.
+    \item \key{Height} of a node = number of edges on the longest path from
+      it down to a leaf. A leaf has height $0$.
+    \item \key{Height of the tree} = height of its root.
+  \end{itemize}
+  \begin{center}
+  {\footnotesize
+  \begin{tabular}{l c c}
+    \toprule
+    \textbf{node} & \textbf{depth} & \textbf{height} \\
+    \midrule
+    50 & 0 & 2 \\
+    30 & 1 & 1 \\
+    70 & 1 & 1 \\
+    20, 40, 60, 80 & 2 & 0 \\
+    \bottomrule
+  \end{tabular}}
+  \end{center}
+  \begin{exampleblock}{Convention used in this course}
+    A single node has height $0$; the empty tree has height $-1$. State the
+    convention when you write it down --- books differ, and an exam answer
+    must say which one it uses.
+  \end{exampleblock}
+  \muted{Tree definitions follow \cite[pp.~126--131]
+    {Wirth2004_algorithms_data_structures}.}
+\end{frame}
+
+\begin{frame}{A Binary Tree Has at Most Two Children}
+  \begin{block}{Definition --- binary tree}
+    A \key{binary tree} is a tree in which every node has at most two
+    children, called its \key{left child} and \key{right child}.
+  \end{block}
+  \begin{itemize}
+    \item The two sides are \emph{not} interchangeable. Swapping a left and
+      right child changes the tree, even when the drawing looks similar.
+    \item Our seven-node tree is a binary tree. A node may have $0$, $1$ or
+      $2$ children --- never three.
+    \item In C:
+      \texttt{struct node \{ int data; struct node *left, *right; \};}
+  \end{itemize}
+  \muted{The pointer picture is the Week 6 linked-list node with two links
+    instead of one: \texttt{left} and \texttt{right}.}
+\end{frame}
+
+\begin{frame}{Three Shapes Worth Naming}
+  \begin{center}
+    % Left panel: perfect tree (7 nodes, height 2). Right panel: the same
+    % tree missing node 7, which is complete but not perfect.
+    \begin{tikzpicture}[every node/.style={font=\scriptsize}]
+      \foreach \x/\y/\v in {1/2/4, 0.4/1/2, 1.6/1/6,
+                            0.1/0/1, 0.7/0/3, 1.3/0/5, 1.9/0/7}
+        \node[tnodesm] at (\x,\y) {\v};
+      \draw[tedge] (1,2) -- (0.4,1);
+      \draw[tedge] (1,2) -- (1.6,1);
+      \draw[tedge] (0.4,1) -- (0.1,0);
+      \draw[tedge] (0.4,1) -- (0.7,0);
+      \draw[tedge] (1.6,1) -- (1.3,0);
+      \draw[tedge] (1.6,1) -- (1.9,0);
+      \node[text=neutral, font=\tiny] at (1,-0.75)
+        {perfect: 7 nodes, leaves at depth 2};
+
+      \foreach \x/\y/\v in {5.5/2/4, 4.9/1/2, 6.1/1/6,
+                            4.6/0/1, 5.2/0/3, 5.8/0/5}
+        \node[tnodesm] at (\x,\y) {\v};
+      \draw[tedge] (5.5,2) -- (4.9,1);
+      \draw[tedge] (5.5,2) -- (6.1,1);
+      \draw[tedge] (4.9,1) -- (4.6,0);
+      \draw[tedge] (4.9,1) -- (5.2,0);
+      \draw[tedge] (6.1,1) -- (5.8,0);
+      \node[text=neutral, font=\tiny] at (5.5,-0.75)
+        {complete: last level fills left to right};
+    \end{tikzpicture}
+  \end{center}
+  \vspace{-0.2cm}
+  \footnotesize
+  \begin{itemize}
+    \item \key{Full}: every node has $0$ or $2$ children. The seven-node
+      tree above is full.
+    \item \key{Complete}: every level is full except the last, and the last
+      level is filled left to right.
+    \item \key{Perfect}: full and all leaves are at the same depth. The
+      left-hand tree is perfect.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Counting Nodes: Four Useful Facts}
+  \begin{itemize}
+    \item Level $d$ holds at most $2^d$ nodes (root is level $0$):
+      $1, 2, 4, 8, \dots$
+    \item A tree of height $h$ holds at most
+      $1 + 2 + 4 + \cdots + 2^h = 2^{h+1} - 1$ nodes.
+    \item Turn that around: a tree with $n$ nodes has height at least
+      $\lfloor \log_2 n \rfloor$. A perfect tree with $n$ nodes has height
+      exactly $\log_2(n+1) - 1$.
+    \item In any binary tree with $n$ nodes there are exactly $n+1$ empty
+      child slots (\texttt{NULL} pointers). A full binary tree with $L$
+      leaves has $L-1$ internal nodes.
+  \end{itemize}
+  \begin{exampleblock}{Why the logarithm appears}
+    Each level can double the number of nodes, so height grows like
+    $\log_2 n$. A tree with $1{,}023$ nodes can be only $9$ edges tall.
+    That is the whole reason trees can search quickly --- if we keep them
+    short.
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}{Same Keys, Different Shape, Different Speed}
+  \begin{center}
+  {\footnotesize
+  \begin{tabular}{l c c}
+    \toprule
+    \textbf{shape of the tree} & \textbf{height} & \textbf{comparisons to find 50} \\
+    \midrule
+    a chain (inserted in sorted order) & 4 & 5 \\
+    a balanced shape & 2 & 3 \\
+    \bottomrule
+  \end{tabular}}
+  \end{center}
+  \begin{itemize}
+    \item The keys are the same $\{10,20,30,40,50\}$. Only the shape changed.
+    \item Search cost is the number of nodes on the root-to-target path,
+      which is at most height $+1$.
+    \item So the real question for this week is not ``what is a tree?'' but
+      \key{how do we keep the tree short?}
+  \end{itemize}
+\end{frame}
+
+\transitionslide{Every node can be visited in more than one order.}
+
+% =============================================================================
+% ACT 2 --- TRAVERSALS
+% =============================================================================
+\section{Tree Traversals}
+
+\sectiondivider{Section 2}{Four Ways to Visit Every Node}
+
+\begin{frame}{The Tree We Will Walk}
+  \begin{center}
+    \begin{tikzpicture}[every node/.style={font=\small}]
+      \node[tnode] (n50) at (0,2.8)   {50};
+      \node[tnode] (n30) at (-1.7,1.7) {30};
+      \node[tnode] (n70) at (1.7,1.7)  {70};
+      \node[tnode] (n20) at (-2.5,0.6) {20};
+      \node[tnode] (n40) at (-0.9,0.6) {40};
+      \node[tnode] (n60) at (0.9,0.6)  {60};
+      \node[tnode] (n80) at (2.5,0.6)  {80};
+      \draw[tedge] (n50) -- (n30);
+      \draw[tedge] (n50) -- (n70);
+      \draw[tedge] (n30) -- (n20);
+      \draw[tedge] (n30) -- (n40);
+      \draw[tedge] (n70) -- (n60);
+      \draw[tedge] (n70) -- (n80);
+    \end{tikzpicture}
+  \end{center}
+  \begin{itemize}
+    \item A \key{traversal} visits every node exactly once and prints its
+      key in some order.
+    \item The order is not arbitrary: it is chosen by \emph{when} we print
+      the node relative to its two subtrees.
+  \end{itemize}
+  \muted{All four traversals cost $O(n)$ time: each node is handled once.
+    They differ only in the order of the output. Definitions follow
+    \cite[pp.~132--135]{Wirth2004_algorithms_data_structures} and
+    \cite[pp.~396--423]{Sedgewick2011_algorithms}.}
+\end{frame}
+
+\begin{frame}{Inorder: Left, Node, Right}
+  \begin{block}{Rule}
+    Traverse the left subtree, then print the node, then traverse the right
+    subtree.
+  \end{block}
+  \begin{itemize}
+    \item Start at 50: go left to 30, go left to 20. 20 has no left child,
+      so print \textbf{20}; no right child, return.
+    \item Back at 30: print \textbf{30}; go right to 40: print \textbf{40}.
+    \item Back at 50: print \textbf{50}; then the same walk on the right
+      subtree gives \textbf{60, 70, 80}.
+  \end{itemize}
+  \begin{exampleblock}{Output}
+    $20,\ 30,\ 40,\ 50,\ 60,\ 70,\ 80$ --- sorted!
+  \end{exampleblock}
+  \muted{That is not a coincidence. In a BST, inorder visits keys from
+    smallest to largest; we will use this as a check in Section 4.}
+\end{frame}
+
+\begin{frame}{Preorder: Node, Left, Right}
+  \begin{block}{Rule}
+    Print the node first, then traverse the left subtree, then the right
+    subtree.
+  \end{block}
+  \begin{itemize}
+    \item Print \textbf{50}; go left: print \textbf{30}; print \textbf{20};
+      return and print \textbf{40}.
+    \item Return to 50; go right: print \textbf{70}, then \textbf{60}, then
+      \textbf{80}.
+  \end{itemize}
+  \begin{exampleblock}{Output}
+    $50,\ 30,\ 20,\ 40,\ 70,\ 60,\ 80$
+  \end{exampleblock}
+  \begin{itemize}
+    \item Use it to \emph{copy} a tree or write it to a file: the parent is
+      always printed before its children, so the same shape can be rebuilt.
+    \item It is also the prefix form of an expression (Section 3).
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Postorder: Left, Right, Node}
+  \begin{block}{Rule}
+    Traverse both subtrees first, then print the node.
+  \end{block}
+  \begin{itemize}
+    \item Left subtree of 50: visit 20, then 40, then \textbf{30}.
+    \item Right subtree: visit 60, then 80, then \textbf{70}.
+    \item Finally print the root \textbf{50}.
+  \end{itemize}
+  \begin{exampleblock}{Output}
+    $20,\ 40,\ 30,\ 60,\ 80,\ 70,\ 50$
+  \end{exampleblock}
+  \begin{itemize}
+    \item Use it to \emph{free} a tree: children are freed before their
+      parent, so no live pointer is left dangling.
+    \item It is also how an expression tree is evaluated (Section 3).
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Level Order: Top to Bottom, Left to Right}
+  \begin{block}{Rule}
+    Visit the root, then all nodes at depth $1$, then all at depth $2$, and
+    so on; within a level, go left to right.
+  \end{block}
+  \begin{itemize}
+    \item Depth $0$: \textbf{50}. Depth $1$: \textbf{30, 70}.
+      Depth $2$: \textbf{20, 40, 60, 80}.
+    \item This is \emph{not} recursion on the two children. Use the queue
+      from Week 5: enqueue the root; while the queue is non-empty, dequeue a
+      node, print it, and enqueue its children.
+  \end{itemize}
+  \begin{exampleblock}{Output}
+    $50,\ 30,\ 70,\ 20,\ 40,\ 60,\ 80$
+  \end{exampleblock}
+  \muted{Level order is breadth-first search on a tree --- the same idea
+    returns for graphs in Week 12.}
+\end{frame}
+
+\begin{frame}{The Same Tree, Four Orders}
+  \begin{center}
+  {\footnotesize
+  \begin{tabular}{l l}
+    \toprule
+    \textbf{traversal} & \textbf{output for the seven-node tree} \\
+    \midrule
+    inorder   & 20, 30, 40, 50, 60, 70, 80 \\
+    preorder  & 50, 30, 20, 40, 70, 60, 80 \\
+    postorder & 20, 40, 30, 60, 80, 70, 50 \\
+    level order & 50, 30, 70, 20, 40, 60, 80 \\
+    \bottomrule
+  \end{tabular}}
+  \end{center}
+  \begin{itemize}
+    \item Inorder is the only one that reads this particular tree in sorted
+      order --- because this tree happens to be a BST.
+    \item A quick memory hook: \key{in}order puts the node \emph{in} the
+      middle; \key{pre}order puts it before; \key{post}order puts it after.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Traversals in C}
+  \scriptsize
+\begin{verbatim}
+void inorder(struct node *t) {
+    if (t == NULL) return;
+    inorder(t->left);
+    printf("%d ", t->data);
+    inorder(t->right);
+}
+
+void preorder(struct node *t) {
+    if (t == NULL) return;
+    printf("%d ", t->data);
+    preorder(t->left);
+    preorder(t->right);
+}
+
+void postorder(struct node *t) {
+    if (t == NULL) return;
+    postorder(t->left);
+    postorder(t->right);
+    printf("%d ", t->data);
+}
+\end{verbatim}
+  \vspace{-0.15cm}
+  \footnotesize
+  \muted{The three functions differ only in where \texttt{printf} sits;
+    each visits every node once, so each is $O(n)$.}
+\end{frame}
+
+\begin{frame}{Check Yourself: Walk a New Tree}
+  \begin{center}
+    \begin{tikzpicture}[every node/.style={font=\scriptsize}]
+      \node[tnodesm] (a) at (0,2.6) {8};
+      \node[tnodesm] (b) at (-1.4,1.5) {3};
+      \node[tnodesm] (c) at (1.4,1.5) {10};
+      \node[tnodesm] (d) at (-2.1,0.4) {1};
+      \node[tnodesm] (e) at (-0.7,0.4) {6};
+      \node[tnodesm] (f) at (1.4,0.4) {14};
+      \node[tnodesm] (g) at (-1.1,-0.7) {4};
+      \node[tnodesm] (h) at (-0.3,-0.7) {7};
+      \node[tnodesm] (i) at (0.7,0.4) {13};
+      \draw[tedge] (a) -- (b);  \draw[tedge] (a) -- (c);
+      \draw[tedge] (b) -- (d);  \draw[tedge] (b) -- (e);
+      \draw[tedge] (c) -- (f);  \draw[tedge] (e) -- (g);
+      \draw[tedge] (e) -- (h);  \draw[tedge] (f) -- (i);
+    \end{tikzpicture}
+  \end{center}
+  \vspace{-0.25cm}
+  \small
+  \begin{itemize}
+    \item Write the three outputs yourself, then check the answers below.
+    \item Inorder: 1, 3, 4, 6, 7, 8, 10, 13, 14.
+    \item Preorder: 8, 3, 1, 6, 4, 7, 10, 14, 13.
+    \item Postorder: 1, 4, 7, 6, 3, 13, 14, 10, 8.
+  \end{itemize}
+  \muted{If your inorder is not sorted, this tree is not a BST --- check
+    the ordering rule in Section 4.}
+\end{frame}
+
+\transitionslide{An expression is a tree in disguise.}
+
+% =============================================================================
+% ACT 3 --- EXPRESSION TREES
+% =============================================================================
+\section{Expression Trees}
+
+\sectiondivider{Section 3}{From Postfix to a Tree and Back}
+
+\begin{frame}{Building an Expression Tree from Postfix}
+  \begin{itemize}
+    \item Week 4 converted \texttt{(a+b)*c} to postfix \texttt{a b + c *}.
+      Now read that postfix left to right with a stack of \emph{trees}:
+    \item \textbf{Operand} (a number or variable): make a one-node tree and
+      push it.
+    \item \textbf{Operator}: pop the \emph{right} tree, then the \emph{left}
+      tree; make a new node holding the operator, with those two trees as
+      children; push the new tree.
+    \item At the end, the stack holds exactly one tree: the expression.
+  \end{itemize}
+  \begin{exampleblock}{Trace of \texttt{a b + c *}}
+    push \texttt{a}; push \texttt{b}; \texttt{+} pops \texttt{b} (right) and
+    \texttt{a} (left) $\to$ node \texttt{+}. push \texttt{c}; \texttt{*}
+    pops \texttt{c} (right) and \texttt{+} (left) $\to$ root \texttt{*}. \\
+    \good{Pop right before left} --- reversing this swap gives a wrong tree.
+  \end{exampleblock}
+  \muted{Expression trees: \cite[Ch.~6, pp.~224--368 (PDF)]
+    {Karumanchi2017_data_structures_algorithms_made_easy}.}
+\end{frame}
+
+\begin{frame}{The Tree for \texttt{(a+b)*c}}
+  \begin{center}
+    \begin{tikzpicture}[every node/.style={font=\small}]
+      \node[tnode] (star) at (0,2.4) {\texttt{*}};
+      \node[tnode] (plus) at (-1.2,1.2) {\texttt{+}};
+      \node[tnode] (c)    at (1.2,1.2)  {\texttt{c}};
+      \node[tnode] (a)    at (-2.0,0.1) {\texttt{a}};
+      \node[tnode] (b)    at (-0.4,0.1) {\texttt{b}};
+      \draw[tedge] (star) -- (plus);
+      \draw[tedge] (star) -- (c);
+      \draw[tedge] (plus) -- (a);
+      \draw[tedge] (plus) -- (b);
+    \end{tikzpicture}
+  \end{center}
+  \begin{itemize}
+    \item Operators are \emph{internal} nodes; operands are \emph{leaves}.
+    \item The root is the operator applied last. Its left subtree computes
+      \texttt{a+b}; its right subtree is \texttt{c}.
+    \item Read the leaves left to right: \texttt{a b + c *} --- the postfix
+      form comes back for free.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Evaluating the Tree: Postorder}
+  \begin{itemize}
+    \item To evaluate, evaluate the left subtree, evaluate the right
+      subtree, then apply the operator. That is exactly postorder.
+    \item Trace with $a=2$, $b=3$, $c=4$:
+      \begin{itemize}
+        \item leaf \texttt{a} $\to 2$; leaf \texttt{b} $\to 3$;
+        \item node \texttt{+} $\to 2+3=5$;
+        \item leaf \texttt{c} $\to 4$;
+        \item root \texttt{*} $\to 5\times 4=20$.
+      \end{itemize}
+  \end{itemize}
+  \begin{exampleblock}{Output}
+    $20$ --- and no parentheses were needed anywhere in the tree.
+  \end{exampleblock}
+  \muted{The tree stores the grouping that parentheses would otherwise have
+    to spell out. That is why compilers build trees.}
+\end{frame}
+
+\begin{frame}{Inorder Gives Infix Back --- With a Warning}
+  \begin{itemize}
+    \item Inorder on the same tree prints
+      $\texttt{a} + \texttt{b} \times \texttt{c}$.
+    \item That is \emph{not} the original expression! Without parentheses,
+      the usual precedence rule reads it as \texttt{a + (b*c)}.
+    \item To recover the meaning, put parentheses around every operator's
+      result as you return:
+      $(\texttt{a}+\texttt{b})$, then $((\texttt{a}+\texttt{b})\times
+      \texttt{c})$.
+    \item The three walks match the three notations from Week 4:
+  \end{itemize}
+  \begin{center}
+  {\footnotesize
+  \begin{tabular}{l l}
+    \toprule
+    \textbf{walk} & \textbf{notation} \\
+    \midrule
+    inorder   & infix (parentheses needed) \\
+    preorder  & prefix \\
+    postorder & postfix (and evaluation order) \\
+    \bottomrule
+  \end{tabular}}
+  \end{center}
+\end{frame}
+
+\transitionslide{Now add one rule that makes search fast.}
+
+% =============================================================================
+% ACT 4 --- BINARY SEARCH TREES
+% =============================================================================
+\section{Binary Search Trees}
+
+\sectiondivider{Section 4}{The BST Rule: Left Is Smaller}
+
+\begin{frame}{The BST Rule}
+  \begin{block}{Definition --- binary search tree}
+    For \emph{every} node $x$: every key in the left subtree of $x$ is
+    smaller than $x$'s key, and every key in the right subtree is larger.
+  \end{block}
+  \begin{itemize}
+    \item The rule must hold at \emph{every} node, not just between a parent
+      and its immediate child.
+    \item This is what makes search possible: at each node, one comparison
+      throws away an entire subtree.
+    \item Duplicates: pick a policy and state it. Simplest is to reject a
+      duplicate; another is to keep a count in the node.
+  \end{itemize}
+  \muted{A binary tree plus this one rule $=$ a BST. The shape alone does not
+    make a BST. Search and insertion: \cite[pp.~135--139]
+    {Wirth2004_algorithms_data_structures}; \cite[pp.~396--423]
+    {Sedgewick2011_algorithms}; chapter-level treatment in
+    \cite[Ch.~5]{HorowitzSahni2008_fundamentals_data_structures}.}
+\end{frame}
+
+\begin{frame}{Is This a BST?}
+  \begin{center}
+    % Left: valid. Right: node 6 sits in the left subtree of 5 but is > 5.
+    \begin{tikzpicture}[every node/.style={font=\scriptsize}]
+      \node[tnodesm] (a) at (0,2.2) {5};
+      \node[tnodesm] (b) at (-0.9,1.2) {3};
+      \node[tnodesm] (c) at (0.9,1.2) {8};
+      \node[tnodesm] (d) at (-1.4,0.2) {1};
+      \node[tnodesm] (e) at (-0.4,0.2) {4};
+      \node[tnodesm] (f) at (0.4,0.2) {7};
+      \node[tnodesm] (g) at (1.4,0.2) {9};
+      \draw[tedge] (a)--(b); \draw[tedge] (a)--(c);
+      \draw[tedge] (b)--(d); \draw[tedge] (b)--(e);
+      \draw[tedge] (c)--(f); \draw[tedge] (c)--(g);
+      \node[text=positive, font=\scriptsize] at (0,-0.55) {\good{yes}};
+
+      \node[tnodesm] (A) at (4.5,2.2) {5};
+      \node[tnodesm] (B) at (3.6,1.2) {3};
+      \node[tnodesm] (C) at (5.4,1.2) {8};
+      \node[tnodesm] (D) at (3.1,0.2) {1};
+      \node[tnodesmg] (E) at (4.1,0.2) {6};
+      \node[tnodesm] (F) at (4.9,0.2) {7};
+      \node[tnodesm] (G) at (5.9,0.2) {9};
+      \draw[tedge] (A)--(B); \draw[tedge] (A)--(C);
+      \draw[tedge] (B)--(D); \draw[tedge] (B)--(E);
+      \draw[tedge] (C)--(F); \draw[tedge] (C)--(G);
+      \node[text=negative, font=\scriptsize] at (4.5,-0.55)
+        {\bad{no: 6 $>$ 5 but lies left of 5}};
+    \end{tikzpicture}
+  \end{center}
+  \vspace{-0.2cm}
+  \begin{itemize}
+    \item In the right-hand tree, 6 is a child of 3, and $6>3$ looks fine.
+      The violation is against the \emph{root} 5: 6 is in 5's left subtree.
+    \item Moral: checking only parent--child pairs is not enough.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Search: Follow the Comparisons}
+  \begin{center}
+    \begin{tikzpicture}[every node/.style={font=\small}]
+      \node[tnode] (n50) at (0,2.8)   {50};
+      \node[tnode] (n30) at (-1.7,1.7) {30};
+      \node[tnode] (n70) at (1.7,1.7)  {70};
+      \node[tnode] (n20) at (-2.5,0.6) {20};
+      \node[tnodeg] (n40) at (-0.9,0.6) {40};
+      \node[tnode] (n60) at (0.9,0.6)  {60};
+      \node[tnode] (n80) at (2.5,0.6)  {80};
+      \draw[tedge] (n50) -- (n30);
+      \draw[tedge] (n50) -- (n70);
+      \draw[tedge] (n30) -- (n20);
+      \draw[tedge] (n30) -- (n40);
+      \draw[tedge] (n70) -- (n60);
+      \draw[tedge] (n70) -- (n80);
+      \draw[-{Latex[length=2mm]}, primary-gold, thick]
+        (n50) to[bend left=12] (n30);
+      \draw[-{Latex[length=2mm]}, primary-gold, thick]
+        (n30) to[bend left=12] (n40);
+    \end{tikzpicture}
+  \end{center}
+  \vspace{-0.15cm}
+  \begin{itemize}
+    \item Search for 40: $40<50$ go left; $40>30$ go right; equal --- found.
+      Three comparisons, not seven.
+    \item At each node: equal $\to$ found; smaller $\to$ left; larger
+      $\to$ right; \texttt{NULL} $\to$ absent.
+  \end{itemize}
+  \muted{Cost $=$ number of nodes on the path $\le$ height $+1$. A short
+    tree is a fast tree.}
+\end{frame}
+
+\begin{frame}[fragile]{Search in C}
+  \scriptsize
+\begin{verbatim}
+struct node *bst_search(struct node *t, int key) {
+    while (t != NULL && t->data != key) {
+        if (key < t->data) t = t->left;
+        else               t = t->right;
+    }
+    return t;          /* NULL means "not present" */
+}
+\end{verbatim}
+  \vspace{0.1cm}
+  \footnotesize
+  \begin{itemize}
+    \item Iterative, so no recursion stack: $O(1)$ extra space.
+    \item Worst-case time is $O(h)$ where $h$ is the height. For a balanced
+      tree $h=O(\log n)$; for a chain $h=n-1$.
+    \item This is the same loop as binary search on a sorted array, with
+      \texttt{left}/\texttt{right} pointers instead of index arithmetic.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Insert: Walk Down, Hang a Leaf}
+  \begin{block}{Rule}
+    Search for the key. If it is already present, reject it (or count it).
+    If the search falls off the tree at \texttt{NULL}, put the new node
+    there.
+  \end{block}
+  \begin{itemize}
+    \item Insert $50,30,70,20,40,60,80$ into an empty tree:
+      \begin{itemize}
+        \item 50 becomes the root;
+        \item 30 $<50$ $\to$ left of 50; 70 $>50$ $\to$ right of 50;
+        \item 20 $<50,<30$ $\to$ left of 30; 40 $<50,>30$ $\to$ right of 30;
+        \item 60 $>50,<70$ $\to$ left of 70; 80 $>50,>70$ $\to$ right of 70.
+      \end{itemize}
+    \item A new key always becomes a \key{leaf}. Insert never rearranges the
+      existing nodes --- and that is exactly the weakness we will fix in
+      Section 5.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Minimum and Maximum: Go All the Way Left or Right}
+  \begin{itemize}
+    \item \key{Minimum}: start at the root and keep taking \texttt{left}
+      until there is no left child. In our tree: $50\to30\to20$, so the
+      minimum is 20.
+    \item \key{Maximum}: keep taking \texttt{right}: $50\to70\to80$, so the
+      maximum is 80.
+    \item Why it works: every key in a left subtree is smaller, so the
+      smallest key cannot have anything to its left.
+  \end{itemize}
+  \begin{exampleblock}{Cost}
+    Both are $O(h)$ --- one root-to-leaf walk. They are the first ordered
+    operations a hash table cannot do at all.
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}{Deletion, Cases 1 and 2: Zero or One Child}
+  \begin{itemize}
+    \item \key{Case 1 --- leaf}: remove it and set the parent's pointer to
+      \texttt{NULL}. Delete 20 from our tree: 30's left pointer becomes
+      \texttt{NULL}.
+    \item \key{Case 2 --- one child}: splice the node out: the parent points
+      straight to the node's only child. If 30 has only the right child 40,
+      deleting 30 makes 40 the left child of 50.
+    \item Both cases preserve the BST rule because the subtree that replaces
+      the deleted node was already on the correct side.
+  \end{itemize}
+  \muted{Always \texttt{free} the removed node after saving its child
+    pointer; otherwise the deletion leaks memory.}
+\end{frame}
+
+\begin{frame}{Deletion, Case 3: Two Children}
+  \begin{center}
+    % Before: delete 50. Successor = leftmost node of the right subtree = 60.
+    % After: 60 replaces 50; the old 60 node is removed.
+    \begin{tikzpicture}[every node/.style={font=\scriptsize}]
+      \foreach \x/\y/\v in {1.2/2.2/50, 0.45/1.3/30, 1.95/1.3/70,
+                            0.05/0.4/20, 0.85/0.4/40, 1.55/0.4/60, 2.35/0.4/80}
+        \node[tnodesm] at (\x,\y) {\v};
+      \draw[tedge] (1.2,2.2)--(0.45,1.3); \draw[tedge] (1.2,2.2)--(1.95,1.3);
+      \draw[tedge] (0.45,1.3)--(0.05,0.4); \draw[tedge] (0.45,1.3)--(0.85,0.4);
+      \draw[tedge] (1.95,1.3)--(1.55,0.4); \draw[tedge] (1.95,1.3)--(2.35,0.4);
+      \node[tnodesmg] at (1.55,0.4) {60};
+      \node[text=neutral] at (1.2,-0.35) {before: delete 50};
+
+      \foreach \x/\y/\v in {6.0/2.2/60, 5.25/1.3/30, 6.75/1.3/70,
+                            4.85/0.4/20, 5.65/0.4/40, 7.15/0.4/80}
+        \node[tnodesm] at (\x,\y) {\v};
+      \draw[tedge] (6.0,2.2)--(5.25,1.3); \draw[tedge] (6.0,2.2)--(6.75,1.3);
+      \draw[tedge] (5.25,1.3)--(4.85,0.4); \draw[tedge] (5.25,1.3)--(5.65,0.4);
+      \draw[tedge] (6.75,1.3)--(7.15,0.4);
+      \node[tnodesmg] at (6.0,2.2) {60};
+      \node[text=neutral] at (6.0,-0.35) {after: 60 replaces 50};
+    \end{tikzpicture}
+  \end{center}
+  \vspace{-0.1cm}
+  \footnotesize
+  \begin{itemize}
+    \item Find the \key{successor}: the smallest key in the right subtree
+      (go right once, then left as far as possible). Here it is 60.
+    \item Copy 60 into the node, then delete the old 60 node --- which has
+      at most one child, so Case 1 or 2 applies.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Deletion in C}
+  \scriptsize
+\begin{verbatim}
+struct node *bst_delete(struct node *t, int key) {
+    if (t == NULL) return NULL;
+    if (key < t->data)      t->left  = bst_delete(t->left,  key);
+    else if (key > t->data) t->right = bst_delete(t->right, key);
+    else {                                  /* found it */
+        if (t->left == NULL)  { struct node *r = t->right; free(t); return r; }
+        if (t->right == NULL) { struct node *l = t->left;  free(t); return l; }
+        struct node *s = t->right;           /* successor */
+        while (s->left != NULL) s = s->left;
+        t->data  = s->data;
+        t->right = bst_delete(t->right, s->data);
+    }
+    return t;
+}
+\end{verbatim}
+  \vspace{-0.1cm}
+  \footnotesize
+  \muted{The recursive call in the two-child case removes the successor,
+    which has no left child. Every node is visited once: $O(h)$.}
+\end{frame}
+
+\begin{frame}{The Cost of a BST Is Its Height}
+  \begin{center}
+  {\footnotesize
+  \begin{tabular}{l c c}
+    \toprule
+    \textbf{shape} & \textbf{height $h$} & \textbf{search / insert / delete} \\
+    \midrule
+    balanced (best) & $\lfloor \log_2 n \rfloor$ & $O(\log n)$ \\
+    random insertions (average) & $\approx 1.39\log_2 n$ & $O(\log n)$ expected \\
+    chain (worst) & $n-1$ & $O(n)$ \\
+    \bottomrule
+  \end{tabular}}
+  \end{center}
+  \begin{itemize}
+    \item Every BST operation is one root-to-leaf walk, so all three cost
+      $O(h)$.
+    \item The average row assumes keys arrive in random order. Real data is
+      often sorted --- names, timestamps, roll numbers --- and that is the
+      dangerous case.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{When Inserts Are Sorted, the Tree Becomes a List}
+  \begin{center}
+    % Left: inserting 10,20,30,40,50 in order makes a right chain (height 4).
+    % Right: a balanced tree over the same keys has height 2.
+    \begin{tikzpicture}[every node/.style={font=\scriptsize}]
+      \foreach \y/\v in {3.2/10, 2.4/20, 1.6/30, 0.8/40, 0/50}
+        \node[tnodesm] at (0,\y) {\v};
+      \foreach \y in {2.8,2.0,1.2,0.4}
+        \draw[tedge] (0,\y+0.4) -- (0,\y-0.4);
+      \node[text=negative, align=center] at (0,-0.65)
+        {\bad{height 4}\\ search(50) $=5$ comparisons};
+
+      \foreach \x/\y/\v in {4.5/2.4/30, 3.8/1.4/20, 5.2/1.4/40,
+                            3.45/0.4/10, 4.15/0.4/25, 4.85/0.4/35, 5.55/0.4/50}
+        \node[tnodesm] at (\x,\y) {\v};
+      \draw[tedge] (4.5,2.4)--(3.8,1.4); \draw[tedge] (4.5,2.4)--(5.2,1.4);
+      \draw[tedge] (3.8,1.4)--(3.45,0.4); \draw[tedge] (3.8,1.4)--(4.15,0.4);
+      \draw[tedge] (5.2,1.4)--(4.85,0.4); \draw[tedge] (5.2,1.4)--(5.55,0.4);
+      \node[text=positive, align=center] at (4.5,-0.65)
+        {\good{height 2}\\ search(50) $=3$ comparisons};
+    \end{tikzpicture}
+  \end{center}
+  \vspace{-0.2cm}
+  \begin{itemize}
+    \item Insert $10,20,30,40,50$ in order: every new key is larger, so it
+      always goes right. The ``tree'' is a linked list with extra steps.
+    \item Nothing in the BST insert rule prevents this. We need a rule that
+      repairs the shape.
+  \end{itemize}
+\end{frame}
+
+\transitionslide{A tree that repairs itself.}
+
+% =============================================================================
+% ACT 5 --- AVL TREES
+% =============================================================================
+\section{AVL Trees}
+
+\sectiondivider{Section 5}{Balance Factors and Rotations}
+
+\begin{frame}{The Balance Rule}
+  \begin{block}{Definition --- AVL tree}
+    An \key{AVL tree} is a BST in which, for every node, the heights of the
+    left and right subtrees differ by at most $1$.
+  \end{block}
+  \begin{itemize}
+    \item Define the \key{balance factor} of a node:
+      \[
+        \mathrm{bf}(x) = \mathrm{height}(\text{left child of }x)
+                       - \mathrm{height}(\text{right child of }x).
+      \]
+    \item The AVL rule: $\mathrm{bf}(x) \in \{-1,0,+1\}$ for every node.
+    \item If an insert or delete makes some $|\mathrm{bf}| = 2$, we repair
+      the tree with a \key{rotation}. A rotation is a local pointer change;
+      it keeps the inorder order.
+  \end{itemize}
+  \muted{Named after Adelson-Velsky and Landis (1962). Height convention:
+    leaf $=0$, empty $=-1$. Definitions and rotations:
+    \cite[pp.~142--149]{Wirth2004_algorithms_data_structures}.}
+\end{frame}
+
+\begin{frame}{Balance Factors on a Picture}
+  \begin{center}
+    \begin{tikzpicture}[every node/.style={font=\small}]
+      \node[tnode] (n50) at (0,2.5) {50};
+      \node[tnode] (n30) at (-1.3,1.4) {30};
+      \node[tnode] (n70) at (1.3,1.4) {70};
+      \node[tnode] (n20) at (-1.9,0.3) {20};
+      \draw[tedge] (n50)--(n30); \draw[tedge] (n50)--(n70);
+      \draw[tedge] (n30)--(n20);
+      \node[text=primary-gold, font=\scriptsize] at (0.0,3.38) {bf $=+1$};
+      \node[text=primary-gold, font=\scriptsize] at (-1.3,2.30) {bf $=+1$};
+      \node[text=primary-gold, font=\scriptsize] at (1.3,2.30) {bf $=0$};
+      \node[text=primary-gold, font=\scriptsize] at (-1.9,-0.45) {bf $=0$};
+    \end{tikzpicture}
+  \end{center}
+  \vspace{-0.1cm}
+  \begin{itemize}
+    \item Heights: 20 and 70 are leaves (height 0); 30 has height 1;
+      50 has height 2.
+    \item $\mathrm{bf}(50)=+1$: its left subtree (30, with 20) has height
+      1; its right subtree (70) has height 0.
+    \item $\mathrm{bf}(30)=+1$: 20 has height 0, the missing right child
+      has height $-1$. And $\mathrm{bf}(20)=\mathrm{bf}(70)=0$.
+    \item Every factor is in $\{-1,0,+1\}$: this is a valid AVL tree.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{A Rotation Is Three Pointer Moves}
+  \begin{center}
+    % Before: y=30 at (1,2.2), x=20 at (0,1.2), T1 below x, T2 right of x.
+    % After: x=20 becomes root; y=30 becomes its right child; T2 moves to y.left.
+    \begin{tikzpicture}[every node/.style={font=\scriptsize}]
+      \node[tnodesm] (y) at (1,2.2) {30};
+      \node[tnodesm] (x) at (0,1.2) {20};
+      \node[tnodesm] (t1) at (-0.5,0.2) {10};
+      \node[draw=neutral, fill=white, minimum width=0.55cm,
+        minimum height=0.45cm] (t2) at (0.5,0.2) {T2};
+      \draw[tedge] (y)--(x); \draw[tedge] (x)--(t1); \draw[tedge] (x)--(t2);
+      \node[text=neutral] at (0.5,-0.55) {before};
+
+      \draw[-{Latex[length=2.5mm]}, primary-gold, thick]
+        (2.0,1.2) -- (2.9,1.2);
+
+      \node[tnodesm] (X) at (5.0,2.2) {20};
+      \node[tnodesm] (T1) at (4.35,1.2) {10};
+      \node[tnodesm] (Y) at (5.65,1.2) {30};
+      \node[draw=neutral, fill=white, minimum width=0.55cm,
+        minimum height=0.45cm] (T2b) at (5.0,0.2) {T2};
+      \draw[tedge] (X)--(T1); \draw[tedge] (X)--(Y); \draw[tedge] (Y)--(T2b);
+      \node[text=neutral] at (5.0,-0.55) {after right rotation at 30};
+    \end{tikzpicture}
+  \end{center}
+  \vspace{-0.1cm}
+  \begin{itemize}
+    \item The middle key (20) rises; the old root (30) becomes its right
+      child; 20's old right subtree (T2) becomes 30's left subtree.
+    \item Inorder before and after: $10, 20, \mathrm{T2}, 30$ --- unchanged.
+      A rotation rearranges the shape, never the order.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{The Four Cases}
+  \begin{center}
+  {\footnotesize
+  \begin{tabular}{l l l}
+    \toprule
+    \textbf{case} & \textbf{path from the unbalanced node} & \textbf{repair} \\
+    \midrule
+    LL & left child, then left child  & right rotation once \\
+    RR & right child, then right child & left rotation once \\
+    LR & left child, then right child & left rotate child, then right rotate node \\
+    RL & right child, then left child & right rotate child, then left rotate node \\
+    \bottomrule
+  \end{tabular}}
+  \end{center}
+  \begin{itemize}
+    \item Read the name as the \emph{path}, not the first rotation. LR means
+      ``went Left, then Right.''
+    \item The first rotation turns LR into LL; the second rotation finishes
+      the job. That is why LR and RL need two rotations.
+    \item Only the nodes on the path from the inserted leaf back to the root
+      can change balance. Fix the lowest violation first.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{LL and RR: One Rotation Each}
+  \begin{center}
+    \begin{tikzpicture}[every node/.style={font=\scriptsize}]
+      % LL: 30-20-10 -> right rotation at 30 -> 20 root.
+      \node[tnodesm] (l1) at (0,2.2) {30};
+      \node[tnodesm] (l2) at (0,1.2) {20};
+      \node[tnodesm] (l3) at (0,0.2) {10};
+      \draw[tedge] (l1)--(l2); \draw[tedge] (l2)--(l3);
+      \node[text=neutral, font=\tiny] at (-0.15,-0.45) {LL: 30--20--10};
+      \draw[-{Latex[length=2mm]}, primary-gold, thick] (0.55,1.2)--(1.15,1.2);
+      \node[tnodesm] (L1) at (1.8,2.2) {20};
+      \node[tnodesm] (L2) at (1.3,1.2) {10};
+      \node[tnodesm] (L3) at (2.3,1.2) {30};
+      \draw[tedge] (L1)--(L2); \draw[tedge] (L1)--(L3);
+      \node[text=positive, font=\tiny] at (1.95,-0.45) {\good{right rotate}};
+
+      % RR: 10-20-30 -> left rotation at 10 -> 20 root.
+      \node[tnodesm] (r1) at (4.6,2.2) {10};
+      \node[tnodesm] (r2) at (4.6,1.2) {20};
+      \node[tnodesm] (r3) at (4.6,0.2) {30};
+      \draw[tedge] (r1)--(r2); \draw[tedge] (r2)--(r3);
+      \node[text=neutral, font=\tiny] at (4.45,-0.45) {RR: 10--20--30};
+      \draw[-{Latex[length=2mm]}, primary-gold, thick] (5.15,1.2)--(5.75,1.2);
+      \node[tnodesm] (R1) at (6.4,2.2) {20};
+      \node[tnodesm] (R2) at (5.9,1.2) {10};
+      \node[tnodesm] (R3) at (6.9,1.2) {30};
+      \draw[tedge] (R1)--(R2); \draw[tedge] (R1)--(R3);
+      \node[text=positive, font=\tiny] at (6.55,-0.45) {\good{left rotate}};
+    \end{tikzpicture}
+  \end{center}
+  \vspace{-0.2cm}
+  \begin{itemize}
+    \item LL and RR are mirror images. One rotation lifts the middle key to
+      the top.
+    \item After the rotation the tree is a perfect three-node tree of height
+      1, so the balance factor at the old root is back in range.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{LR: Left Rotate the Child, Then Right Rotate the Node}
+  \begin{center}
+    \begin{tikzpicture}[every node/.style={font=\scriptsize}]
+      % Step 0: 30 -> left 10 -> right 20.
+      \node[tnodesm] (a1) at (0,2.2) {30};
+      \node[tnodesm] (a2) at (-0.7,1.2) {10};
+      \node[tnodesm] (a3) at (0.0,0.2) {20};
+      \draw[tedge] (a1)--(a2); \draw[tedge] (a2)--(a3);
+      \node[text=neutral, font=\tiny] at (0,-0.45) {start};
+
+      \draw[-{Latex[length=2mm]}, primary-gold, thick] (0.6,1.2)--(1.2,1.2);
+      % Step 1: left rotate 10 -> 30 -> left 20 -> left 10.
+      \node[tnodesm] (b1) at (2.1,2.2) {30};
+      \node[tnodesm] (b2) at (1.5,1.2) {20};
+      \node[tnodesm] (b3) at (1.0,0.2) {10};
+      \draw[tedge] (b1)--(b2); \draw[tedge] (b2)--(b3);
+      \node[text=neutral, font=\tiny] at (2.1,-0.45) {left rotate 10};
+
+      \draw[-{Latex[length=2mm]}, primary-gold, thick] (2.7,1.2)--(3.3,1.2);
+      % Step 2: right rotate 30 -> 20 root.
+      \node[tnodesm] (c1) at (4.2,2.2) {20};
+      \node[tnodesm] (c2) at (3.7,1.2) {10};
+      \node[tnodesm] (c3) at (4.7,1.2) {30};
+      \draw[tedge] (c1)--(c2); \draw[tedge] (c1)--(c3);
+      \node[text=positive, font=\tiny] at (4.2,-0.45) {\good{right rotate 30}};
+    \end{tikzpicture}
+  \end{center}
+  \vspace{-0.2cm}
+  \begin{itemize}
+    \item The first rotation makes the path LL. The second rotation is the
+      LL repair we already know.
+    \item Inorder stays $10,20,30$ at every step.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{RL: Right Rotate the Child, Then Left Rotate the Node}
+  \begin{center}
+    \begin{tikzpicture}[every node/.style={font=\scriptsize}]
+      % Step 0: 10 -> right 30 -> left 20.
+      \node[tnodesm] (a1) at (0,2.2) {10};
+      \node[tnodesm] (a2) at (0.7,1.2) {30};
+      \node[tnodesm] (a3) at (0.0,0.2) {20};
+      \draw[tedge] (a1)--(a2); \draw[tedge] (a2)--(a3);
+      \node[text=neutral, font=\tiny] at (0,-0.45) {start};
+
+      \draw[-{Latex[length=2mm]}, primary-gold, thick] (0.6,1.2)--(1.2,1.2);
+      % Step 1: right rotate 30 -> 10 -> right 20 -> right 30.
+      \node[tnodesm] (b1) at (2.1,2.2) {10};
+      \node[tnodesm] (b2) at (2.7,1.2) {20};
+      \node[tnodesm] (b3) at (3.2,0.2) {30};
+      \draw[tedge] (b1)--(b2); \draw[tedge] (b2)--(b3);
+      \node[text=neutral, font=\tiny] at (2.1,-0.45) {right rotate 30};
+
+      \draw[-{Latex[length=2mm]}, primary-gold, thick] (2.7,1.2)--(3.3,1.2);
+      % Step 2: left rotate 10 -> 20 root.
+      \node[tnodesm] (c1) at (4.2,2.2) {20};
+      \node[tnodesm] (c2) at (3.7,1.2) {10};
+      \node[tnodesm] (c3) at (4.7,1.2) {30};
+      \draw[tedge] (c1)--(c2); \draw[tedge] (c1)--(c3);
+      \node[text=positive, font=\tiny] at (4.2,-0.45) {\good{left rotate 10}};
+    \end{tikzpicture}
+  \end{center}
+  \vspace{-0.2cm}
+  \begin{itemize}
+    \item Mirror of LR: first turn RL into RR, then do the single left
+      rotation.
+    \item Both double rotations restore the same three-node shape. The
+      difference is only which key was inserted last.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Watch an Insert Rebalance: 30, 20, 10, 25, 28}
+  \begin{columns}[T]
+    \begin{column}{0.55\textwidth}
+      \footnotesize
+      \begin{enumerate}
+        \item Insert 30, 20, 10: LL at 30. Right-rotate 30; \textbf{20}
+          becomes root, with 10 left and 30 right.
+        \item Insert 25: it goes left of 30. Factors still valid:
+          $\mathrm{bf}(30)=+1$, $\mathrm{bf}(20)=-1$.
+        \item Insert 28: it goes right of 25. Now $\mathrm{bf}(30)=+2$;
+          the path from 30 is left (25) then right (28), so this is
+          \textbf{LR}.
+        \item Left-rotate 25, then right-rotate 30. \textbf{28} becomes
+          the root of that subtree.
+      \end{enumerate}
+    \end{column}
+    \begin{column}{0.42\textwidth}
+      \centering
+      \begin{tikzpicture}[every node/.style={font=\scriptsize}]
+        \node[tnodesm] (r) at (0,2.4) {20};
+        \node[tnodesm] (l) at (-1.0,1.3) {10};
+        \node[tnodesm] (m) at (1.0,1.3) {28};
+        \node[tnodesm] (ml) at (0.5,0.2) {25};
+        \node[tnodesm] (mr) at (1.5,0.2) {30};
+        \draw[tedge] (r)--(l); \draw[tedge] (r)--(m);
+        \draw[tedge] (m)--(ml); \draw[tedge] (m)--(mr);
+      \end{tikzpicture}
+      \\[-0.1cm]
+      {\scriptsize final tree: height 2}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}[fragile]{AVL Insert in C: Rotate, Then Recompute Heights}
+  \scriptsize
+\begin{verbatim}
+int height(struct node *t) { return t ? t->height : -1; }
+int bf(struct node *t)     { return t ? height(t->left) - height(t->right) : 0; }
+
+struct node *rotate_right(struct node *y) {
+    struct node *x  = y->left;          /* x rises */
+    struct node *t2 = x->right;         /* T2 changes parent */
+    x->right = y;  y->left = t2;
+    y->height = 1 + max(height(y->left),  height(y->right));
+    x->height = 1 + max(height(x->left),  height(x->right));
+    return x;                            /* new subtree root */
+}
+/* rotate_left is the mirror image. */
+\end{verbatim}
+  \vspace{-0.1cm}
+  \footnotesize
+  \begin{itemize}
+    \item After a normal BST insert, walk back up. At each node update
+      \texttt{height}, compute \texttt{bf}, and apply the LL/RR/LR/RL case
+      whose factor is $\pm2$.
+    \item Store the height in the node so the check is $O(1)$ per node,
+      not another tree walk.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{The Height Guarantee: Why AVL Is $O(\log n)$}
+  \begin{itemize}
+    \item Let $N(h)$ be the \emph{fewest} nodes an AVL tree of height $h$
+      can have. The worst shape has one subtree of height $h-1$ and the
+      other of height $h-2$:
+      \[
+        N(h) = N(h-1) + N(h-2) + 1,\qquad N(0)=1,\ N(1)=2.
+      \]
+    \item This is the Fibonacci recurrence (shifted), so $N(h)$ grows
+      exponentially: $1, 2, 4, 7, 12, 20, 33, \dots$
+    \item Therefore $h = O(\log n)$, with the precise bound
+      $h \le 1.44\log_2(n+2) - 0.33$.
+    \item In practice: $n=1{,}000{,}000$ gives $h\le 28$, against
+      $999{,}999$ for the chain. Search, insert and delete are all
+      $O(\log n)$ worst case.
+  \end{itemize}
+  \muted{You do not need the constant $1.44$ in an exam; you do need the
+    recurrence and the conclusion.}
+\end{frame}
+
+\begin{frame}{Deletion in an AVL Tree}
+  \begin{itemize}
+    \item Delete exactly as in a BST (the three cases), then walk from the
+      parent of the removed node back up to the root.
+    \item At each node, recompute the height and balance factor. If
+      $|\mathrm{bf}|=2$, apply the same four cases.
+    \item Deletion can need \emph{several} rotations, not just one: removing
+      a node can unbalance several ancestors. Insert needs at most one
+      repair on the path.
+    \item Still $O(\log n)$: the walk has $\log n$ levels and each rotation
+      is $O(1)$.
+  \end{itemize}
+  \begin{exampleblock}{The invariant to remember}
+    A rotation preserves the BST rule and the inorder sequence. That is the
+    only reason we are allowed to repair the shape without touching the data.
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}{Choosing: Tree, Hash Table, or Sorted Array?}
+  \begin{center}
+  {\footnotesize
+  \begin{tabular}{l c c c c}
+    \toprule
+    \textbf{structure} & \textbf{search} & \textbf{insert} & \textbf{ordered ops} & \textbf{space} \\
+    \midrule
+    sorted array & $O(\log n)$ & $O(n)$ & yes & $O(n)$ \\
+    hash table   & $O(1)$ expected & $O(1)$ expected & no & $O(n)$ \\
+    plain BST    & $O(h)$ & $O(h)$ & yes & $O(n)$ \\
+    AVL tree     & $O(\log n)$ & $O(\log n)$ & yes & $O(n)$ \\
+    \bottomrule
+  \end{tabular}}
+  \end{center}
+  \begin{itemize}
+    \item Point lookup only, order irrelevant $\to$ hash table.
+    \item Sorted output, next/previous, range queries, min/max $\to$ AVL.
+    \item Static data read many times and never updated $\to$ sorted array.
+  \end{itemize}
+  \muted{``Trees are better than hashing'' is false; ``trees are better when
+    order is part of the question'' is true.}
+\end{frame}
+
+% =============================================================================
+% ACT 6 --- CLOSE + UNIT III REVIEW
+% =============================================================================
+\section{Review and Close}
+
+\begin{frame}{Three Classic Mistakes}
+  \begin{itemize}
+    \item \bad{``It is a binary tree, so search is $O(\log n)$.''} Only a
+      \emph{short} BST is logarithmic. Inserting sorted keys builds a chain
+      and search becomes $O(n)$.
+    \item \bad{``Inorder is always sorted.''} Only for a BST. On an arbitrary
+      binary tree, inorder is just left--node--right.
+    \item \bad{``A rotation changes the keys.''} A rotation changes pointers
+      and heights, never the inorder sequence. If the inorder changes, the
+      rotation is wrong.
+  \end{itemize}
+  \begin{exampleblock}{How to revise}
+    For each structure, write four lines: search cost, insert cost, whether
+    order survives, and the one case that breaks it. Then trace one insert
+    and one delete on a seven-node tree, and one LL or RR rotation.
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}{Unit III in One Page}
+  \begin{center}
+  {\scriptsize
+  \begin{tabular}{c l l l}
+    \toprule
+    \textbf{week} & \textbf{idea} & \textbf{key cost} & \textbf{key trap} \\
+    \midrule
+    8 & search; elementary sorts &
+      $\log n$ search; $n^2$ sorts & binary search needs sorted data \\
+    9 & efficient sorts &
+      $n\log n$; radix $d(n+b)$ & quicksort is $n^2$ on sorted input \\
+    10 & hashing &
+      $O(1)$ expected lookup & order is lost; tombstone on delete \\
+    11 & trees, BST, AVL &
+      $O(\log n)$ if balanced & a plain BST can become a chain \\
+    \bottomrule
+  \end{tabular}}
+  \end{center}
+  \begin{itemize}
+    \item The unit's single theme: \key{the cost of an operation is decided
+      by the shape of the data, not by the name of the structure}.
+    \item Week 12 removes the last restriction: trees have one root and no
+      cycles; graphs may have many paths, cycles, and no root at all.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Week 11 Summary}
+  \begin{itemize}
+    \item \key{Tree vocabulary} --- root, leaf, parent, child, sibling,
+      subtree; depth counts down from the root, height counts up from a
+      leaf. Height controls the cost.
+    \item \key{Traversals} --- inorder (left, node, right), preorder (node,
+      left, right), postorder (left, right, node), and level order (queue).
+      Each is $O(n)$; each has a job.
+    \item \key{Expression trees} --- operands are leaves, operators are
+      internal nodes; postorder evaluates, preorder gives prefix, inorder
+      gives infix (with parentheses).
+    \item \key{BST} --- left subtree $<$ node $<$ right subtree at every
+      node. Search, insert, min, max and delete are $O(h)$; delete has
+      three cases, and the two-child case uses the successor.
+    \item \key{AVL} --- keep every balance factor in $\{-1,0,+1\}$; repair
+      with LL/RR (one rotation) or LR/RL (two). Height, and therefore every
+      operation, is $O(\log n)$.
+  \end{itemize}
+  \begin{exampleblock}{Next week}
+    Graphs: many connections, cycles, and no single root. BFS and DFS,
+    Prim and Kruskal, and Dijkstra's shortest paths.
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}{Before You Go: Predict}
+  \begin{block}{Three one-line predictions}
+    Answer from the rules, then check in the lab.
+  \end{block}
+  \begin{enumerate}
+    \item Insert $5,3,8,1,4,7,9$ into an empty BST. What is the inorder
+      output, and what is the height?
+    \item Delete 5 from that tree. Which key replaces it, and why?
+    \item Insert $10,20,30$ into an empty AVL tree. Draw the result and name
+      the rotation.
+  \end{enumerate}
+  \muted{Answers: inorder $1,3,4,5,7,8,9$; height 2. Deleting 5 uses its
+    successor 7 (smallest key in the right subtree). The AVL insert is the
+    RR case: one left rotation at 10 gives 20 as root, with 10 left and 30
+    right.}
+\end{frame}
+
+\begin{frame}[allowframebreaks]{References}
+  \tiny
+  \bibliographystyle{plain}
+  \bibliography{../../Bibliography_base}
+\end{frame}
+
+\end{document}

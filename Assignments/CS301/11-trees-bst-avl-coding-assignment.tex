@@ -1,0 +1,173 @@
+% =============================================================================
+% Assignments/CS301/11-trees-bst-avl-coding-assignment.tex
+% Coding Assignment 11: Binary Search Trees and Traversals
+% (Week 11, syllabi/CS301.md labs P8 "sort via BST" and P12 "BST and
+% traversals".)
+%
+% Student-facing problem statement. Instructor-only files live in
+% Assignments/CS301/11-trees-bst-avl-coding/:
+%   reference_solution.c  (NEVER published, gitignored)
+%   test_hidden.c         (NEVER published, gitignored)
+%   autograder.sh         (NEVER published, gitignored)
+%   tree.h, starter_tree.c, test_visible.c  (provided to students)
+%
+% Fresh instances: the deck's seven-node tree (50,30,70,20,40,60,80) and the
+% check-yourself tree (8,3,10,1,6,14,4,7,13) are NOT the worked example here.
+% This assignment uses 9,5,12,2,7,11,15,3,6 and a second set
+% 40,20,60,10,30,50,70,25,35 in the hidden suite.
+%
+% Compile with (macOS/Linux): cd Assignments/CS301 &&
+%   TEXINPUTS=../../Preambles:$TEXINPUTS xelatex -interaction=nonstopmode 11-trees-bst-avl-coding-assignment.tex
+%   BIBINPUTS=../..:$BIBINPUTS bibtex 11-trees-bst-avl-coding-assignment
+%   TEXINPUTS=../../Preambles:$TEXINPUTS xelatex -interaction=nonstopmode 11-trees-bst-avl-coding-assignment.tex (x2)
+% =============================================================================
+
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\input{../../Preambles/header}
+\coursecode{CS301}
+\renewcommand{\thesection}{11.\arabic{section}}
+\setlength{\emergencystretch}{6em}
+
+\title{Coding Assignment 11: Binary Search Trees and Traversals}
+\author{Auqib Hamid Lone\\[0.3em]
+  \emph{Department of Computer Science \& Engineering}, \emph{GCET Ganderbal}}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\noindent\textbf{Due:} two weeks from issue. There is no automatic late penalty --- if you need more time, ask before the deadline and an extension will be granted (see the course policy in the syllabus).
+
+\noindent This assignment autogrades Week~11's institute practicals \textbf{P8} (\key{sort via BST}) and \textbf{P12} (\key{BST and traversals}). The contract is in \texttt{tree.h} --- \emph{do not modify it}. Copy \texttt{starter\_tree.c} to \texttt{tree.c} and fill in the functions. The setting is the running calculator. In Week~10 its symbol table was a hash table: one-probe lookup, but no order. This week the same identifiers live in a binary search tree, so a sorted listing, a minimum, a maximum, and a range report all become one root-to-leaf walk.
+
+\section{Why this problem}
+
+A binary search tree is a binary tree with one global rule: for every node, every key in its left subtree is smaller and every key in its right subtree is larger. The rule is what turns a comparison into a decision that discards an entire subtree. Search, insert, minimum, maximum and delete are all $O(h)$ --- the cost is the \emph{height}, not the number of keys. The four traversals then expose the same tree in four different orders: inorder gives sorted output (the P8 sort), preorder copies the shape, postorder frees it safely, and level order reads it breadth-first.
+
+The deck also shows the failure mode: inserting keys in sorted order builds a chain, and the tree degenerates to a linked list. This assignment deliberately includes that case in the hidden suite. You are implementing the plain BST, not the AVL repair; the point is to see \emph{why} the repair is needed, and to make every operation respect the ordering rule even when duplicates are present. Wirth treats tree search, insertion and deletion in Sec.~4.4.3--4.4.4, pp.135--139 \cite{Wirth2004_algorithms_data_structures}; Sedgewick's BST section starts at p.396 \cite{Sedgewick2011_algorithms}; Karumanchi's tree chapter is Ch.~6, pp.224--368 (PDF) \cite{Karumanchi2017_data_structures_algorithms_made_easy}.
+
+\section{Your task}
+
+Implement every function declared in \texttt{tree.h}. The tree is a \key{multiset}: the same key may occur more than once. Equal keys go in the \emph{right} subtree of an equal key, so an inorder walk prints equal keys together in nondecreasing order.
+
+\subsection*{Creation, insertion, search}
+
+\begin{verbatim}
+Tree *tree_create(void);
+void  tree_destroy(Tree *t);
+int   tree_insert(Tree *t, int key);
+int   tree_search(const Tree *t, int key);
+size_t tree_count(const Tree *t, int key);
+size_t tree_size(const Tree *t);
+int   tree_height(const Tree *t);
+\end{verbatim}
+
+\texttt{tree\_insert} adds one occurrence and returns $1$ (or $-1$ on allocation failure or a NULL tree). \texttt{tree\_search} returns $1$ if the key occurs at least once, else $0$. \texttt{tree\_count} returns the number of occurrences; because equal keys are to the right, it can stop at the first equal node and count the equal run in the right subtree. \texttt{tree\_height} is measured in \emph{edges}: $-1$ for the empty tree, $0$ for one node.
+
+\subsection*{Minimum, maximum, deletion}
+
+\begin{verbatim}
+int    tree_min(const Tree *t, int *out);
+int    tree_max(const Tree *t, int *out);
+int    tree_delete(Tree *t, int key);
+size_t tree_remove_all(Tree *t, int key);
+\end{verbatim}
+
+\texttt{tree\_min} and \texttt{tree\_max} walk left or right to the end and return $1$ with the key in \texttt{*out} (or $0$ if the tree is empty; a NULL \texttt{out} means ``just tell me whether a key exists''). \texttt{tree\_delete} removes \emph{one} occurrence and must handle the three cases: a leaf, a node with one child, and a node with two children. The two-child case uses the \key{inorder successor}: the smallest key in the right subtree. \texttt{tree\_remove\_all} removes every occurrence and returns how many it removed.
+
+\subsection*{Traversals, sort, range}
+
+\begin{verbatim}
+size_t tree_inorder(const Tree *t, int *out, size_t cap);
+size_t tree_preorder(const Tree *t, int *out, size_t cap);
+size_t tree_postorder(const Tree *t, int *out, size_t cap);
+size_t tree_levelorder(const Tree *t, int *out, size_t cap);
+size_t tree_sort(const int *in, size_t n, int *out, size_t cap);
+size_t tree_range(const Tree *t, int lo, int hi, int *out, size_t cap);
+\end{verbatim}
+
+Each traversal writes at most \texttt{cap} keys into \texttt{out} and returns the number written. Inorder is left--node--right, preorder is node--left--right, postorder is left--right--node, and level order is breadth-first, left to right (use the Week~5 queue idea). \texttt{tree\_sort} is P8: build a BST from \texttt{in[0..n-1]} and copy its inorder into \texttt{out}; duplicates are preserved and \texttt{in} and \texttt{out} may be the same array. \texttt{tree\_range} copies every key in $[lo,hi]$, in order, and must prune subtrees that cannot contain a key in the range.
+
+\section{Constraints}
+
+\begin{itemize}
+  \item Compile with \texttt{gcc -std=c11 -Wall -Wextra -Werror}: no errors and no warnings. No global or static mutable state.
+  \item Every query is NULL-safe: a NULL tree has size $0$, height $-1$, and no keys; \texttt{tree\_insert(NULL, k)} returns $-1$; \texttt{tree\_destroy(NULL)} does nothing.
+  \item Duplicates are allowed and are placed in the right subtree. \texttt{tree\_delete} removes exactly one occurrence; \texttt{tree\_remove\_all} removes all of them.
+  \item Every operation must be $O(h)$ (or $O(h+k)$ for a range of $k$ keys), never $O(n)$ for a single key search on a balanced tree.
+  \item The hidden suite runs $20{,}000$ keys through the tree and a $3{,}000$-key sorted insertion. The sorted case \emph{will} make the height $2{,}999$ --- that is the expected plain-BST behaviour, not a bug.
+  \item The whole suite runs under \texttt{-fsanitize=address,undefined}: a leak, a double free or undefined behaviour is a failure, not a deduction.
+  \item \texttt{tree\_sort} must not modify the input array. If \texttt{out} and \texttt{in} are the same buffer, build the whole tree before writing the first output key.
+\end{itemize}
+
+\section{Worked examples (these are the visible tests)}
+
+\textbf{Example 1 --- the fresh tree.} Insert
+\[
+  9,\ 5,\ 12,\ 2,\ 7,\ 11,\ 15,\ 3,\ 6
+\]
+in that order into an empty tree. The four traversals are:
+\begin{center}
+{\footnotesize
+\begin{tabular}{l l}
+  \toprule
+  inorder   & $2,3,5,6,7,9,11,12,15$ \\
+  preorder  & $9,5,2,3,7,6,12,11,15$ \\
+  postorder & $3,2,6,7,5,11,15,12,9$ \\
+  level order & $9,5,12,2,7,11,15,3,6$ \\
+  \bottomrule
+\end{tabular}}
+\end{center}
+The height is $3$ (the path $9\to5\to2\to3$), the size is $9$, the minimum is $2$, and the maximum is $15$.
+
+\textbf{Example 2 --- deleting a two-child node.} Delete $5$ from the tree above. Its right subtree is rooted at $7$; the leftmost node there is $6$, so $6$ replaces $5$ and the old $6$ leaf is removed. The inorder becomes
+\[
+  2,\ 3,\ 6,\ 7,\ 9,\ 11,\ 12,\ 15.
+\]
+Deleting the root $9$ next uses successor $11$ and leaves
+\[
+  2,\ 3,\ 6,\ 7,\ 11,\ 12,\ 15.
+\]
+
+\textbf{Example 3 --- duplicates.} Insert $4$ three times: \texttt{tree\_count(t,4)} is $3$, and \texttt{tree\_range(t,4,4)} writes three copies. Delete once: count is $2$. \texttt{tree\_remove\_all(t,4)} returns $2$ and the tree is empty.
+
+\textbf{Example 4 --- tree sort.} With
+\[
+  \texttt{in} = \{4,\ -1,\ 4,\ 3,\ 0,\ -1,\ 9\},
+\]
+\texttt{tree\_sort} writes
+\[
+  -1,\ -1,\ 0,\ 3,\ 4,\ 4,\ 9.
+\]
+The range query $[3,9]$ writes $3,4,4,9$.
+
+\textbf{Example 5 --- empty and NULL.} \texttt{tree\_height(NULL) = -1}, \texttt{tree\_size(NULL) = 0}, \texttt{tree\_search(NULL,1) = 0}, \texttt{tree\_create()} is not NULL, and every created tree is destroyed.
+
+\section{How to work}
+
+\begin{enumerate}
+  \item Copy \texttt{starter\_tree.c} to \texttt{tree.c}; keep \texttt{tree.h} unchanged.
+  \item Build and run the visible tests:
+\begin{verbatim}
+gcc -std=c11 -Wall -Wextra -Werror -o test_visible test_visible.c tree.c
+./test_visible
+\end{verbatim}
+  \item Get Examples 1 and 3 green before writing deletion. A wrong traversal order makes every later comparison look like a delete bug.
+  \item Trace the two-child deletion on paper: find the successor, copy its key, then delete the successor from the right subtree. The successor has no left child, so the recursive call is Case 1 or 2.
+  \item Run the same build under the sanitizers before submitting:
+\begin{verbatim}
+gcc -std=c11 -Wall -Wextra -Werror -g \
+    -fsanitize=address,undefined -o test_visible test_visible.c tree.c
+./test_visible
+\end{verbatim}
+  \item The hidden suite adds: randomized insert/delete/search/count against an array model, forced duplicate runs, all three deletion cases, a sorted $3{,}000$-key chain, a $20{,}000$-key scale run, range boundaries, cap truncation, in-place tree sort, and leak checking.
+\end{enumerate}
+
+\section{Submission and grading}
+
+Submit \texttt{tree.c} through the course submission form. Grading is by the autograder --- correctness on the hidden suite, compiled with \texttt{-Werror} and run under \texttt{-fsanitize=address,undefined} --- plus a short code read for four structural requirements: a real BST (not an array in disguise), all three deletion cases with a correct successor, four genuine traversals (level order uses a queue, not recursion), and a tree sort that preserves duplicates. A solution that is correct on the small cases but never frees nodes is partially credited; a warning under \texttt{-Werror}, a leak, or a sanitizer report is a failure.
+
+\bibliography{../../Bibliography_base}
+\bibliographystyle{plain}
+\end{document}
