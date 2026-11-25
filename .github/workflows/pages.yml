@@ -1,21 +1,15 @@
 name: deploy-gh-pages
 
-# Publishes the docs/ folder as the GitHub Pages site on every push to main.
-# Uses the actions/* Pages deploy stack (configure -> upload artifact ->
-# deploy) rather than committing built output, so Pages rebuilds are triggered
-# by real pushes (not by GITHUB_TOKEN bot commits, which the legacy
-# branch-deployment mode silently ignores).
+# Optional GitHub Actions Pages deploy. This repository's Pages site is
+# configured for the legacy `main /docs` build, which already deploys every
+# push; running this workflow on the same push races that build and produces
+# a false "No artifacts named github-pages" failure.
 #
-# After the first push, set Settings -> Pages -> Source to "GitHub Actions".
+# Kept for forkers who switch Settings -> Pages -> Source to "GitHub Actions".
+# In that setup, re-enable the push trigger below.
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
-  # deploy-guide pushes with GITHUB_TOKEN, which never fires `push`; redeploy after it.
-  workflow_run:
-    workflows: [deploy-guide]
-    types: [completed]
 
 permissions:
   contents: read
