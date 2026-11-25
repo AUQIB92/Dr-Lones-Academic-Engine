@@ -1,23 +1,24 @@
 % =============================================================================
 % Assignments/CS301/10-file-organization-hashing-coding-assignment.tex
-% Coding Assignment 10: Hash Tables -- Chaining and Linear Probing
-% (Week 10, syllabi/CS301.md Week 10 lab: "Hash-table construction and
-% collision handling", instructor-supplied)
+% Coding Assignment 10: Hash Tables and Collision Handling
+% (Week 10, syllabi/CS301.md Week 10 row: "Hash-table construction and
+% collision handling" -- instructor-supplied; the syllabus assigns no numbered
+% practical to Week 10.)
 %
 % Student-facing problem statement. Instructor-only files live in
 % Assignments/CS301/10-file-organization-hashing-coding/:
-%   reference_solution.c  (NEVER published, gitignored)
-%   test_hidden.c         (NEVER published, gitignored)
-%   autograder.sh         (NEVER published, gitignored)
-%   hash.h, starter_hash.c, test_visible.c  (provided to students)
+%   reference_solution.c, test_hidden.c, autograder.sh  (NEVER published)
+%   hash.h, starter_hash.c, test_visible.c              (provided to students)
 %
-% Fresh instances: the deck's own traces (m=11 with 12,44,13,88,23,94;
-% h("cat")=1 mod 97; the 2,000-identifier table) are NOT reused. The worked
-% examples here use m=5 chaining over alpha/beta/gamma/delta and m=11 linear
-% probing over the same four strings, with h("dog")=58 mod 101.
+% Fresh instances: the deck's worked data (chaining 22,12,15,8,29,19,5,26 with
+% m=7; linear probing 54,26,93,17,77,31,44,55,20 with m=11; double hashing
+% k=55; cat/act hashing) is NOT reused. The visible tests use the key family
+% alice..heidi, the strings "abc"/"zoe"/"sybil", and the m=3 full-table case;
+% every expected number in them was computed from the polynomial hash.
 %
-% Compile with (macOS/Linux): cd Assignments/CS301 &&
-%   TEXINPUTS=../../Preambles:$TEXINPUTS xelatex -interaction=nonstopmode 10-file-organization-hashing-coding-assignment.tex (3 passes)
+% Compile with (Windows/MiKTeX, ';'-joined TEXINPUTS/BIBINPUTS):
+%   cd Assignments/CS301 &&
+%   TEXINPUTS="../../Preambles;" xelatex -interaction=nonstopmode 10-file-organization-hashing-coding-assignment.tex (3 passes)
 % =============================================================================
 
 \documentclass[11pt]{article}
@@ -27,7 +28,7 @@
 \renewcommand{\thesection}{10.\arabic{section}}
 \setlength{\emergencystretch}{3em}
 
-\title{Coding Assignment 10: Hash Tables --- Chaining and Linear Probing}
+\title{Coding Assignment 10: Hash Tables and Collision Handling}
 \author{Auqib Hamid Lone\\[0.3em]
   \emph{Department of Computer Science \& Engineering}, \emph{GCET Ganderbal}}
 \date{\today}
@@ -37,94 +38,84 @@
 
 \noindent\textbf{Due:} two weeks from issue. There is no automatic late penalty --- if you need more time, ask before the deadline and an extension will be granted (see the course policy in the syllabus).
 
-\noindent This assignment autogrades Week~10's institute practical: \key{hash-table construction and collision handling}. The contract is given to you in \texttt{hash.h} --- \emph{do not modify it}. Copy \texttt{starter\_hash.c} to \texttt{hash.c} and fill in the functions. The setting is the running calculator. In Week~9 its $2{,}000$-identifier symbol table was sorted once and searched in $\Theta(\log n)$; this week the same names are found in one probe, and the price is that they are no longer in order. You build the table twice --- once with each collision policy from the deck --- and you must make both survive deletion.
+\noindent This assignment is Week~10's lab: \key{hash-table construction and collision handling}. The contract is given to you in \texttt{hash.h} --- \emph{do not modify it}. Copy \texttt{starter\_hash.c} to \texttt{hash.c} and implement the twelve functions. You build the \emph{same} symbol-table ADT twice: once with \textbf{separate chaining} and once with \textbf{open addressing plus tombstones}. The setting is the running calculator, whose identifier table has been a linked list since Week~6 and has cost up to $n$ comparisons per token lookup ever since. This module is its replacement, plus one measurement --- the probes actually performed --- that lets you check the lecture's cost formulas against running code.
 
 \section{Why this problem}
 
-Week~10's argument is that a lookup is not a search but an address computation: $\text{slot} = h(\text{key})$, with the \key{load factor} $\alpha = n/m$ as the one number that prices it. The deck shows the bill for $2{,}000$ identifiers --- about $1{,}000$ probes as a Week~6 list, $11$ as a Week~8 sorted array, $1.25$ as a hash table at $\alpha = 0.5$ --- and then spends its remaining time on the two things that keep the third number true. The first is the collision policy: \key{open hashing} (\key{separate chaining}), where colliding keys go in a per-slot list, versus \key{closed hashing} (\key{open addressing}), where they probe other slots in the same array. The second is the detail that quietly breaks student implementations: in open addressing, \emph{deletion cannot clear a slot}. An empty slot is the search's stopping condition, so clearing one hides every key that probed past it.
-
-This assignment is both policies as running code, behind one contract, with the resize thresholds and the tombstone rule as explicit requirements. It is also the week's warning made executable: a hash table that never rehashes is still ``correct'' on small tests and still $O(n)$ on real ones, so the hidden suite measures both.
+Week~10's argument is that a lookup can cost one probe instead of $n$, and that the price is order plus a second design decision: what to do when two keys collide. The lecture derives the two families (open hashing $=$ chaining, closed hashing $=$ open addressing), traces linear and double probing, shows why deletion needs a third slot state, and reduces every cost formula to the load factor $\alpha = n/m$. Writing one of those tables is straightforward; writing one that still behaves correctly after deletions is where the course's pointer discipline and the lecture's tombstone rule meet. Both are graded here, and the hidden suite measures your probe counts against $1 + \alpha/2$.
 
 \section{Your task}
 
-Implement the functions declared in \texttt{hash.h}. There are three groups.
+Implement the twelve functions declared in \texttt{hash.h}:
 
-\textbf{The two hash functions.} \texttt{hash\_string} is the deck's polynomial (Horner) scheme: base $B = 31$, treated as unsigned, reduced modulo $m$ \emph{at every step} --- the reduction inside the loop is what stops $31^{\text{len}}$ from overflowing. \texttt{hash\_int} is the division method, $h(k) = k \bmod m$, with the key read as unsigned so that negative keys stay in range. Both are stated exactly in the header; do not ``improve'' them, because the tests check exact values.
-
-\textbf{Open hashing --- separate chaining (\texttt{ChainTable}).}
 \begin{verbatim}
-ChainTable *chain_create(unsigned m);
-int   chain_insert(ChainTable *t, const char *key, int value);
-int   chain_search(const ChainTable *t, const char *key, int *out);
-int   chain_delete(ChainTable *t, const char *key);
-int   chain_count(const ChainTable *t);
-unsigned chain_slots(const ChainTable *t);
-double   chain_load_factor(const ChainTable *t);
-void  chain_destroy(ChainTable *t);
+unsigned long hash_str(const char *s, unsigned long m);
+
+int  chain_init(ChainTable *t, size_t m);
+int  chain_put(ChainTable *t, const char *key, int val);
+int  chain_get(const ChainTable *t, const char *key, int *out);
+int  chain_del(ChainTable *t, const char *key);
+size_t chain_probes(const ChainTable *t, const char *key);
+void chain_free(ChainTable *t);
+
+int  oa_init(OpenTable *t, size_t m);
+int  oa_put(OpenTable *t, const char *key, int val);
+int  oa_get(const OpenTable *t, const char *key, int *out);
+int  oa_del(OpenTable *t, const char *key);
+size_t oa_probes(const OpenTable *t, const char *key);
+void oa_free(OpenTable *t);
 \end{verbatim}
-Slot $j$ holds the head of a list of every key with $h(\text{key}) = j$. Insert pushes a new node, search walks that one list, and delete unlinks a node --- no tombstones, because a chain is a real list. $\alpha$ may exceed $1$, but you must not let it: if inserting a new key would make $n > m$, rehash into a larger slot array first, so that after any insert $n \le m$.
 
-\textbf{Closed hashing --- open addressing with linear probing (\texttt{OpenTable}).}
-\begin{verbatim}
-OpenTable *oa_create(unsigned m);
-int   oa_insert(OpenTable *t, const char *key, int value);
-int   oa_search(const OpenTable *t, const char *key, int *out);
-int   oa_delete(OpenTable *t, const char *key);
-int   oa_count(const OpenTable *t);
-int   oa_tombstones(const OpenTable *t);
-unsigned oa_slots(const OpenTable *t);
-double   oa_load_factor(const OpenTable *t);
-void  oa_destroy(OpenTable *t);
-\end{verbatim}
-Every key lives inside the table. The probe sequence is $h, h+1, h+2, \dots \pmod m$ with $h = \texttt{hash\_string}(\text{key}, m)$. Each slot has \emph{three} states, not two: \texttt{EMPTY}, \texttt{OCCUPIED}, \texttt{DELETED}. Search stops only at \texttt{EMPTY}; it walks past \texttt{DELETED}. Insert may reuse the first \texttt{DELETED} slot it passes. Delete must mark the slot \texttt{DELETED} (a \key{tombstone}) and increment the tombstone count --- never clear it.
+\textbf{The hash (1 function).} \texttt{hash\_str} is the lecture's polynomial rolling hash, $h \leftarrow (h\cdot31 + c) \bmod m$, one pass, $O(\text{key length})$. Two details are graded: the character must enter the sum as an \texttt{unsigned char} (a plain \texttt{char} may be signed, so bytes above $127$ would subtract), and the accumulation must be unsigned so overflow wraps rather than invoking undefined behaviour.
 
-Two thresholds keep linear probing from degrading. After any insert that returns $1$ (a genuinely new key), both must hold: occupancy $n + \text{tombstones} \le m/2$, and $\text{tombstones} \le m/4$. Grow the slot array when the first would be broken; rebuild the table (same $m$ is enough) when the second would be.
+\textbf{Separate chaining (6 functions).} \texttt{chain\_init} allocates $m$ slot pointers. \texttt{chain\_put} copies the key, updates the value in place if the key already exists, and otherwise pushes a new node at the head; it returns $1$/\,$0$/\,$-1$ for insert/update/failure. \texttt{chain\_del} unlinks and frees (the head is a special case). \texttt{chain\_probes} reports how many stored keys are compared before the key is found --- or, for an absent key, the length of its chain --- and must agree with the order \texttt{chain\_put} builds. \texttt{chain\_free} releases every key and node.
 
-\textbf{Policy shared by both tables.} A key is unique: inserting a key that is already present \emph{replaces} its value, leaves the count unchanged, and returns $0$; a new key returns $1$. The table stores its own \emph{copy} of every key --- the caller's buffer may be a stack array that is overwritten immediately --- and releases every copy in delete, rehash and destroy. Return values, NULL-safety and failure cases are stated function by function in \texttt{hash.h}.
+\textbf{Open addressing (6 functions).} \texttt{oa\_init} allocates $m$ slots, all \texttt{OA\_EMPTY}. \texttt{oa\_put} probes linearly from \texttt{hash\_str(key, m)}, updates on a match, and otherwise inserts at the first free slot --- but \emph{reuses the first tombstone} it walked past. \texttt{oa\_get} walks \emph{over} tombstones and stops at the first \texttt{OA\_EMPTY} slot. \texttt{oa\_del} frees the key, marks the slot \texttt{OA\_DELETED}, and decrements the live count $n$ but not \texttt{used}. \texttt{oa\_probes} reports slot inspections, counting the terminating empty slot on a miss. Tables never resize: load-factor policy is the written assignment's question, not code here.
 
 \section{Constraints}
 
 \begin{itemize}
-  \item Compile with \texttt{gcc -std=c11 -Wall -Wextra -Werror}: no errors and no warnings. No global or static mutable state.
-  \item \texttt{m == 0} is rejected: \texttt{create} returns \texttt{NULL}. Every other function is NULL-safe on a NULL table, as documented in the header.
-  \item Chaining: after any insert that returns $1$, \texttt{chain\_count(t) <= (int)chain\_slots(t)}; the expected cost of insert, search and delete is $O(1+\alpha)$.
-  \item Open addressing: after any insert that returns $1$, $2n \le m$ and $\text{tombstones} \le m/4$; deletion must leave a tombstone; the expected probe count is $O(1/(1-\alpha))$.
-  \item Neither table may degrade to $O(n)$ per operation: the hidden suite runs $20{,}000$ keys through each and imposes a wall-clock timeout.
-  \item Keys are arbitrary C strings, including \texttt{""}; values are \texttt{int} and may be negative. Rehashing must move key copies, not duplicate or leak them.
-  \item The whole suite runs under \texttt{-fsanitize=address,undefined}: a leak, a double free or undefined behaviour is a failure, not a deduction.
+  \item Compile with \texttt{gcc -std=c11 -Wall -Wextra -Werror}: no errors and no warnings. No global or static mutable state. No \texttt{strdup} (not standard C11) --- write a small copy helper.
+  \item Keys are NUL-terminated strings; the table \emph{owns a copy}. The caller may free or reuse its buffer right after a successful \texttt{put}.
+  \item At most one entry per key: a second \texttt{put} of the same key is an \textbf{update} and must not create a duplicate node, in either table.
+  \item Every allocation is checked; every allocation is freed. \texttt{chain\_free} and \texttt{oa\_free} must be safe on a table whose \texttt{init} failed, and must zero the struct.
+  \item \texttt{m == 0} is invalid for both \texttt{init} functions (return $-1$).
+  \item Open addressing has exactly three slot states. An empty slot stops a search; a tombstone does not. \texttt{used} counts tombstones, \texttt{n} does not.
+  \item Probe counts include the slot where the key is found, and --- on a miss --- the empty slot that stops the walk.
 \end{itemize}
 
 \section{Worked examples (these are the visible tests)}
 
-\textbf{Example 1 --- the hash functions.} With $m = 13$: \texttt{hash\_int(40,13) = 1}, \texttt{hash\_int(53,13) = 1}, \texttt{hash\_int(66,13) = 1}, \texttt{hash\_int(100,13) = 9}, and \texttt{hash\_int(-1,13) = 8} (the key is read as unsigned). With $m = 101$: \texttt{hash\_string("dog",101) = 58} and \texttt{hash\_string("",101) = 0}. These are exact values, not properties --- check them before building anything on top.
+\textbf{Example 1 --- the hash.} \texttt{hash\_str("abc", 100)} is $54$ and \texttt{hash\_str("abc", 1000)} is $354$; \texttt{hash\_str("alice", 1000)} is $40$; the empty string hashes to $0$; \texttt{hash\_str("zoe", 11)} is $4$.
 
-\textbf{Example 2 --- separate chaining.} \texttt{m = 5}, so slot $=$ \texttt{hash\_string(key, 5)}: alpha $\to 3$, beta $\to 2$, gamma $\to 0$, delta $\to 2$.
-
+\textbf{Example 2 --- chaining, $m = 7$.} Insert \texttt{alice, bob, carol, dave, erin, frank, grace, heidi} with values $1..8$. The hashes are $6, 4, 2, 3, 6, 1, 1, 6$, so pushing at the head gives
 \begin{verbatim}
-insert alpha=10, beta=20, gamma=30, delta=40   (each returns 1)
-  slot 0: gamma      slot 1: --      slot 2: delta -> beta
-  slot 3: alpha      slot 4: --
-count = 4, load factor = 0.8
-search delta  -> 1 (value 40)      search beta -> 1 (value 20)
-insert beta=25 -> 0 (replaced), count still 4, search beta -> 25
-delete alpha  -> 1;  search alpha -> 0;  search delta -> 1
-insert alpha=99 -> 1;  search alpha -> 99
+slot 1: grace -> frank      slot 3: dave    slot 6: heidi -> erin -> alice
+slot 2: carol               slot 4: bob
 \end{verbatim}
-Note the last line: delete then reinsert is an insert, not a replacement, so it returns $1$. Beta and delta share slot $2$; deleting one must not disturb the other.
+\texttt{chain\_probes} is $1$ for \texttt{heidi}, $2$ for \texttt{erin}, $3$ for \texttt{alice}, and $3$ for the absent key \texttt{sybil} (which also hashes to $6$, so the whole chain is walked). Re-\texttt{put}ting \texttt{alice} returns $0$ and leaves $n = 8$. Deleting \texttt{carol} returns $1$, and deleting it again returns $0$.
 
-\textbf{Example 3 --- linear probing and the tombstone.} \texttt{m = 11}, so alpha $\to 2$, beta $\to 2$, gamma $\to 10$, delta $\to 0$. Inserting alpha, beta, gamma, delta in that order places them at slots $2, 3, 10, 0$: beta's home slot is taken, so it takes the next one. Four live entries in eleven slots keeps occupancy at $8 \le 11$, so no rehash occurs and the trace stays visible.
-
+\textbf{Example 3 --- open addressing, $m = 11$, linear probing.} Inserting the same eight keys in the same order gives
 \begin{verbatim}
-delete alpha        -> 1;  slot 2 becomes DELETED; tombstones = 1
-search beta         -> 1;  probes 2 (DELETED, keep going) then 3 -> found
-search alpha        -> 0
-insert alpha=99     -> 1;  reuses slot 2;  tombstones back to 0
+alice -> 10      bob -> 4       carol -> 6      dave -> 3
+erin  -> 10,0    frank -> 5     grace -> 4,5,6,7
+heidi -> 4,5,6,7,8
 \end{verbatim}
-Had \texttt{delete} cleared slot $2$ instead, \texttt{search(beta)} would stop at the empty slot and report beta absent --- while beta sits one slot later. That single mistake is what the tombstone checks look for.
+so \texttt{oa\_probes} is $1$ for \texttt{alice}, $4$ for \texttt{grace}, $5$ for \texttt{heidi}, and $3$ for the absent \texttt{sybil} (slots $7, 8$, then the empty slot $9$). Eight insertions cost $16$ probes.
 
-\textbf{Example 4 --- \texttt{m = 1}.} The smallest legal table. Twelve inserts into \texttt{chain\_create(1)} and \texttt{oa\_create(1)} must all succeed, all twelve keys must be found, and both tables must have grown past one slot. A one-slot table is where an off-by-one in the resize condition shows up.
+\textbf{Example 4 --- the tombstone.} In that table, \texttt{oa\_del("bob")} leaves a tombstone in slot $4$. \texttt{grace} is still found --- the walk passes the tombstone --- and still costs $4$ probes; a search for the now-absent \texttt{bob} costs $6$ (slots $4,5,6,7,8$, then the empty slot $9$). Then \texttt{oa\_put("zoe", 99)} returns $1$ and costs \texttt{oa\_probes} $= 1$, because \texttt{zoe} hashes to $4$ and the tombstone is reused. Deleting \texttt{grace} and then \texttt{put}ting \texttt{heidi} again must return $0$: the update is found at slot $8$, past the tombstone at $7$, and no duplicate is created.
 
-\textbf{Example 5 --- teardown.} \texttt{destroy(NULL)} is safe; \texttt{chain\_create(0)} and \texttt{oa\_create(0)} return \texttt{NULL}. Every table you create must be destroyed; the sanitizer reports the keys and nodes you forget.
+\textbf{Example 5 --- a full table.} With $m = 3$ and keys \texttt{a}, \texttt{b}, \texttt{c} (hashes $1, 2, 0$, so no collision), a fourth key \texttt{d} (hash $1$) returns $-1$. Deleting \texttt{b} frees slot $2$ as a tombstone, and the next \texttt{put} of \texttt{d} returns $1$ and lands there.
+
+\section{The measurement}
+
+After the tables work, run the load-factor experiment in the hidden suite: $750$ keys in $1{,}000$ chained slots ($\alpha = 0.75$). Report in your submission note (one paragraph):
+\begin{enumerate}
+  \item your measured average number of probes for a \emph{successful} search, and how it compares with the lecture's $1 + \alpha/2 = 1.375$;
+  \item your measured average for a \emph{failed} search, and how it compares with $\alpha = 0.75$;
+  \item one sentence on why the two numbers differ, phrased in terms of the chain a search must walk.
+\end{enumerate}
+The reference implementation measures $1.445$ and $0.765$; anything in that neighbourhood is correct, and a linear scan ($\approx 375$) means the hash is not being used at all.
 
 \section{How to work}
 
@@ -135,20 +126,14 @@ Had \texttt{delete} cleared slot $2$ instead, \texttt{search(beta)} would stop a
 gcc -std=c11 -Wall -Wextra -Werror -o test_visible test_visible.c hash.c
 ./test_visible
 \end{verbatim}
-  \item Get Examples 1--2 green before writing any probing code. A wrong hash function makes every later test look like a collision bug.
-  \item Trace Example 3 on paper twice: once with a tombstone, once with a cleared slot. Then write the probe loop so that \texttt{EMPTY} is the only stopping condition.
-  \item Run the same build under the sanitizers before submitting:
-\begin{verbatim}
-gcc -std=c11 -Wall -Wextra -Werror -g \
-    -fsanitize=address,undefined -o test_visible test_visible.c hash.c
-./test_visible
-\end{verbatim}
-  \item The hidden suite adds: randomized insert/search/delete against a reference model (duplicates included), forced single-bucket collisions, deletion of the earliest key of a probe run, delete-then-reinsert, tombstone-bound and occupancy-bound checks, $20{,}000$-key scale runs for both tables, and leak checking.
+  \item Implement \texttt{hash\_str} first and check it against Example~1 --- every placement in Examples~2--5 depends on it.
+  \item Trace the tombstone case (Example~4) on paper before coding \texttt{oa\_del}: the state transition is the whole problem.
+  \item The autograder adds randomised model checks, a $200$-key tombstone stress, the full-table cases, and an AddressSanitizer build.
 \end{enumerate}
 
 \section{Submission and grading}
 
-Submit \texttt{hash.c} through the course submission form. Grading is by the autograder --- correctness on the hidden suite, compiled with \texttt{-Werror} and run under \texttt{-fsanitize=address,undefined} --- plus a short code read for the four structural requirements: a real per-slot chain, a real tombstone on delete, an occupancy/tombstone rehash that keeps both bounds, and key copies that are owned and released. A table that is correct on the small cases but never rehashes is partially credited; a warning under \texttt{-Werror}, a leak, or a sanitizer report is a failure.
+Submit \texttt{hash.c} through the course submission form. Grading is by the autograder (visible and hidden suites) plus a short code read for three things: keys copied rather than aliased, no duplicate entry for a repeated key, and the tombstone rules in \texttt{oa\_put}/\texttt{oa\_del}. A program that leaks memory or trips the sanitizer scores zero on the memory criterion even if its searches are correct --- Week~1 discipline does not expire. A warning under \texttt{-Werror} is a compile failure.
 
 \bibliography{../../Bibliography_base}
 \bibliographystyle{plain}

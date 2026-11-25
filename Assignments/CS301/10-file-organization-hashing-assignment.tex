@@ -2,30 +2,28 @@
 % Assignments/CS301/10-file-organization-hashing-assignment.tex
 % Assignment 10 (Week 10): File Organization & Hashing
 %
-% Student set — NO answers. Solution key:
-% 10-file-organization-hashing-solutions.tex (gitignored via
-% **/*-solutions.tex, never deployed). Sourced from
-% Slides/CS301/10-file-organization-hashing.tex (54 pp) and the Week 10 topic
-% list in syllabi/CS301.md, objective "Select a file organization and design
-% a hash function with an appropriate collision-resolution scheme".
+% Student set - NO answers. Solution key:
+% 10-file-organization-hashing-solutions.tex (gitignored via **/*-solutions.tex,
+% never deployed). Sourced from Slides/CS301/10-file-organization-hashing.tex
+% and Notes/CS301/10-file-organization-hashing-notes.tex.
 %
-% Fresh instances throughout — no problem re-asks a deck example. Deck
-% instances avoided: keys 12,44,13,88,23,94,11,39,20,16,5 with m=11; the
-% 1,000-record 64 B file and roll 20230457; "cat" with m=97, B=31; linear
-% probe trace 12,44,13,88,23,94; double hashing for k=23; multiplication
-% m=16, A=0.618, k=123456; mid-square 5678; folding 123456789; digit
-% analysis on the 2023 prefix.
+% Fresh instances throughout - no problem re-asks a deck/notes worked example
+% verbatim. Instances avoided: division keys 34,18,50,32 (m=16 vs 11);
+% multiplication k=12345,m=100; mid-square 4321; folding 202503117;
+% cat/act polynomial; four-functions table 54,26,93,17,77,31 (m=11,13);
+% chaining 22,12,15,8,29,19,5,26 (m=7); linear probing
+% 54,26,93,17,77,31,44,55,20 (m=11); quadratic key 20; double hashing k=55
+% (m=11); load factor 5000 in 8192/4096; predict 19,28,37,46 (m=11).
+% This set uses: Q1 division keys 20,44,68,92 (m=8 vs 13); Q3 linear probing
+% 18,44,78,26,59,31,40,7 (m=13); Q4 double hashing 27,53,14,66,40 (m=13,
+% h2 = 1 + k mod 11); Q2/Q5/Q6 use 4000/5000 load factors and a 10,000-record
+% file, none of which appear in the deck.
 %
-% This set uses: Q3 division m=13 with keys 47,82,15,63,91,28,74,36,59 and
-% multiplication m=16, A=0.618034 with k=2947,7384,8417; Q4 linear probing
-% m=13 inserting 24,45,62,11,76,38,90,17,53,29, deleting 38, then inserting
-% 79; Q5 a 150,000-account print-quota service in a 4 MiB slot budget;
-% Q6 a 900,000-record utility meter file with a 70/30 point/range workload.
-%
-% Compile with (macOS/Linux): cd Assignments/CS301 &&
-%   TEXINPUTS=../../Preambles:$TEXINPUTS xelatex -interaction=nonstopmode 10-file-organization-hashing-assignment.tex
-%   BIBINPUTS=../..:$BIBINPUTS bibtex 10-file-organization-hashing-assignment
-%   TEXINPUTS=../../Preambles:$TEXINPUTS xelatex -interaction=nonstopmode 10-file-organization-hashing-assignment.tex (x2)
+% Compile with (Windows/MiKTeX, ';'-joined TEXINPUTS/BIBINPUTS):
+%   cd Assignments/CS301 &&
+%   TEXINPUTS="../../Preambles;" xelatex -interaction=nonstopmode 10-file-organization-hashing-assignment.tex
+%   BIBINPUTS="../../;" bibtex 10-file-organization-hashing-assignment
+%   TEXINPUTS="../../Preambles;" xelatex ... (x2)
 % =============================================================================
 
 \documentclass[11pt]{article}
@@ -47,87 +45,61 @@
 
 \noindent\textbf{Due:} two weeks from issue. There is no automatic late penalty --- if you need more time, ask before the deadline and an extension will be granted (see the course policy in the syllabus).
 
-\noindent Answer every question. Show all working for Numerical and Design questions. Each problem states its own assumptions; everything you need is in Week~10's lecture alone. Notation matches the lecture exactly: a \key{record} is a fixed-length collection of fields and its \key{key} is the field a search compares; a \key{file} is a collection of records on a device; the cost of a file operation is counted in \emph{block transfers}, not key comparisons. A hash table stores $n$ keys in $m$ slots through a \key{hash function} $h(k)$, and the \key{load factor} is $\alpha=n/m$. A \key{probe} is one slot examined. \key{Open hashing} means \key{separate chaining} (colliding keys live in lists outside the table); \key{closed hashing} means \key{open addressing} (every key lives in one of the $m$ slots). For reference, the lecture's expected-probe formulas under uniform hashing are
-\[
-  \text{chaining: } 1+\frac{\alpha}{2}\ \text{(hit)},\quad \alpha\ \text{(miss)};
-  \qquad
-  \text{linear probing: } \frac{1}{2}\Bigl(1+\frac{1}{1-\alpha}\Bigr)\ \text{(hit)},\quad
-  \frac{1}{2}\Bigl(1+\frac{1}{(1-\alpha)^{2}}\Bigr)\ \text{(miss)}.
-\]
-Whenever a problem asks for a structure choice, name the workload property that decides it and give the cost that the property turns on.
+\noindent Answer every question. Show all working for Numerical and Design questions. Each problem states its own assumptions; everything you need is in Week~10's Notes chapter alone. Notation matches the lecture exactly: keys are integers unless stated otherwise, $h(k)$ is the hash function, $m$ is the number of slots, $n$ the number of stored entries, and $\alpha = n/m$ is the \key{load factor}. A probe count includes the first slot examined. For every bound, name the operation, give the bound, and state the case (Week~2 shape) --- hashing has an \emph{expected} cost and a \emph{worst} cost, and they are not the same claim.
 
 \section{Conceptual}
 
-\textbf{Q1.} A file organization is a decision about where records live; an access scheme is a decision about how the device may be read (Horowitz \& Sahni Ch.~8; Aho--Hopcroft--Ullman Ch.~4) \cite{HorowitzSahni2008_fundamentals_data_structures,AhoHopcroftUllman1983_data_structures_algorithms}.
+\textbf{Q1.} A hash function is judged on determinism, uniformity, whole-key use, and avalanche (Wirth Sec.~5.2, p.~177; Sedgewick Sec.~3.4, p.~458) \cite{Wirth2004_algorithms_data_structures,Sedgewick2011_algorithms}.
 \begin{enumerate}
-  \item[(a)] Name the four access schemes from the lecture. For each, state how the device is used, the medium it assumes, and whether it can jump straight to an arbitrary record. Then explain why a file operation is priced in block transfers rather than in key comparisons, and why the same search algorithm can have a different cost on tape and on disk.
-  \item[(b)] The lecture names four file organizations: sequential (in both \emph{pile} and \emph{sorted} variants), direct (relative), indexed sequential, and hashed. For each, give the search, insert, and range-scan costs from the Week~10 comparison table, and name one workload for which that organization is the right choice. State which organization is the only one that is strong in both point lookups and range scans, and why.
-  \item[(c)] A district hospital keeps $250{,}000$ patient records of $128$ bytes each, keyed by a $10$-digit national health ID. Only $250{,}000$ of the $10^{10}$ possible ID values are in use, and they are scattered. The disk transfers one $4$\,KiB block per seek, and the records pack $32$ to a block. The workload is: insert on admission, delete on discharge, and a point lookup by ID at the triage desk. There are no range queries, no ordered reports, and no batch pass over all records. Choose one of the four organizations and justify the choice against each of the other three using these facts --- not with the general claim that it is ``faster''. Give the block count of the file and the cost in block transfers that decides the case.
+  \item[(a)] State all four properties in your own words, and say which one the probe-cost formulas actually depend on. What happens to the formulas when that property fails --- is the mathematics wrong, or is an assumption wrong?
+  \item[(b)] The division method needs a prime $m$. Compute $20, 44, 68, 92$ modulo $8$ and modulo $13$. Explain the mod-$8$ outcome structurally (what property of these four numbers causes it), and say how many of the eight slots are reachable.
+  \item[(c)] The multiplication method allows any $m$, including a power of two. Explain why the fractional-part construction removes the factor-sharing problem that afflicts the division method, and state the one thing the multiplication method still depends on for good behaviour.
 \end{enumerate}
-Why this matters: every later database decision is this same argument in a larger setting --- the organization is chosen by the workload's access pattern, and the price is paid in device blocks, so naming the pattern correctly is the whole skill.
+Why this matters: ``the hash function is good'' is a claim about four testable properties, not a feeling. Part (b) is the smallest possible demonstration that a bad $m$ silently deletes most of your table.
 
-\textbf{Q2.} The two families of collision resolution carry names that mislead, and the price of hashing is paid in the operations it drops (Sedgewick Sec.~3.4, p.~458; Wirth Sec.~5.1, p.~177) \cite{Sedgewick2011_algorithms,Wirth2004_algorithms_data_structures}.
+\textbf{Q2.} The two collision families, and the single number that predicts their cost (Sedgewick Sec.~3.4, p.~458; Wirth Sec.~5.3, p.~178) \cite{Sedgewick2011_algorithms,Wirth2004_algorithms_data_structures}.
 \begin{enumerate}
-  \item[(a)] Define \key{open hashing} and \key{closed hashing}, giving the alternative name for each. State which family keeps colliding keys \emph{outside} the $m$ slots, which keeps every key \emph{inside} them, which permits $\alpha>1$, and which needs a tombstone to delete. Then explain what ``open'' and ``closed'' originally referred to, and why an unqualified use of either name is a mistake in an exam answer.
-  \item[(b)] Hashing buys an expected $O(1)$ point lookup and gives up order. Name the four ordered operations the table can no longer answer directly, and explain the structural reason: which properties of $h$ and of the slot layout are missing? Then price the workaround --- for a hashed file of $n$ keys in $m$ buckets, what does ``report every key with value in $[a,b]$'' cost, and why can that scan not stop early once it has passed $b$?
-  \item[(c)] A student writes: ``Closed hashing means the table is closed, so once it is full no further keys can be inserted; and since a lookup is $O(1)$, a range query is $O(1)$ too once the two endpoints are known.'' Identify the two errors and correct each in one or two sentences.
+  \item[(a)] Define \key{open hashing} and \key{closed} hashing, giving the alternative name for each. Which one permits $\alpha \ge 1$, and why can the other not? State the memory each family spends per entry that the other avoids.
+  \item[(b)] A table holds $4{,}000$ keys in $5{,}000$ slots. Compute $\alpha$. Using the lecture's formulas, give the expected probes for a successful and an unsuccessful search under separate chaining, and say whether open addressing could hold the same load with a clean margin.
+  \item[(c)] Why can a record not simply be deleted by blanking its slot in an open-addressed table? Name the three slot states that repair this, say how search and insert treat the new one differently, and state when the table must be rehashed.
 \end{enumerate}
-Why this matters: the names are examined every year, and the lost order is the reason Week~11 exists --- if you cannot say precisely what hashing gives up, you cannot justify choosing it.
+Why this matters: the names are inverted relative to intuition, and the load factor is the only design parameter that appears in every formula. Getting either wrong makes the cost analysis meaningless.
 
 \section{Numerical}
 
-\textbf{Q3.} Hash arithmetic and the price of a chain (Wirth Sec.~5.1, p.~177; Sec.~5.3, p.~178; Sedgewick Sec.~3.4, p.~458) \cite{Wirth2004_algorithms_data_structures,Sedgewick2011_algorithms}.
+\textbf{Q3.} Linear probing on a fresh table (Wirth Sec.~5.3, p.~178; Sedgewick Sec.~3.4, p.~458) \cite{Wirth2004_algorithms_data_structures,Sedgewick2011_algorithms}. Use $m = 13$ slots, $h(k) = k \bmod 13$, and insert at the first free slot.
 \begin{enumerate}
-  \item[(a)] Use the division method with $m=13$, so $h(k)=k \bmod 13$, on the nine keys
-  \[
-    47,\ 82,\ 15,\ 63,\ 91,\ 28,\ 74,\ 36,\ 59,
-  \]
-  inserted in that order into a chaining table with one list per slot and insertion at the \emph{tail} (so each chain stays in insertion order). Give $h(k)$ for every key, draw the final table, give every chain length, and state how many of the nine keys collided. Then compute the \emph{exact} average number of key comparisons for a successful search over these nine keys, and compare it with the uniform-hashing estimate $1+\alpha/2$ at $\alpha=9/13$. Explain the direction of the difference.
-  \item[(b)] Use the multiplication method with $m=16$ and $A=0.618034$:
-  \[
-    h(k)=\bigl\lfloor 16\,(kA \bmod 1)\bigr\rfloor .
-  \]
-  Compute $h(k)$ for $k=2947$, $k=7384$, and $k=8417$, showing $kA$ to three decimal places and the fractional part you use. Explain why $m=16$ is acceptable for this method but would be a poor choice for the division method, and say which bits of $k$ decide the slot under each of the two methods.
-  \item[(c)] The same index now holds $n=20$ keys. Using the lecture's chaining formulas, give $\alpha$, the expected probes for a successful search, and the expected probes for an unsuccessful search when $m=13$. Recompute all three for $m=41$. Which table would you ship, and what does this pair of calculations show about the role of $m$ when $n$ is fixed?
+  \item[(a)] Insert $18, 44, 78, 26, 59, 31, 40, 7$ in that order. For each key give $h(k)$, the slots probed, and the number of probes; then draw the final table.
+  \item[(b)] Give the total number of probes for the eight insertions, compute $\alpha$, and give the average number of probes per \emph{successful} search over the eight stored keys.
+  \item[(c)] Identify the two runs (clusters) in the final table, give each run's length, and explain why the key $31$ paid four probes while $78$ paid one --- neither key's hash value is "wrong".
 \end{enumerate}
-Why this matters: the division and multiplication methods are the two the exam asks you to evaluate by hand, and the chaining formula is the only place where the load factor becomes an actual number of probes rather than a slogan.
+Why this matters: linear probing's cost is created by the probe sequence, not by the hash function. Only a trace shows the difference between the two.
 
-\textbf{Q4.} A linear-probing trace, including the deletion that breaks it (Sedgewick Sec.~3.4, p.~458; Wirth Sec.~5.4, p.~180) \cite{Sedgewick2011_algorithms,Wirth2004_algorithms_data_structures}.
-A table has $m=13$ slots, $h'(k)=k \bmod 13$, and resolves collisions by linear probing, $h(k,i)=(h'(k)+i) \bmod 13$ for $i=0,1,2,\dots$. Insert the keys
-\[
-  24,\ 45,\ 62,\ 11,\ 76,\ 38,\ 90,\ 17,\ 53,\ 29
-\]
-in that order, starting from an empty table.
+\textbf{Q4.} Double hashing with a deliberately shared start (Wirth Sec.~5.3, p.~178; Sedgewick Sec.~3.4, p.~458) \cite{Wirth2004_algorithms_data_structures,Sedgewick2011_algorithms}. Use $m = 13$, $h_1(k) = k \bmod 13$, $h_2(k) = 1 + (k \bmod 11)$, and probe $p_i(k) = (h_1(k) + i\,h_2(k)) \bmod 13$.
 \begin{enumerate}
-  \item[(a)] For each key, give its home slot $h'(k)$, the full probe sequence, the number of probes, and the slot it finally occupies. Draw the final $13$-slot table, state the total number of probes spent on the ten inserts, and give the final load factor $\alpha$.
-  \item[(b)] Delete $38$ and mark its slot \texttt{DELETED}. Give the probe sequence and the probe count for a search for $90$ after the deletion. Then state what a search for $90$ would have concluded if slot $1$ had instead been cleared to \texttt{EMPTY}, and why it would have been wrong.
-  \item[(c)] Before inserting anything else, give the probe sequence and the probe count for an unsuccessful search for $50$, and explain why the search cannot stop at the tombstone. Then insert $79$ using the lecture's rule that an insert may reuse the first tombstone it meets: give the home slot, the probes examined, and the slot it occupies. Finally, state where $79$ would have gone if tombstones could not be reused.
+  \item[(a)] Insert $27, 53, 14, 66, 40$ in that order. For each key give $h_1$, $h_2$, the full probe sequence until the landing slot, and the number of probes; then draw the final table.
+  \item[(b)] All five keys share the same $h_1$. Explain why they nevertheless do not form one long cluster, and what would have happened to them under linear probing with the same $h_1$.
+  \item[(c)] One of the five keys has $h_2(k) = 1$. Identify it, say what its probe sequence degenerates to, and explain why $h_2$ must never be allowed to return $0$ or a value sharing a factor with $m$.
 \end{enumerate}
-Why this matters: deletion is the one operation where open addressing has a correctness rule rather than a performance rule --- a table that answers ``absent'' for a key it is holding is a bug no load factor can excuse.
+Why this matters: double hashing is worth its second hash function only when the stride genuinely depends on the key. Part (c) shows the failure mode in a single row of the trace.
 
 \section{Design}
 
-\textbf{Q5.} Design the hash index for a campus print-quota service (Sedgewick Sec.~3.4, p.~458; Karumanchi Ch.~14, pp.~610--639 PDF) \cite{Sedgewick2011_algorithms,Karumanchi2017_data_structures_algorithms_made_easy}. The service holds $150{,}000$ active accounts, keyed by a $9$-character roll string such as \texttt{2023CSE01}. Lookups run on every print job, peaking near $8{,}000$ per second; accounts are inserted at registration and deleted in a burst at the end of each semester. The index is an array of $m$ slots indexed $0,\dots,m-1$, each slot costs $16$ bytes, and the service may spend at most $4$\,MiB on that array (any chaining nodes would be extra, outside this budget). The lookup endpoint is public; the roll strings themselves are assigned by the registry.
+\textbf{Q5.} The calculator's identifier table has outgrown its fixed array and must be rebuilt as a chained hash table in C (Sedgewick Sec.~3.1, p.~362; Karumanchi Ch.~14, pp.610--639 PDF) \cite{Sedgewick2011_algorithms,Karumanchi2017_data_structures_algorithms_made_easy}. The table starts empty and grows to about $10{,}000$ identifiers; deletions do not occur, but the identifier count is unknown at compile time.
 \begin{enumerate}
-  \item[(a)] \emph{Sizing.} From the $4$\,MiB slot budget and the $16$-byte slot, compute the largest possible $m$. Choose $m$ as the largest prime not exceeding that bound, and state it. Give $\alpha$ at $150{,}000$ accounts, and the expected probes for a hit and for a miss under (i) chaining and (ii) linear probing at that $\alpha$. Which policy do the probe counts favour, and what does the memory budget say about it?
-  \item[(b)] \emph{The function.} Specify $h$ for a $9$-character string as a polynomial in base $B=31$, reduced modulo $m$ at every step. Show what goes wrong if $m$ were $2^{p}$ instead of a prime. Then decide whether this fixed $h$ is safe for this service, given that the endpoint is public but the keys are registry-assigned; state the condition under which you would replace it with a universal family, and give that family's form.
-  \item[(c)] \emph{Policy.} State the collision policy you would ship, the load-factor threshold that triggers a resize, the resize target, and the deletion and rehash plan. Justify the threshold with the probe counts from part (a). Finally, state what the first resize does to the memory budget, and when in the semester's workload you would schedule it.
+  \item[(a)] Give the C data structures (\texttt{struct} for the node, the table array, the load-factor bookkeeping) and pseudocode for \texttt{put} and \texttt{get}. State the invariant your \texttt{put} maintains on re-insertion of an existing key.
+  \item[(b)] Choose a target load factor, derive the initial slot count for the expected $10{,}000$ identifiers, and give the resizing rule. State the expected probes at your chosen $\alpha$ from the lecture's formula, and the worst-case cost of one \texttt{get}.
+  \item[(c)] Justify choosing chaining over open addressing for this workload in two sentences, naming the two properties of the workload that decide it. Then name one workload change that would flip the decision.
 \end{enumerate}
-Why this matters: an $O(1)$ promise is a promise about $\alpha$ and about the key distribution --- this is the question that makes you turn ``use a hash table'' into numbers a colleague could implement and an operator could run.
+Why this matters: the exam asks for a data structure, not a hash function. The load-factor policy is the part students omit and the part that decides whether the published cost is honest.
 
-\textbf{Q6.} Design the file organization for a power utility's meter file (Horowitz \& Sahni Ch.~8; Wirth Sec.~5.1, p.~177) \cite{HorowitzSahni2008_fundamentals_data_structures,Wirth2004_algorithms_data_structures}. The file holds $900{,}000$ premises records of $96$ bytes each, keyed by premises ID. IDs are integers assigned in increasing blocks by pincode and street, but the values are sparse: they range up to $9{,}999{,}999$. The device page is $4$\,KiB. The measured workload is:
-\begin{itemize}
-  \item[(i)] $70\%$ point lookups by premises ID from field crews;
-  \item[(ii)] $30\%$ monthly exception reports listing every premises in a pincode-and-street range, in ID order --- a typical report covers $2{,}500$ consecutive IDs;
-  \item[(iii)] $3\%$ annual growth, with new IDs arriving in increasing order;
-  \item[(iv)] one end-of-year pass that reads every record to compute totals.
-\end{itemize}
+\textbf{Q6.} A hospital keeps $10{,}000$ patient records. It needs (i) lookup by patient ID, (ii) a monthly report printed in ascending patient-ID order, and (iii) roughly $20$ new records inserted per day (Horowitz \& Sahni Ch.~8, chapter-level; standard treatment) \cite{HorowitzSahni2008_fundamentals_data_structures}.
 \begin{enumerate}
-  \item[(a)] Compute the records per block and the number of data blocks. Then design an \emph{indexed-sequential} organization: give the block layout, a sparse index with one entry per block (highest key plus block address, $16$ bytes per entry), the number of index entries, the entries per index block, the number of index blocks, and the number of block reads for one point lookup. Draw the three levels.
-  \item[(b)] Using your layout, give the block reads for (i) one point lookup, (ii) one $2{,}500$-premises report, and (iii) the end-of-year pass. Then compare: the same point lookup on a sorted sequential file (binary search over blocks), and the same range report on a hashed file. Give both numbers.
-  \item[(c)] Justify the indexed-sequential choice against all four alternatives (pile, sorted sequential, direct, hashed) on \emph{this} workload, using the numbers from (b) and the sparse key range. State the insert/overflow plan for the $3\%$ growth, when reorganization is triggered, and its cost in block transfers.
+  \item[(a)] Choose one of the four file organizations from the lecture (sequential, direct, indexed sequential, hashed) and justify the choice against each of the other three, naming the operation each rejected alternative would make expensive.
+  \item[(b)] For your chosen organization, state the cost of lookup, of the monthly ordered report, and of one insertion, in block transfers, and say what maintenance operation it requires and when.
+  \item[(c)] The hospital now also wants statistics over ranges of patient IDs (for example, all patients with IDs in $[40{,}000, 45{,}000]$). Re-evaluate your answer: does the choice change, and if so, to what? Then state the one requirement that would make a hash table the correct answer and say what it would cost.
 \end{enumerate}
-Why this matters: the mixed point-plus-range workload is the normal case in practice, and it is the one workload where the fastest point-lookup structure is the wrong answer --- this question is the rehearsal for choosing a real index.
+Why this matters: an organization is a promise about which operations are cheap. Part (c) is the exam's standard twist --- one new requirement invalidates the choice, and the reasoning must name which promise broke.
 
 \bibliography{../../Bibliography_base}
 \bibliographystyle{plain}

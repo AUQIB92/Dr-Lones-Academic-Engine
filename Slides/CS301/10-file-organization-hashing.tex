@@ -1,21 +1,30 @@
-% CS301 Week 10 -- File organization and hashing: sequential, direct,
-% indexed-sequential and hashed files; hash-function design (division,
-% multiplication, mid-square, folding, digit analysis, polynomial strings,
-% universal hashing); open hashing (separate chaining) and closed hashing
-% (linear/quadratic probing, double hashing); load factor and the expected
-% cost of a lookup.
+% CS301 Week 10 -- File organization and hashing. Two halves that are one
+% idea: how do you locate a record without searching for it?
+%   Part A: file organization -- sequential, direct (relative), indexed
+%   sequential, hashed -- and the access scheme each one makes cheap.
+%   Part B: hashing -- good hash functions, collisions (pigeonhole), open
+%   hashing (separate chaining), closed hashing (open addressing: linear,
+%   quadratic, double), deletion by tombstone, load factor and probe-cost
+%   analysis, and the choice between hashing, binary search, and a BST.
 % Difficulty: intro (course-wide default per knowledge-base-CS301.md).
-% Page-grounded in Sedgewick2011 Sec.3.4 (Hash Tables, p.458), Wirth2004
-% Sec.5.1-5.4 (Key Transformations, pp.177-183), Karumanchi2017 Ch.14
-% (Hashing, pp.610-639 PDF). Horowitz & Sahni Ch.8 (file organization) and
-% Aho-Hopcroft-Ullman Ch.4 are cited at chapter level only (not indexed) --
-% no page numbers are asserted for them.
-% Handoff: Week 9 closed on "the table is sorted and searchable in O(log n);
-% Week 10 asks whether we can find a record in one probe, without sorting at
-% all." This deck pays that off with the calculator's 2,000-identifier table:
-% O(n) as a Week 6 list, O(log n) as a Week 8 sorted array, O(1) expected as
-% a hash table -- and names the price (order is lost).
-% Sets up Week 11 (trees): the ordered operations hashing cannot provide.
+% Page-grounded in Sedgewick2011 Sec.3.4 (Hash Tables, p.458) and Sec.3.1
+% (Symbol Tables, p.362); Wirth2004 Ch.5 (Key Transformations, pp.177-183:
+% 5.1 p.177, 5.2 p.177, 5.3 p.178, 5.4 p.180); Karumanchi2017 Ch.14
+% (Hashing, pp.610-639 PDF) and Ch.11 (Symbol Tables, pp.547-589 PDF).
+% Horowitz & Sahni Ch.8 and Aho-Hopcroft-Ullman Ch.4 -- the syllabus's own
+% chapter assignment for this week -- are cited at chapter level only (not
+% page-indexed); no page numbers are asserted for them. File-organization
+% schemes are not covered by Wirth (confirmed absent from its index), so that
+% Part A material is general/standard treatment anchored on Horowitz & Sahni
+% Ch.8 plus the course's own C implementation discipline.
+% Handoff: Week 9 closed with "can we find a record in one probe, without
+% sorting at all?" This deck pays that off. It reuses Week 2's O/Theta/Omega
+% and best/worst/average, Week 6's singly linked list (chaining is a list per
+% slot), Week 3's array indexing, and Week 9's sorted-array/binary-search
+% benchmark. Continuing thread: the calculator's symbol table -- a linked
+% list since Week 6, O(n) lookup -- becomes a hash table today.
+% Sets up Week 11: a hash table answers "is this key here?" but cannot answer
+% "what is the smallest key?" -- the ordering question that forces trees.
 
 \documentclass[aspectratio=169]{beamer}
 \input{header}
@@ -38,1045 +47,1385 @@
 
 \begin{frame}{Today's Five Questions}
   \begin{enumerate}
-    \item How should records be laid out in a file so that one can be found
-      without scanning the rest?
-    \item What makes a hash function \emph{good}, and what makes one silently
-      bad?
-    \item Two keys want the same slot. What are the two families of fixes ---
-      and why are their names backwards?
-    \item Why does a hash table promise $O(1)$ yet degrade to $O(n)$?
-    \item When should a designer refuse hashing and keep order instead?
+    \item Binary search finds a record in $\log_2 n$ steps. Can we do it in
+      \emph{one} --- and what do we give up?
+    \item How are records actually laid out on a disk, and why does that
+      change which search is cheap?
+    \item A hash function maps an unbounded universe into a finite table.
+      What has to go wrong, and how do we live with it?
+    \item \key{Open hashing} or \key{closed hashing} --- which name means
+      which, and which one should you write?
+    \item When is a hash table the \emph{wrong} structure, even though it is
+      the fastest?
   \end{enumerate}
-  \vspace{0.2cm}
+  \vspace{0.15cm}
   \begin{exampleblock}{Plan}
-    Organize the file. Then replace search with arithmetic: map a key to a
-    slot, handle the collisions that arithmetic guarantees, and measure the
-    cost with one number --- the load factor $\alpha$.
+    Ask what a record on a disk costs to find. Answer it four ways (file
+    organization), then specialize the last way into the hash table: the
+    function, the collision, the two families of collision handling, and the
+    single number --- the load factor --- that predicts everything.
   \end{exampleblock}
 \end{frame}
 
 \begin{frame}{Handoff: What Week 9 Left Open}
   \begin{itemize}
-    \item Week 9 sorted the calculator's $2{,}000$-identifier table in
-      $\Theta(n\log n)$ and made lookup $\Theta(\log n)$ --- about $11$
-      comparisons per identifier.
-    \item It closed on one promise: ``Week 10 asks a stronger question: can we
-      find a record in \emph{one} probe, without sorting at all? File
-      organization and hashing.''
-    \item The deficiency it left: $11$ probes is excellent, but sorting is
-      paid at startup, and every new identifier must be inserted into a
-      sorted array in $\Theta(n)$.
-    \item New symbols today: the \key{record} and its \key{key}; the
-      \key{hash function} $h(k)$; the \key{load factor} $\alpha = n/m$;
-      \key{open hashing} (separate chaining) and \key{closed hashing} (open
+    \item Week 9 sorted $2{,}000$ identifiers in
+      $\Theta(n\log n)$ and then searched them in $\Theta(\log n)$ --- about
+      $11$ comparisons per lookup, every lookup, forever.
+    \item It closed on a promise: ``The table is now sorted and searchable in
+      $O(\log n)$. Week 10 asks a stronger question: can we find a record in
+      \emph{one} probe, without sorting at all?''
+    \item The deficiency it left: the calculator pays $11$ comparisons to
+      answer a question the identifier already knows the answer to. The
+      identifier \emph{knows} which slot it belongs in; the table just does
+      not store that fact.
+    \item New symbols today: the hash function $h(k)$; the
+      \key{load factor} $\alpha = n/m$; the two collision families,
+      \key{open hashing} (chaining) and \key{closed hashing} (open
       addressing).
   \end{itemize}
   \begin{exampleblock}{This week's job}
-    Turn lookup into address arithmetic: $\text{slot} = h(\text{key})$.
-    Everything else --- collisions, probing, deletion --- is the price of
-    making that arithmetic work on real keys.
+    Turn those $11$ comparisons into $1$ --- by computing the position
+    instead of searching for it.
   \end{exampleblock}
 \end{frame}
 
-\begin{frame}{The Bill for a Lookup}
+\begin{frame}{The Bill for Finding, at Two Sizes}
   \begin{center}
   {\footnotesize
-  \begin{tabular}{l r l}
+  \begin{tabular}{lrrr}
     \toprule
-    \textbf{structure for 2{,}000 identifiers} & \textbf{probes} &
-      \textbf{insert} \\
+    Lookup method & $n = 2{,}000$ & $n = 10^6$ & order \\
     \midrule
-    unsorted linked list (Week 6) & $\approx 1{,}000$ & $O(1)$ at head \\
-    sorted array + binary search (Weeks 8--9) & $\approx 11$ & $\Theta(n)$ \\
-    hash table (this week, $\alpha = 0.5$) & $\approx 1.25$ & $O(1)$ expected \\
+    Unsorted array, linear scan & $1{,}000$ & $500{,}000$ & $\Theta(n)$ \\
+    Linked list (Week 6 symbol table) & $1{,}000$ & $500{,}000$ & $\Theta(n)$ \\
+    Sorted array, binary search & $11$ & $20$ & $\Theta(\log n)$ \\
+    \key{Hash table} (this week) & $\approx 1.4$ & $\approx 1.4$ & $\Theta(1)$ expected \\
     \bottomrule
   \end{tabular}}
   \end{center}
   \begin{itemize}
-    \item The sorted array bought a factor of $91$ by \emph{ordering} the
-      data. The hash table buys another factor of $\approx 9$ by
-      \emph{abandoning} order --- and we must say what that costs.
-    \item The hash table does not search for the key at all. It computes where
-      the key must be, then checks that one place.
+    \item Binary search's $20$ is a \emph{ceiling} that keeps climbing; the
+      hash table's $1.4$ does not move when $n$ does. That is the whole
+      difference between $\Theta(\log n)$ and $\Theta(1)$ felt as a number.
+    \item There is a price, and Week 9 already named it: sort order. A hash
+      table destroys order to buy speed. Today measures that trade honestly
+      instead of hiding it.
   \end{itemize}
-  \muted{Running application (Weeks 3--11): one calculator, rebuilt each
-    week. Week 10 replaces its identifier list with a hash table --- the same
-    $2{,}000$ names, now found in one or two probes instead of a thousand.}
+  \muted{Running application (Weeks 3--10): one calculator, rebuilt each
+    week. Week 10 replaces its linked-list symbol table with a hash table.}
 \end{frame}
 
-\transitionslide{Sorted is one kind of fast. Computed is another.}
+\begin{frame}{Two Problems That Look Different}
+  \begin{itemize}
+    \item \key{File organization} is the database question: a \emph{file} of
+      records lives on a disk, and we must specify where each record sits so
+      that it can be found by its key.
+    \item \key{Hashing} is the data-structure question: a table lives in
+      memory, and we must map a key to a slot.
+    \item They are the same question at two scales. A disk block is an
+      expensive array cell; the block index is the hash value. Once you see
+      that, the syllabus's two topics collapse into one idea:
+    \end{itemize}
+  \begin{alertblock}{The idea of the week}
+    Stop \emph{searching} for a record and start \emph{computing} its
+    address. Every technique today --- indexed, direct, hashed --- is a
+    variation on that single move.
+  \end{alertblock}
+\end{frame}
+
+\transitionslide{Before the table: where do the records live?}
 
 % =============================================================================
 % ACT 1 --- FILE ORGANIZATION
 % =============================================================================
-\section{File Organization}
+\section{File Organization and Access Schemes}
 
-\sectiondivider{Section 1}{Files, Records, and Access Schemes}
+\sectiondivider{Section 1}{File Organization and Access Schemes}
 
-\begin{frame}{The Record and the Key}
-  \begin{block}{Definition --- record, field, key}
-    A \key{record} is a fixed-length collection of fields describing one
-    entity. One field is designated the \key{key}: its value identifies the
-    record and is the only part a search compares. A \key{file} is a
-    collection of records stored on a device.
+\begin{frame}{What a File Is}
+  \begin{itemize}
+    \item A \key{file} is a named collection of \key{records}. A
+      \key{record} is a group of related fields; one field is designated the
+      \key{key} --- the field by which records are retrieved.
+    \item Records are moved in \key{blocks} (pages), not one at a time: a
+      disk read returns a whole block of, say, $4$ KB, whether you wanted one
+      record or fifty.
+  \end{itemize}
+  \begin{block}{Definition --- file organization
+    (Horowitz \& Sahni Ch.~8, chapter-level; standard treatment)}
+    A file organization is the rule that decides \emph{where} a record is
+    stored --- which block, and where inside the block. Four schemes cover
+    the syllabus: \key{sequential}, \key{direct} (relative), \key{indexed
+    sequential}, and \key{hashed}.
   \end{block}
   \begin{itemize}
-    \item Example: a student record of $64$ bytes
-      \texttt{\{roll, name[40], programme, year, marks\}}, keyed by
-      \texttt{roll}.
-    \item The key is not always unique (names repeat). A \key{primary key} is
-      unique; a \key{secondary key} is not, and may index many records.
-    \item Every organization in this section answers one question: given a
-      key, how many device reads before the record is in memory?
+    \item The organization is a promise about cost. Choosing one is choosing
+      which operation --- scan, find-by-key, insert, delete, or
+      traverse-in-order --- will be cheap, and which will be slow.
   \end{itemize}
+  \muted{Example record: \texttt{struct ident \{ char name[16]; int kind;
+    double value; \}} --- the calculator's symbol-table entry, now on disk.}
 \end{frame}
 
-\begin{frame}{Four Ways to Reach a Record}
+\begin{frame}{The Cost Model Changes at the Disk}
+  \begin{itemize}
+    \item In memory we counted \emph{comparisons}; every cell costs the same
+      nanosecond. On a disk we count \key{block transfers (I/Os)}: one seek
+      is roughly $10^5$ times the cost of a comparison.
+  \end{itemize}
   \begin{center}
   {\footnotesize
-  \begin{tabular}{l p{4.3cm} p{5.4cm}}
+  \begin{tabular}{lll}
     \toprule
-    \textbf{access scheme} & \textbf{how the device is used} &
-      \textbf{typical medium} \\
+    Resource & Typical latency & Relative cost \\
     \midrule
-    serial & read every record from the beginning & magnetic tape \\
-    sequential & read the next record, in stored order & tape, sorted file \\
-    direct (random) & seek straight to a computed block & disk, SSD \\
-    indexed & look up a key in an index, then seek & disk, database \\
+    CPU comparison & $\approx 1$ ns & $1$ \\
+    Main-memory access & $\approx 100$ ns & $100$ \\
+    SSD block read & $\approx 100\ \mu$s & $10^5$ \\
+    Magnetic-disk seek & $\approx 10$ ms & $10^7$ \\
     \bottomrule
   \end{tabular}}
   \end{center}
   \begin{itemize}
-    \item The scheme is a property of the \emph{device and layout}, not of the
-      algorithm. A tape cannot do direct access; a disk pays for every seek.
-    \item The file organizations that follow are four ways to combine these
-      schemes with a record layout. The cost of a lookup is the number of
-      \emph{block transfers}, not CPU instructions.
+    \item Consequence: an algorithm that reads $1{,}000$ blocks is not
+      ``slightly worse'' than one that reads $1$ block, it is
+      \emph{ten million times} worse. This is why file organization exists at
+      all, and why the right answer in a database is not always the right
+      answer in RAM.
+    \item So we stop asking ``how many comparisons?'' and start asking
+      ``how many blocks must I touch?'' --- and the ideal answer is \key{one}.
   \end{itemize}
 \end{frame}
 
-\begin{frame}{Sequential File}
+\begin{frame}{Sequential Organization: Keep It in Order}
   \begin{itemize}
-    \item Records are stored one after another in the order they arrive
-      (\key{pile}) or in key order (\key{sorted sequential}).
-    \item \textbf{Unsorted pile.} Search is $\Theta(n)$: scan until found.
-      Insert is $\Theta(1)$: append. Delete is $\Theta(n)$ if the gap must be
-      closed, or a mark bit.
-    \item \textbf{Sorted sequential.} On a tape, search is still a scan; on a
-      direct-access device, fixed-length records allow binary search in
-      $\Theta(\log n)$ seeks. Insert and delete are $\Theta(n)$ because the
-      later records shift.
-    \item \textbf{When it wins:} batch jobs that read every record anyway
-      (payroll, end-of-term processing), and data too large for any index to
-      help.
+    \item Store records in ascending key order, packed contiguously, one
+      after another across blocks. The order \emph{is} the index.
   \end{itemize}
-  \begin{exampleblock}{Worked example}
-    $1{,}000$ student records, $64$ bytes each. Finding the last record in an
-    unsorted sequential file costs up to $1{,}000$ reads. Sorting the file
-    makes a fixed-length binary search possible: $\lceil\log_2 1000\rceil =
-    10$ seeks --- but inserting one student now moves the records after it.
-  \end{exampleblock}
-\end{frame}
-
-\begin{frame}{Direct (Relative) File}
-  \begin{itemize}
-    \item The record's location is computed from its key, not searched for:
-      \[
-        \text{offset} = (\text{key} - k_0)\times L,
-        \qquad \text{address} = \text{base} + \text{offset},
-      \]
-      where $k_0$ is the smallest key and $L$ the record length.
-    \item Search, insert and delete are all $\Theta(1)$: one seek, one write.
-    \item The catch is the key space. Keys must be dense integers. A file for
-      employee numbers $\{1, 7, 100{,}000\}$ needs $100{,}000$ slots for three
-      records.
-  \end{itemize}
-  \begin{exampleblock}{Worked example}
-    Roll numbers $20230001$--$20231000$, records of $64$ bytes. Roll
-    $20230457$ sits at offset $(457-1)\times 64 = 29{,}184$ bytes from the
-    base. One seek; no search at all. This is the ideal that hashing will
-    imitate for arbitrary keys.
-  \end{exampleblock}
-\end{frame}
-
-\begin{frame}{Direct File, Drawn}
   \begin{center}
-    % Diagram: key -> relative record number -> byte offset -> one seek.
-    % Four boxes at y=0, x-centres 0, 2.7, 4.9, 7.4. Arrow labels sit above
-    % the arrows, never on them.
+    % Diagram: a sequential file of 4 blocks. Keys ascend left to right and
+    % continue across blocks. Block boxes 2.30 cm wide at x = 0, 2.5, 5.0,
+    % 7.5; y = 0. Each holds three keys. Coordinate map: bx_i = 2.5*i.
     \begin{tikzpicture}[every node/.style={font=\scriptsize}]
-      \node[draw, fill=light-bg, minimum width=2.1cm, minimum height=0.9cm,
-        align=center] (k) at (0, 0) {roll\\ $20230457$};
-      \node[draw, fill=light-bg, minimum width=1.3cm, minimum height=0.9cm,
-        align=center] (r) at (3.4, 0) {relative\\ $456$};
-      \node[draw, fill=light-bg, minimum width=1.5cm, minimum height=0.9cm,
-        align=center] (o) at (5.8, 0) {offset\\ $29{,}184$ B};
-      \node[draw, fill=primary-gold!20, minimum width=2.4cm,
-        minimum height=0.9cm, align=center] (a) at (8.7, 0) {seek once\\ to base $+$ offset};
-      \draw[->, thick, primary-blue] (k) -- (r)
-        node[midway, above, text=neutral] {\tiny $-20230001$};
-      \draw[->, thick, primary-blue] (r) -- (o)
-        node[midway, above, text=neutral] {\tiny $\times 64$};
-      \draw[->, thick, primary-blue] (o) -- (a)
-        node[midway, above, text=neutral] {\tiny $+$ base};
+      \foreach \i/\a/\b/\c in {0/101/104/109, 1/112/118/121,
+                               2/125/130/137, 3/142/150/161}
+        \draw[draw=primary-blue, fill=light-bg] (\i*2.5, -0.35)
+          rectangle ++(2.3, 0.7);
+      \foreach \i/\a/\b/\c in {0/101/104/109, 1/112/118/121,
+                               2/125/130/137, 3/142/150/161}{
+        \node at (\i*2.5+0.55, 0) {\a};
+        \node at (\i*2.5+1.15, 0) {\b};
+        \node at (\i*2.5+1.75, 0) {\c};
+      }
+      \foreach \i in {0,1,2,3}
+        \node[text=neutral] at (\i*2.5+1.15, -0.65) {block \i};
+      \draw[->, thick, primary-gold] (-0.35, 0.6) -- (9.9, 0.6);
+      \node[text=primary-gold, anchor=west] at (0.2, 0.85)
+        {scan forward: keys only increase};
     \end{tikzpicture}
   \end{center}
   \vspace{-0.1cm}
   \begin{itemize}
-    \item The whole organization is one arithmetic pipeline. It works until
-      the key space is sparse --- which is the normal case for names, account
-      numbers and arbitrary identifiers.
+    \item \good{Find one key:} $O(\log b)$ block reads by binary search on
+      blocks ($b$ = number of blocks). \good{Print in key order:} one linear
+      pass --- unbeatable, and the only scheme here that gets this free.
+    \item \bad{Insert or delete:} the gap must be opened or closed, so on
+      average half the file is rewritten --- $O(n)$ block traffic.
   \end{itemize}
 \end{frame}
 
-\begin{frame}{Indexed Sequential File}
+\begin{frame}{Direct (Relative) Organization: Compute the Address}
   \begin{itemize}
-    \item Keep the data file sorted by key, but store it in \emph{blocks}.
-      Build a sparse \key{index}: one entry per block, holding that block's
-      highest key and its address.
-    \item Search: binary-search the index for the block, then scan the block.
-      With $B$ blocks of $b$ records, that is $\Theta(\log B + b)$ reads.
-    \item Insert: place the record in the correct block if there is room,
-      otherwise in an \key{overflow area}; the index still points at the
-      block. Periodic \key{reorganization} merges the overflow.
-    \item \textbf{When it wins:} point lookups \emph{and} ordered or range
-      scans. It is the classic ISAM organization, and the shape a B-tree index
-      will later generalize in Week 12's databases.
+    \item Give every record a unique \key{relative record number} derived
+      from its key --- often the key itself, or \texttt{key} minus a base
+      offset. The record lives in exactly that position.
   \end{itemize}
-\end{frame}
-
-\begin{frame}{Hashed File}
-  \begin{itemize}
-    \item Generalize the direct file to arbitrary keys: compute the bucket
-      address instead of deriving it from a dense key.
-      \[
-        \text{bucket} = h(\text{key}) \bmod m,
-        \qquad \text{read that bucket, then search inside it.}
-      \]
-    \item If two keys hash to the same bucket, the bucket holds more than one
-      record --- an \key{overflow chain}. The bucket is the unit of one device
-      read.
-    \item Search is expected $\Theta(1)$ when the buckets are short. Order is
-      gone: there is no ``next record in key order''.
-    \item Every remaining section is about making $h$ good and keeping the
-      buckets short without destroying the $\Theta(1)$ promise.
-  \end{itemize}
-  \begin{block}{Definition --- hashed file}
-    A file whose record address is $h(\text{key})$; collisions are resolved
-    by chaining or by probing. It supports point queries, not range queries.
-  \end{block}
-\end{frame}
-
-\begin{frame}{The Four Organizations, Side by Side}
   \begin{center}
-  {\scriptsize\setlength{\tabcolsep}{4pt}
-  \begin{tabular}{p{2.6cm} p{2.1cm} p{2.1cm} p{2.6cm} p{2.5cm}}
+    % Diagram: key -> address arithmetic -> block. Blocks 0..5 drawn as
+    % cells; a sparse key space means holes. Cell width 1.1 cm at x = 0..6.6,
+    % y = 0; the arrow enters cell 4 from a boxed formula at y = 1.4.
+    \begin{tikzpicture}[every node/.style={font=\scriptsize}]
+      \foreach \i in {0,...,6}
+        \draw[draw=neutral!55, fill=white] (\i*1.1, -0.35)
+          rectangle ++(1.0, 0.7);
+      \node[draw, fill=light-bg, minimum width=2.5cm, minimum height=0.55cm]
+        (f) at (2.2, 1.35) {addr $=$ key $-$ base};
+      \draw[->, thick, primary-blue] (f.south) -- (4.55, 0.4);
+      \node[text=positive] at (4.55, 0) {317};
+      \node[text=neutral] at (4.55, -0.7) {record 317};
+      \foreach \i/\lab in {0/,1/,2/,3/,5/,6/}
+        \node[text=neutral!60] at (\i*1.1+0.5, 0) {--};
+      \node[text=neutral, anchor=west] at (7.8, 0) {empty};
+    \end{tikzpicture}
+  \end{center}
+  \vspace{-0.15cm}
+  \begin{itemize}
+    \item \good{Find, insert, delete:} $O(1)$ --- one block, guaranteed, not
+      amortized and not expected. \good{Update in place:} trivial.
+    \item \bad{Wasted space:} the file is as large as the key \emph{range}.
+      Keys $\{1, 2, 10^6\}$ need a million slots for three records. Sparse or
+      clustered key spaces waste blocks.
+    \item So direct organization works exactly when the key space is dense:
+      a student-ID range of $2{,}000$ consecutive numbers, not a hash of
+      names.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Indexed-Sequential Organization: Order Plus a Map}
+  \begin{itemize}
+    \item Keep the file in key order (like sequential), but add a small
+      \key{sparse index}: one entry per block holding that block's highest
+      key and its address. Insertions go to an \key{overflow area}.
+  \end{itemize}
+  \begin{center}
+    % Diagram: a sparse index row above a data row. Index entries 2.1 cm wide
+    % at x = 0, 2.3, 4.6, 6.9 (y = 1.2); data blocks directly beneath at
+    % y = 0. Overflow block at x = 9.4, y = 0, joined by a dashed arrow.
+    \begin{tikzpicture}[every node/.style={font=\scriptsize}]
+      \foreach \i/\k in {0/109, 1/121, 2/137, 3/161}{
+        \draw[draw=primary-gold, fill=primary-gold!18]
+          (\i*2.3, 1.0) rectangle ++(2.1, 0.6);
+        \node at (\i*2.3+1.05, 1.3) {key $\le$ \k};
+        \draw[->, thick, primary-gold] (\i*2.3+1.05, 0.98)
+          -- (\i*2.3+1.05, 0.45);
+      }
+      \foreach \i/\a/\b/\c in {0/101/104/109, 1/112/118/121,
+                               2/125/130/137, 3/142/150/161}{
+        \draw[draw=primary-blue, fill=light-bg]
+          (\i*2.3, -0.35) rectangle ++(2.1, 0.7);
+        \node at (\i*2.3+0.55, 0) {\a};
+        \node at (\i*2.3+1.05, 0) {\b};
+        \node at (\i*2.3+1.55, 0) {\c};
+      }
+      \draw[draw=negative, fill=negative!8, dashed] (9.35, -0.35)
+        rectangle ++(1.6, 0.7);
+      \node[text=negative] at (10.15, 0) {ovf};
+      \draw[->, dashed, negative] (9.02, 0) -- (9.33, 0);
+      \node[text=neutral, anchor=west] at (0, -1.05)
+        {sparse index (top) $\to$ one block (bottom); new keys go to overflow};
+    \end{tikzpicture}
+  \end{center}
+  \vspace{-0.1cm}
+  \begin{itemize}
+    \item \good{Find:} binary search the index ($\log b$ reads) then one block
+      --- $O(\log b)$ block reads with a \emph{tiny} index, since only one
+      index entry per block is stored.
+    \item \good{Range and in-order traversal:} still one sequential pass.
+      \bad{Insert:} cheap at first (overflow), degrading as the overflow
+      chain fills; needs periodic \key{reorganization} (a rebuild).
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Hashed Organization: Compute the Block}
+  \begin{itemize}
+    \item Apply a hash function to the key to get a \key{bucket} (block)
+      number: \texttt{bucket = h(key) mod b}. Records that hash to the same
+      bucket share it; overflow chains handle the excess.
+  \end{itemize}
+  \begin{center}
+    % Diagram: keys on the left feed a boxed h(key) mod b, which points at one
+    % of four buckets; bucket 1 has a 2-record overflow chain. Formula box at
+    % x = 0.9, y = 1.1; buckets 1.5 cm wide at x = 3.4..10.9, y = 0.
+    \begin{tikzpicture}[every node/.style={font=\scriptsize}]
+      \foreach \i/\k in {0/``sum'',1/``x'',2/``pi''}
+        \node[draw, fill=light-bg, minimum width=1.25cm,
+          minimum height=0.45cm] at (0.75, 0.9-\i*0.6) {\k};
+      \node[draw, fill=primary-gold!18, minimum width=2.2cm,
+        minimum height=0.7cm] (hf) at (3.3, 0.15) {$h(k) \bmod b$};
+      \foreach \i in {0,...,3}
+        \draw[draw=primary-blue, fill=white] (5.3+\i*1.5, -0.15)
+          rectangle ++(1.35, 0.6);
+      \foreach \i/\lab in {0/0,1/1,2/2,3/3}
+        \node[text=neutral] at (5.97+\i*1.5, 0.15) {bucket \lab};
+      \draw[->, thick, primary-blue] (hf.east) -- (5.26, 0.15);
+      \draw[draw=negative, fill=negative!8] (6.8, -0.95)
+        rectangle ++(1.35, 0.55);
+      \draw[draw=negative, fill=negative!8] (8.35, -0.95)
+        rectangle ++(1.35, 0.55);
+      \node[text=negative] at (7.47, -0.67) {ovf 1};
+      \node[text=negative] at (9.02, -0.67) {ovf 2};
+      \draw[->, dashed, negative] (7.47, -0.15) -- (7.47, -0.36);
+      \draw[->, dashed, negative] (8.15, -0.67) -- (8.32, -0.67);
+    \end{tikzpicture}
+  \end{center}
+  \vspace{-0.1cm}
+  \begin{itemize}
+    \item \good{Find by key:} one block, \emph{if} the bucket is not
+      overfull --- this is the direct-access ideal without direct
+      organization's space waste. \good{Insert:} one block plus a link.
+    \item \bad{Order is destroyed:} no binary search, no range query, no
+      in-order traversal. \bad{Clusters:} a bad hash or too few buckets turns
+      the overflow chain back into a linear scan.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Four Organizations, Four Promises}
+  \footnotesize
+  \begin{center}
+  {\scriptsize
+  \begin{tabular}{lccccl}
     \toprule
-    \textbf{organization} & \textbf{search} & \textbf{insert} &
-      \textbf{range scan} & \textbf{extra space} \\
+    Organization & Find & Insert & In order & Space & Best for \\
     \midrule
-    sequential (pile) & $\Theta(n)$ & $\Theta(1)$ & $\Theta(n)$ &
-      none \\
-    sequential (sorted) & $\Theta(\log n)$ seeks & $\Theta(n)$ &
-      $\Theta(n)$ & none \\
-    direct / relative & $\Theta(1)$ & $\Theta(1)$ & $\Theta(\text{range})$ &
-      key range \\
-    indexed sequential & $\Theta(\log B + b)$ & overflow $+$ reorg &
-      $\Theta(\log B + \text{out})$ & index $+$ overflow \\
-    hashed & $\Theta(1)$ expected & $\Theta(1)$ expected &
-      $\Theta(n+m)$ (no order) & table $+$ chain \\
+    Sequential & $O(\log b)$ & $O(n)$ & \good{free} & compact & archive \\
+    Direct & $O(1)$ & $O(1)$ & \bad{no} & \bad{wasteful} & dense IDs \\
+    Indexed seq. & $O(\log b)$ & $O(1)$+rebuild & \good{free} & index+ovf & both \\
+    Hashed & $O(1)$ exp. & $O(1)$ exp. & \bad{no} & chains & lookup only \\
     \bottomrule
   \end{tabular}}
   \end{center}
+  \vspace{0.05cm}
   \begin{itemize}
-    \item Read the table by \emph{which column is fast}. Hashing wins the
-      first two columns and loses the third; indexed sequential is the only
-      one strong in both.
-    \item The choice is a workload question, exactly as it was for sorting in
-      Week 9.
+    \item Read the table as a set of \emph{exclusions}: sequential refuses
+      fast insertion, direct refuses sparse keys, indexed sequential refuses
+      free growth, hashed refuses order.
+    \item No entry wins every column --- which is why the syllabus wants all
+      four. Choosing an organization is choosing which question your
+      application never asks.
   \end{itemize}
+  \begin{exampleblock}{The exam-shaped question}
+    Need lookup by account number \emph{and} a monthly report in that order?
+    \emph{Indexed sequential} --- the only one that pays nothing extra for
+    both.
+  \end{exampleblock}
 \end{frame}
 
-\transitionslide{A hashed file is an array we never search.}
+\transitionslide{The last organization is a data structure. Let us build it.}
 
 % =============================================================================
 % ACT 2 --- HASH FUNCTIONS
 % =============================================================================
 \section{Hash Functions}
 
-\sectiondivider{Section 2}{Hash Functions and the Load Factor}
+\sectiondivider{Section 2}{Hash Functions}
 
-\begin{frame}{The Hash-Table ADT}
-  \begin{block}{Definition --- hash table (Sedgewick Sec.~3.4, p.~458;
-    Wirth Sec.~5.1, p.~177)}
-    A hash table stores $n$ keys in $m$ slots. A \key{hash function}
-    $h: U \to \{0,\dots,m-1\}$ maps each key to a slot. It supports
-    \texttt{insert}, \texttt{search} and \texttt{delete}; the
-    \key{load factor} is $\alpha = n/m$.
+\begin{frame}{The Coat-Check Number}
+  \begin{itemize}
+    \item A cloakroom does not search the rack for your coat. It hands your
+      coat a number and puts it on that hook. On your way out it computes the
+      same number and goes straight there.
+    \item The number is not random --- it is a \emph{function of your ticket}.
+      That is the whole trick: \key{compute the address, do not search for
+      it}.
+    \item Two customers can be handed the same hook number. The cloakroom now
+      has a \key{collision}, and it must have a rule for it (a second hook, a
+      pile on the same hook). Every design decision in this half of the week
+      is either \emph{choosing the numbering function} or \emph{choosing the
+      collision rule}.
+  \end{itemize}
+  \begin{block}{Definition --- hash table (symbol table)
+    (Sedgewick Sec.~3.1, p.~362; Sec.~3.4, p.~458)}
+    A hash table stores $n$ entries in an array of $m$ \key{slots}, placing
+    the entry with key $k$ at index $h(k) \bmod m$ for a fixed function $h$.
+    The operations are \texttt{insert}, \texttt{search}, and
+    \texttt{delete} --- and nothing else~\cite{Sedgewick2011_algorithms}.
+  \end{block}
+\end{frame}
+
+\begin{frame}{The Hash Table ADT: What It Does Not Promise}
+  \begin{itemize}
+    \item Sedgewick calls this structure a \key{symbol table} --- the same
+      name Week 6 gave the calculator's identifier table. The operations are
+      a \emph{map}: key $\to$ value, with membership and update.
+  \end{itemize}
+  {\footnotesize
+  \begin{center}
+  \begin{tabular}{lll}
+    \toprule
+    Operation & Contract & Cost we want \\
+    \midrule
+    \texttt{insert(key, val)} & add or replace the entry for \texttt{key} & $O(1)$ \\
+    \texttt{search(key)} & return the value, or report absent & $O(1)$ \\
+    \texttt{delete(key)} & remove the entry & $O(1)$ \\
+    \midrule
+    \bad{min / max} & smallest / largest key & \bad{not supported} \\
+    \bad{successor / range} & keys in $[k_1, k_2]$ & \bad{not supported} \\
+    \bad{in-order traversal} & visit keys in sorted order & \bad{not supported} \\
+    \bottomrule
+  \end{tabular}
+  \end{center}}
+  \vspace{0.1cm}
+  \begin{itemize}
+    \item The three greyed rows are not an oversight. They are the \emph{price}
+      of $\Theta(1)$: the table deliberately forgets every relationship
+      between keys except ``same slot or not''.
+    \item Week 11 exists because of those rows. A dictionary that must answer
+      ``what is the smallest key?'' cannot be a hash table --- it must keep
+      order, and that leads to the search tree.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Collisions Are Not a Bug}
+  \begin{itemize}
+    \item The keys come from some \key{universe} $U$ --- all possible
+      identifiers, all possible 8-letter names, all possible 64-bit integers.
+      The table has $m$ slots. If $|U| > m$, some function must map two keys
+      to one slot. Not ``might'' --- \emph{must}.
+  \end{itemize}
+  \begin{block}{The pigeonhole argument}
+    A function from a set of size $|U|$ into a set of size $m$ with
+    $|U| > m$ maps at least $\lceil |U|/m \rceil$ elements to some single
+    value. For 8-letter names, $|U| = 26^8 \approx 2.1\times 10^{11}$; with
+    $m = 4{,}096$ slots, some slot must hold $\approx 5
+    \times 10^{7}$ keys on average before we even start.
   \end{block}
   \begin{itemize}
-    \item Collisions are unavoidable: the universe $U$ is larger than $m$, so
-      two keys must share a slot (pigeonhole). The design question is what to
-      do when they do.
-    \item The cost model is the \emph{expected number of probes} under
-      \key{uniform hashing}: each key is equally likely to hash to any slot,
-      independently of the others.
-    \item The hash table does not store keys in order. \texttt{search} is
-      fast; \texttt{min}, \texttt{max} and ``all keys between $a$ and $b$''
-      are not supported.
+    \item So a collision is the normal case, not an accident. Design question
+      changes from ``how do I avoid collisions?'' --- impossible --- to
+      ``how do I make them \emph{uniform} and \emph{cheap to resolve}?''
+    \item Two numbers govern everything that follows:
+      $n$ entries, $m$ slots, and their ratio
+      $\alpha = n/m$ --- the \key{load factor}.
   \end{itemize}
 \end{frame}
 
-\begin{frame}{What Makes a Good Hash Function}
+\begin{frame}{What Makes a Hash Function Good}
+  \begin{enumerate}
+    \item \key{Deterministic and fast.} The same key always gives the same
+      slot, and computing $h$ costs $O(1)$ --- independent of $n$. If
+      computing the address costs as much as searching, nothing was gained.
+    \item \key{Uniform.} Each slot is equally likely for a random key, so
+      slot occupancy looks like balls thrown randomly into bins.
+    \item \key{Uses the whole key.} Including the high-order bits. A function
+      that only reads the low bits ignores most of the information the
+      designer put in the key.
+    \item \key{Avalanche.} Changing one bit of the key should change the slot
+      unpredictably --- keys that differ slightly must not land together.
+  \end{enumerate}
+  \vspace{0.1cm}
   \begin{itemize}
-    \item \textbf{Deterministic.} The same key must always hash to the same
-      slot, or a stored record can never be found again.
-    \item \textbf{Uniform.} Over the keys actually used, the outputs should be
-      spread evenly over the $m$ slots. A function that is uniform on random
-      keys but biased on real keys is a bad function.
-    \item \textbf{Fast.} Computing $h$ must cost less than the search it
-      replaces. A cryptographic hash is uniform but far too slow for a symbol
-      table.
-    \item \textbf{Uses the whole key.} If the table size is $m = 2^p$, then
-      $h(k)=k \bmod m$ sees only the low $p$ bits. Two keys differing only in
-      high bits collide every time.
+    \item Property 2 is the one that makes the analysis work: with a uniform
+      hash, the expected chain at a slot is $\alpha$ and the expected probe
+      count is a formula in $\alpha$ alone. Break uniformity and the formulas
+      stop applying --- not because the math is wrong, but because the
+      assumption is.
   \end{itemize}
-  \begin{exampleblock}{The test that matters}
-    Hash the \emph{actual} key distribution, not a textbook's random one.
-    Student roll numbers share a year prefix; employee numbers share a
-    company prefix; names share letters. A good $h$ must break those patterns.
-  \end{exampleblock}
+  \muted{Every function below is judged against these four properties, not
+    against a vague sense of ``mixing well''.}
 \end{frame}
 
-\begin{frame}{The Division Method}
-  \[
-    h(k) = k \bmod m.
-  \]
+\begin{frame}[fragile]{Method 1: Division (the default)}
+  \begin{block}{Definition --- division method
+    (Wirth Sec.~5.2, p.~177; Sedgewick Sec.~3.4, p.~458)}
+    \[ h(k) = k \bmod m \]
+    with $m$ a \emph{prime} not close to a power of two.
+  \end{block}
   \begin{itemize}
-    \item The simplest method, and the fastest. The only design decision is
-      $m$ --- and it matters more than the formula suggests.
-    \item Choose $m$ \key{prime}, preferably not close to a power of $2$ or
-      $10$. Then every digit of $k$ can affect the residue.
-    \item Why not $m = 2^p$? Because $k \bmod 2^p$ is exactly the low $p$
-      bits: even keys use only half the slots, and sequential keys give
-      sequential residues. Why not $m = 10^p$? Decimal keys share trailing
-      zeros, so the residue repeats the key's pattern.
+    \item Why prime? Four even keys $34, 18, 50, 32$ against two table sizes:
   \end{itemize}
-  \begin{exampleblock}{Worked example}
-    $m = 11$: $h(12)=1$, $h(44)=0$, $h(88)=0$, $h(23)=1$, $h(94)=6$.
-    Two collisions already --- exactly what the next two sections handle.
-  \end{exampleblock}
-\end{frame}
-
-\begin{frame}{The Hash Function Is a Map}
-  \begin{center}
-    % Diagram: four keys enter h(k)=k mod 11; three slots lie to the right.
-    % Key boxes at x=0, y = 1.5, 0.7, -0.1, -0.9; function box centred at
-    % (2.3,0.3); slots at x=4.9, y = 1.0, 0.2, -0.6.
-    \begin{tikzpicture}[every node/.style={font=\scriptsize}]
-      \foreach \y/\v in {1.5/12, 0.7/44, -0.1/88, -0.9/13}
-        \node[draw, fill=light-bg, minimum width=1.0cm,
-          minimum height=0.5cm] at (0, \y) {\v};
-      \node[draw, fill=primary-gold!20, minimum width=2.0cm,
-        minimum height=1.6cm, align=center] (h) at (2.3, 0.3)
-        {$h(k)$\\ $=k \bmod 11$};
-      \foreach \y in {1.5, 0.7, -0.1, -0.9}
-        \draw[->, thick, primary-blue] (0.55, \y) -- (1.25, \y);
-      \foreach \y/\v in {1.0/0, 0.2/1, -0.6/2}
-        \node[draw, circle, fill=light-bg, inner sep=3pt] at (4.9, \y) {\v};
-      \draw[->, thick, primary-blue] (3.35, 1.0) -- (4.55, 1.0);
-      \draw[->, thick, primary-blue] (3.35, 0.7) -- (4.55, 1.0);
-      \draw[->, thick, primary-blue] (3.35, 0.3) -- (4.55, 0.2);
-      \draw[->, thick, primary-blue] (3.35, -0.1) -- (4.55, -0.6);
-      \draw[dashed, primary-gold, rounded corners]
-        (4.55, 0.62) rectangle (5.25, 1.38);
-      \node[text=primary-gold, anchor=west] at (5.4, 0.75)
-        {\tiny $44$ and $88$ collide};
-    \end{tikzpicture}
-  \end{center}
-  \vspace{-0.1cm}
-  \begin{itemize}
-    \item Four keys in, three slots out. The collision at slot $0$ is not a
-      bug in the arithmetic --- it is the arithmetic working as defined.
-  \end{itemize}
-\end{frame}
-
-\begin{frame}{The Multiplication Method}
-  \[
-    h(k) = \left\lfloor m\,(kA \bmod 1)\right\rfloor,
-    \qquad 0 < A < 1.
-  \]
-  \begin{itemize}
-    \item Multiply the key by a fixed fraction $A$, keep the fractional part,
-      and scale it to $m$ slots. Knuth's choice is
-      $A = (\sqrt{5}-1)/2 \approx 0.6180339887$.
-    \item Advantage: $m$ need not be prime and is often a power of two, so the
-      scaling is a shift. The method uses the \emph{high} bits of the product,
-      so it does not ignore the key's leading digits.
-    \item Cost: one multiplication and a fractional-part extraction --- still
-      constant time, slightly more work than a division.
-  \end{itemize}
-  \begin{exampleblock}{Worked example}
-    $m = 16$, $A = 0.6180339887$. For $k = 12{,}345$,
-    $kA = 7{,}629.6296\ldots$, fractional part $0.6296\ldots$, so
-    $h(k) = \lfloor 16 \times 0.6296\ldots\rfloor = 10$. The low bits of $k$
-    did not decide the slot; the product did.
-  \end{exampleblock}
-\end{frame}
-
-\begin{frame}{The Classic Four}
   \begin{center}
   {\footnotesize
-  \begin{tabular}{l l p{5.4cm}}
+  \begin{tabular}{lcccc}
     \toprule
-    \textbf{method} & \textbf{formula} & \textbf{note} \\
+    $m$ & $34$ & $18$ & $50$ & $32$ \\
     \midrule
-    division & $k \bmod m$ & choose prime $m$; fast; the default \\
-    multiplication & $\lfloor m(kA \bmod 1)\rfloor$ &
-      any $m$; uses high bits; Knuth's $A$ \\
-    mid-square & middle digits of $k^2$ &
-      key digits influence all output digits \\
-    folding & add or XOR the key's parts &
-      good for fixed-width records and IDs \\
-    digit analysis & choose the most uniform digits &
-      needs a sample of real keys \\
+    $16 = 2^4$ & \bad{$2$} & \bad{$2$} & \bad{$2$} & \bad{$0$} \\
+    $11$ (prime) & $1$ & $7$ & $6$ & $10$ \\
     \bottomrule
   \end{tabular}}
   \end{center}
   \begin{itemize}
-    \item \textbf{Mid-square:} $k = 5678$, $k^2 = 32{,}239{,}684$; the middle
-      four digits give $2396$.
-    \item \textbf{Folding:} $123456789 \to 123 + 456 + 789 = 1368$, then
-      $1368 \bmod m$.
-    \item \textbf{Digit analysis:} if every roll number begins $2023$, those
-      four digits carry no information --- drop them and hash the rest.
+    \item \texttt{k mod 16} reads only the low 4 bits; all four keys share
+      them, so only the even slots are ever reachable --- $16$ slots behave
+      like $8$.
+    \item In general, if $m = 2^p$ and every key is a multiple of $2^d$, only
+      $2^{p-d}$ slots are usable. A prime $m$ shares no factor with the keys,
+      so every slot stays reachable.
   \end{itemize}
 \end{frame}
 
-\begin{frame}{Hashing Strings}
+\begin{frame}{Method 2: Multiplication (works for any $m$)}
+  \small
   \begin{itemize}
-    \item Keys are usually strings, not integers. Treat a string as a
-      polynomial in a base $B$ and evaluate it modulo $m$ (Horner's rule):
-      \[
-        h(s) = \Bigl(\cdots\bigl((s_0 B + s_1)B + s_2\bigr)\cdots\Bigr)
-        \bmod m.
-      \]
-    \item $B = 31$ is the common choice: small, prime, and cheap to multiply
-      by a shift and a subtract.
-    \item In C, the running value must be reduced modulo $m$ at every step,
-      or $31^{n}$ overflows before the string ends. Use \texttt{unsigned}
-      arithmetic and reduce inside the loop.
+    \item Division locks the table size to a prime, which fights any
+      power-of-two growth policy. Multiplication separates the two steps.
   \end{itemize}
-  \begin{exampleblock}{Worked example: \texttt{"cat"} with $m=97$, $B=31$}
-    Start $h=0$. $h = 0\cdot31 + 99 = 99$;
-    $h = 99\cdot31 + 97 = 3166$;
-    $h = 3166\cdot31 + 116 = 98{,}262 \equiv 1 \pmod{97}$.
-    So \texttt{"cat"} hashes to slot $1$.
-  \end{exampleblock}
-\end{frame}
-
-\begin{frame}{Universal Hashing}
-  \begin{itemize}
-    \item A fixed $h$ can always be defeated: an adversary who knows it can
-      choose keys that all collide. For a symbol table fed by untrusted input,
-      that is a denial-of-service waiting to happen.
-    \item Fix: choose the function \emph{randomly at table creation} from a
-      family, and keep the choice secret.
-  \end{itemize}
-  \begin{block}{Definition --- universal family}
-    Let $p$ be a prime larger than the key universe, and choose
-    $a \in \{1,\dots,p-1\}$, $b \in \{0,\dots,p-1\}$ uniformly at random.
-    Then
-    \[
-      h_{a,b}(k) = \bigl((ak+b) \bmod p\bigr) \bmod m
-    \]
-    satisfies $\Pr[h_{a,b}(k_1)=h_{a,b}(k_2)] \le 1/m$ for every distinct
-    $k_1,k_2$.
+  \begin{block}{Definition --- multiplication method
+    (Sedgewick Sec.~3.4, p.~458; Wirth Sec.~5.2, p.~177)}
+    \footnotesize
+    Fix $0 < A < 1$. Then
+    \[ h(k) = \big\lfloor m \cdot \operatorname{frac}(kA) \big\rfloor ,
+       \qquad \operatorname{frac}(x) = x - \lfloor x \rfloor . \]
+    Knuth's $A = \tfrac{\sqrt5 - 1}{2} \approx 0.6180339887$ (golden-ratio
+    conjugate) mixes well; $m$ may be any size, including a power of two.
   \end{block}
   \begin{itemize}
-    \item No fixed input can force a bad distribution; the expected cost is
-      $O(1+\alpha)$ over the random choice. Libraries use this when keys are
-      attacker-controlled.
+    \item Worked, $m = 100$, $A = 0.6180339887$, $k = 12345$:
+      \[ kA = 7629.62959\ldots \;\Rightarrow\;
+         \operatorname{frac}(kA) = 0.62959\ldots \;\Rightarrow\;
+         h(k) = 62 . \]
+    \item Only the \emph{fractional part} matters, so $m$ never divides a key
+      and no factor-sharing pathology can arise.
   \end{itemize}
 \end{frame}
 
-\begin{frame}{A Bad Hash Function, Traced}
+\begin{frame}{Method 3: Mid-Square and Folding}
+  \small
   \begin{itemize}
-    \item Suppose the key is a student's year of admission followed by a
-      sequence number, and we hash with $m=100$ by taking the \emph{last two
-      digits}. Sequential IDs spread perfectly; that is fine.
-    \item Now suppose $m = 10$ and every key is even. Then $k \bmod 10 \in
-      \{0,2,4,6,8\}$: five slots are never used, and the effective load factor
-      is $2\alpha$, not $\alpha$.
-    \item Or suppose $m=2^{10}=1024$ and keys differ only in the high-order
-      year bits. The remainder keeps only the low $10$ bits, so every student
-      in a cohort can collide in the same few slots.
+    \item \key{Mid-square}: square the key, take the middle digits. Squaring
+      makes every input digit influence every output digit (avalanche); the
+      \emph{middle} avoids the trailing zeros that low-order keys produce.
   \end{itemize}
-  \begin{exampleblock}{Rule of thumb}
-    A hash function is only as good as its behaviour on the keys you will
-    actually store. Test it on a sample: count the bucket lengths, and look at
-    the longest chain. If one bucket holds a large fraction of $n$, change $m$
-    or change $h$ --- do not blame the collision policy.
+  \begin{exampleblock}{Worked --- mid-square, $k = 4321$, four-digit table}
+    \footnotesize
+    $4321^2 = 18{,}671{,}041$; the middle four digits of $18671041$ are
+    \texttt{6710}, so $h(4321) = 6710$. The leading \texttt{18} and trailing
+    \texttt{41} go because they depend on the fewest input digits.
+  \end{exampleblock}
+  \begin{itemize}
+    \item \key{Folding}: split the key into equal parts and combine them,
+      either by adding (\emph{shift folding}) or alternating $+$/$-$
+      (\emph{boundary folding}).
+  \end{itemize}
+  \begin{exampleblock}{Worked --- shift folding, roll number $202503117$}
+    \footnotesize
+    $202 + 503 + 117 = 822$, so with $1{,}000$ slots $h = 822$. Boundary
+    folding gives $202 - 503 + 117 = -184$; take $|{-184}|$ to keep the index
+    valid.
   \end{exampleblock}
 \end{frame}
 
-\transitionslide{Two keys can want the same slot. That is normal, not an error.}
+\begin{frame}{Method 4: Hashing a String}
+  \small
+  \begin{itemize}
+    \item Identifiers are strings. The naive attempt --- add the character
+      codes --- fails the avalanche property outright, because addition is
+      commutative.
+  \end{itemize}
+  \begin{exampleblock}{Why addition is not enough}
+    \footnotesize
+    \texttt{cat} $\to 99+97+116 = 312$ and \texttt{act} $\to 97+116+99 = 312$.
+    Every anagram collides --- a systematic, predictable pile-up.
+  \end{exampleblock}
+  \begin{block}{Definition --- polynomial (rolling) hash
+    (Sedgewick Sec.~3.4, p.~458; Karumanchi Ch.~14, pp.610--639 PDF)}
+    \footnotesize
+    \[ h \leftarrow 0;\quad
+       \text{for each character } c:\;
+       h \leftarrow (h \cdot 31 + c) \bmod m . \]
+    Each step \emph{shifts} the accumulated value by a power of $31$, so
+    position enters the result.
+  \end{block}
+  \begin{itemize}
+    \item \texttt{cat} ($m=1000$): $99 \to 166 \to 262$. \texttt{act}:
+      $97 \to 106 \to 402$. Same letters, slots $262$ vs.\ $402$ --- and
+      $O(\text{key length})$ work~\cite{Karumanchi2017_data_structures_algorithms_made_easy}.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Hashing Strings in C}
+  \footnotesize
+  \begin{block}{Polynomial hash with Horner's rule
+    (Sedgewick Sec.~3.4, p.~458; Karumanchi Ch.~14)}
+\begin{semiverbatim}
+unsigned long hash(const char *s, unsigned long m) {
+  unsigned long h = 0;
+  for (; *s != '\\0'; s++)
+    h = (h * 31u + (unsigned char)*s) % m;   // Horner: one pass, no powers
+  return h;
+}
+\end{semiverbatim}
+  \end{block}
+  \begin{itemize}
+    \item Horner's rule is why this is $O(\text{key length})$ with no
+      separate exponentiation: each iteration folds in one character.
+    \item The cast to \texttt{unsigned char} matters: a plain \texttt{char}
+      may be \emph{signed}, so a byte above 127 becomes a negative index
+      contribution --- a real, shipped bug in C hash functions.
+    \item \texttt{h * 31} can overflow \texttt{unsigned long}; in C that
+      wraps modulo $2^{64}$, which is \emph{well defined} and harmless here
+      --- unlike signed overflow, which is undefined behaviour (Week 1).
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{One Table, Four Functions}
+  \begin{itemize}
+    \item Six keys, $m = 11$ slots: $54, 26, 93, 17, 77, 31$. Watch what each
+      function does to the distribution.
+  \end{itemize}
+  {\footnotesize
+  \begin{center}
+  \begin{tabular}{lcccccc}
+    \toprule
+    Function & $54$ & $26$ & $93$ & $17$ & $77$ & $31$ \\
+    \midrule
+    $k \bmod 11$ & $10$ & $4$ & $5$ & $6$ & $0$ & $9$ \\
+    $\lfloor 11 \cdot \operatorname{frac}(0.618\,k)\rfloor$
+      & $4$ & $0$ & $5$ & $5$ & $6$ & $1$ \\
+    mid-square, then mod $11$ & $3$ & $1$ & $9$ & $6$ & $4$ & $8$ \\
+    $k \bmod 13$ & $2$ & $0$ & $2$ & $4$ & $12$ & $5$ \\
+    \bottomrule
+  \end{tabular}
+  \end{center}}
+  \vspace{0.1cm}
+  \begin{itemize}
+    \item Mod $11$: six distinct slots, no collision --- a clean run, but a
+      coincidence of \emph{these} keys. Mod $13$: $54$ and $93$ collide.
+      Mid-square: distinct here too, which proves nothing either. A table of
+      six keys shows only that no single example does.
+    \item This is why the analysis is probabilistic. We do not ask ``does
+      this function collide?'', we ask ``\emph{how many} collisions does it
+      produce on average, and how much does each one cost?''
+  \end{itemize}
+\end{frame}
+
+\transitionslide{Collisions are certain. The only question left is what to do when one happens.}
 
 % =============================================================================
-% ACT 3 --- OPEN HASHING (SEPARATE CHAINING)
+% ACT 3 --- OPEN HASHING
 % =============================================================================
-\section{Open Hashing}
+\section{Open Hashing: Separate Chaining}
 
 \sectiondivider{Section 3}{Open Hashing: Separate Chaining}
 
-\begin{frame}{Two Names, One Warning}
-  \begin{alertblock}{The names are historically confusing --- define both}
+\begin{frame}{Two Families, Confusing Names}
+  \begin{itemize}
+    \item Read the names carefully, because they are historically backwards
+      from intuition: \key{open} hashing keeps the \emph{address space}
+      open (entries live outside the table, in lists); \key{closed} hashing
+      keeps the entries closed \emph{inside} the table's own array.
+  \end{itemize}
+  \begin{block}{Definition --- the two collision families
+    (Sedgewick Sec.~3.4, p.~458; Wirth Sec.~5.3, p.~178)}
     \begin{itemize}
-      \item \key{Open hashing} = \key{separate chaining}: colliding keys are
-        stored \emph{outside} the table, in a list attached to the slot.
-      \item \key{Closed hashing} = \key{open addressing}: every key is stored
-        \emph{inside} the table, and collisions are resolved by probing other
-        slots.
+      \item \key{Open hashing} = \key{separate chaining}: each slot holds a
+        container (here, a linked list) of every entry that hashed to it.
+        $\alpha$ may exceed $1$.
+      \item \key{Closed hashing} = \key{open addressing}: every entry is
+        stored \emph{in} a slot; a collision probes other slots until a free
+        one is found. Requires $\alpha < 1$.~\cite{Wirth2004_algorithms_data_structures}
     \end{itemize}
-  \end{alertblock}
+  \end{block}
   \begin{itemize}
-    \item ``Open'' refers to the table being open to an unbounded number of
-      entries per slot. ``Closed'' refers to the address space being closed:
-      a key must end up in one of the $m$ slots.
-    \item The syllabus uses both pairs. Whenever either name appears, give the
-      alternative name in the same sentence --- on an exam, an unqualified
-      ``open hashing'' is ambiguous.
+    \item Whenever either term appears from now on, say the alternative name
+      too. The syllabus uses the confusing pair; the exam will too.
   \end{itemize}
 \end{frame}
 
-\begin{frame}{Separate Chaining: The Idea}
+\begin{frame}{Separate Chaining, Drawn}
   \begin{itemize}
-    \item The table is an array of $m$ \key{heads}. Slot $j$ points to a
-      linked list of every key with $h(k)=j$.
-    \item Insert: compute $h(k)$, push the key onto that slot's list ---
-      $\Theta(1)$. This is Week 6's linked list, one per bucket.
-    \item Search: compute $h(k)$, then walk that one list comparing keys.
-      The list is short if $h$ is uniform.
-    \item Delete: unlink the node --- $\Theta(1)$ after the search. No
-      tombstones, no probing.
-    \item $\alpha = n/m$ can exceed $1$: the table has $m$ slots but no limit
-      on the total number of nodes.
+    \item Each of the $m$ slots stores a pointer to the \emph{head} of a
+      linked list --- Week 6's \texttt{struct node}, one list per slot.
   \end{itemize}
-\end{frame}
-
-\begin{frame}{Chaining, Drawn}
   \begin{center}
-    % Diagram: m=11 buckets. Non-empty chains only:
-    % 0: 44->88->11, 1: 12->23, 2: 13, 5: 16->5, 6: 94->39, 9: 20.
-    % Heads at y=-0.85, deeper nodes at -1.6 and -2.35; n=11, alpha=1.0.
+    % Diagram: 7 slots, two populated chains, each chain drawn on its OWN
+    % slot row (row centres yc_i = 1.23 - 0.42 i, i = 0..6).
+    % Slot boxes 0.62 x 0.36 at x = 0; chain nodes 0.90 x 0.36, first at
+    % x = 1.05, pitch 1.05; the empty-slot NULL sits at x = 1.08.
     \begin{tikzpicture}[every node/.style={font=\scriptsize}]
-      \foreach \i in {0,...,10}
-        \node[draw, fill=light-bg, minimum width=0.7cm,
-          minimum height=0.5cm] (b\i) at (\i, 0) {\i};
-      \foreach \i/\v in {0/44, 1/12, 2/13, 5/16, 6/94, 9/20}
-        \node[draw, fill=primary-gold!20, minimum width=0.62cm,
-          minimum height=0.45cm] (h\i) at (\i, -0.85) {\v};
-      \foreach \i in {0,1,2,5,6,9}
-        \draw[->, thick, primary-blue] (b\i) -- (h\i);
-      \node[draw, fill=primary-gold!20, minimum width=0.62cm,
-        minimum height=0.45cm] (s0) at (0, -1.6) {88};
-      \node[draw, fill=primary-gold!20, minimum width=0.62cm,
-        minimum height=0.45cm] (s1) at (1, -1.6) {23};
-      \node[draw, fill=primary-gold!20, minimum width=0.62cm,
-        minimum height=0.45cm] (s5) at (5, -1.6) {5};
-      \node[draw, fill=primary-gold!20, minimum width=0.62cm,
-        minimum height=0.45cm] (s6) at (6, -1.6) {39};
-      \node[draw, fill=primary-gold!20, minimum width=0.62cm,
-        minimum height=0.45cm] (t0) at (0, -2.35) {11};
-      \foreach \a/\b in {h0/s0, h1/s1, h5/s5, h6/s6, s0/t0}
-        \draw[->, thick, primary-blue] (\a) -- (\b);
-      \node[text=neutral, anchor=west] at (10.7, 0)
-        {$m=11$};
-      \node[text=primary-gold, anchor=west] at (10.7, -0.85)
-        {$\alpha=11/11=1$};
+      \foreach \i in {0,...,6}
+        \draw[draw=primary-blue, fill=light-bg] (0, 1.05-\i*0.42)
+          rectangle ++(0.62, 0.36);
+      \foreach \i in {0,...,6}
+        \node[text=neutral] at (0.31, 1.23-\i*0.42) {\i};
+      % empty slots: short arrow then NULL
+      \foreach \i in {0,2,3,4,6}{
+        \draw[->, primary-blue] (0.62, 1.23-\i*0.42) -- (1.0, 1.23-\i*0.42);
+        \node[text=neutral!55, anchor=west] at (1.08, 1.23-\i*0.42)
+          {\texttt{NULL}};
+      }
+      % slot 1 chain: 22 -> 15 -> 8 -> 29, on row y = 0.81
+      \draw[->, primary-gold] (0.62, 0.81) -- (1.0, 0.81);
+      \foreach \j/\v in {0/22,1/15,2/8,3/29}{
+        \draw[draw=primary-gold, fill=primary-gold!15]
+          (1.05+\j*1.05, 0.63) rectangle ++(0.90, 0.36);
+        \node at (1.50+\j*1.05, 0.81) {\v};
+      }
+      \foreach \j in {0,1,2}
+        \draw[->, primary-gold] (1.95+\j*1.05, 0.81)
+          -- (2.10+\j*1.05, 0.81);
+      \node[text=neutral!55, anchor=west] at (5.28, 0.81) {\texttt{NULL}};
+      \node[text=neutral, anchor=west] at (6.1, 0.81) {chain, len 4};
+      % slot 5 chain: 12 -> 19 -> 5 -> 26, on row y = -0.87
+      \draw[->, positive] (0.62, -0.87) -- (1.0, -0.87);
+      \foreach \j/\v in {0/12,1/19,2/5,3/26}{
+        \draw[draw=positive, fill=positive!12]
+          (1.05+\j*1.05, -1.05) rectangle ++(0.90, 0.36);
+        \node at (1.50+\j*1.05, -0.87) {\v};
+      }
+      \foreach \j in {0,1,2}
+        \draw[->, positive] (1.95+\j*1.05, -0.87)
+          -- (2.10+\j*1.05, -0.87);
+      \node[text=neutral!55, anchor=west] at (5.28, -0.87) {\texttt{NULL}};
+      \node[text=neutral, anchor=west] at (6.1, -0.87) {chain, len 4};
     \end{tikzpicture}
   \end{center}
-  \vspace{-0.15cm}
-  \begin{itemize}
-    \item Slot $0$ carries a chain of three; five slots are empty. A search
-      for $23$ walks slot $1$'s chain: $12$, then $23$ --- two nodes.
-  \end{itemize}
-\end{frame}
-
-\begin{frame}{Chaining: Search and Insert Traced}
-  \begin{itemize}
-    \item Table of the previous slide, $m=11$, $h(k)=k\bmod 11$.
-    \item \textbf{Search 23.} $h(23)=1$; read head $1$; compare $12$ (no);
-      follow to $23$ (yes). Two comparisons.
-    \item \textbf{Search 50 (a miss).} $h(50)=6$; walk slot $6$'s chain
-      $94, 39$; reach the end. Two comparisons, and the miss is detected
-      without scanning the table.
-    \item \textbf{Insert 60.} $h(60)=5$; push at the head of slot $5$; the
-      chain becomes $60, 16, 5$. One pointer write --- no shifting, no
-      probing.
-    \item \textbf{Delete 88.} Search slot $0$ for $88$ (second node), unlink
-      it. The chain becomes $44, 11$; no other slot is disturbed.
-  \end{itemize}
-  \begin{exampleblock}{Why deletion is easy here}
-    A chain is a real linked list, so removing a node is Week 6's pointer
-    surgery. This is the one operation where chaining is unambiguously
-    simpler than open addressing.
-  \end{exampleblock}
-\end{frame}
-
-\begin{frame}{Chaining: The Bill}
-  Under uniform hashing, the expected number of key comparisons in a chain
-  is:
-  \[
-    \text{successful} \approx 1 + \frac{\alpha}{2},
-    \qquad
-    \text{unsuccessful} \approx \alpha.
-  \]
-  \begin{center}
-  {\footnotesize
-  \begin{tabular}{r r r}
-    \toprule
-    $\alpha = n/m$ & successful & unsuccessful \\
-    \midrule
-    $0.5$ & $1.25$ & $0.5$ \\
-    $1.0$ & $1.5$  & $1.0$ \\
-    $2.0$ & $2.0$  & $2.0$ \\
-    $4.0$ & $3.0$  & $4.0$ \\
-    \bottomrule
-  \end{tabular}}
-  \end{center}
-  \begin{itemize}
-    \item The successful cost is half the chain because the target is equally
-      likely to be anywhere in it. The unsuccessful cost is the whole chain.
-    \item Space is $\Theta(n+m)$: $n$ nodes plus $m$ heads. Chaining degrades
-      gracefully --- doubling $n$ doubles the cost, not the square.
-  \end{itemize}
+  \muted{Keys $22,12,15,8,29,19,5,26$ with $h(k)=k \bmod 7$: $n = 8$,
+    $m = 7$, so $\alpha \approx 1.14$ --- over $1$, and that is legal here.}
 \end{frame}
 
 \begin{frame}[fragile]{Chaining in C}
   \scriptsize
-\begin{verbatim}
-typedef struct Entry {
-    const char *key; int value; struct Entry *next;
-} Entry;
-typedef struct { Entry **head; int m; int n; } Table;
-
-unsigned hash(const char *s, int m) {
-    unsigned h = 0;
-    for (; *s; s++) h = (h * 31u + (unsigned char)*s) % (unsigned)m;
-    return h;
+  \begin{block}{Insert and search, one list per slot}
+\begin{semiverbatim}
+#define M 1021                     /* prime, a little under a power of two */
+struct node { char *key; int val; struct node *next; };
+struct node *tab[M];               /* all NULL: an empty table */
+void put(const char *key, int val) {
+  unsigned long h = hash(key, M);
+  for (struct node *p = tab[h]; p; p = p->next)   /* already present? */
+    if (strcmp(p->key, key) == 0) { p->val = val; return; }
+  struct node *p = malloc(sizeof *p);             /* Week 1 discipline */
+  if (!p) return;                                 /* handle failure */
+  p->key = strdup(key); p->val = val;
+  p->next = tab[h]; tab[h] = p;                   /* push front */
 }
-int table_search(Table *t, const char *key, int *out) {
-    Entry *e = t->head[hash(key, t->m)];
-    for (; e; e = e->next)
-        if (!strcmp(e->key, key)) { if (out) *out = e->value; return 1; }
-    return 0;
+int *get(const char *key) {
+  for (struct node *p = tab[hash(key, M)]; p; p = p->next)
+    if (strcmp(p->key, key) == 0) return &p->val;
+  return NULL;                                    /* absent */
 }
-int table_insert(Table *t, const char *key, int value);  /* push at head */
-\end{verbatim}
-  \vspace{-0.1cm}
-  \footnotesize
-  \muted{Insert links one \texttt{Entry} at the head and increments
-    \texttt{n}. Resize (rehash into $2m$ slots) when $\alpha > 1$.}
+\end{semiverbatim}
+  \end{block}
 \end{frame}
 
-\transitionslide{When the table must live inside the array itself.}
+\begin{frame}{Chaining, Traced}
+  \begin{itemize}
+    \item $m = 7$, $h(k) = k \bmod 7$, insert at the \emph{front} (so the
+      newest key is found first). Insert $22, 12, 15, 8, 29, 19, 5, 26$:
+  \end{itemize}
+  \begin{center}
+  {\scriptsize
+  \begin{tabular}{rcll}
+    \toprule
+    key & $h(k)$ & slot after insertion & probes to find it now \\
+    \midrule
+    $22$ & $1$ & $1: 22$ & $1$ \\
+    $12$ & $5$ & $5: 12$ & $1$ \\
+    $15$ & $1$ & $1: 15 \to 22$ & $1$ \\
+    $8$  & $1$ & $1: 8 \to 15 \to 22$ & $1$ \\
+    $29$ & $1$ & $1: 29 \to 8 \to 15 \to 22$ & $1$ \\
+    $19$ & $5$ & $5: 19 \to 12$ & $1$ \\
+    $5$  & $5$ & $5: 5 \to 19 \to 12$ & $1$ \\
+    $26$ & $5$ & $5: 26 \to 5 \to 19 \to 12$ & $1$ \\
+    \bottomrule
+  \end{tabular}}
+  \end{center}
+  \vspace{-0.1cm}
+  \begin{itemize}
+    \item Every \emph{insert} costs $1$ probe --- the head. The cost is paid
+      later, on the \emph{search}: finding $22$ now walks $29, 8, 15, 22$,
+      four probes, because it sits at the tail of a four-long chain.
+    \item A sneaky but honest feature of chaining: insertion is $\Theta(1)$
+      worst case, and search absorbs the collision cost. The average over all
+      keys is what the load factor predicts.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{The Cost of a Chain}
+  \begin{itemize}
+    \item Under uniform hashing, an unsuccessful search in a chain of
+      expected length $\alpha$ visits $\alpha$ nodes. A successful search
+      visits, on average, the middle of the chain: $1 + \alpha/2$ including
+      the slot access.
+  \end{itemize}
+  \begin{block}{Expected probes --- separate chaining (Knuth; Sedgewick
+    Sec.~3.4, p.~458)}
+    \[ \text{successful} \;\approx\; 1 + \frac{\alpha}{2},
+       \qquad
+       \text{unsuccessful} \;\approx\; \alpha . \]
+    Both are linear in $\alpha$ --- the \emph{gentlest} of all the cost
+    curves this week.
+  \end{block}
+  \begin{itemize}
+    \item At $\alpha = 0.75$: about $1.4$ probes to find a present key and
+      $0.75$ to prove absence. At $\alpha = 3$: $2.5$ and $3$ --- degraded,
+      but still bounded, and still no failure. Chaining never fills up.
+    \item The trade is memory: $m$ slot pointers plus one pointer per entry,
+      plus a \texttt{malloc} per entry and a cache miss per link chased.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{What Chaining Buys, What It Costs}
+  \small
+  \renewcommand{\arraystretch}{1.25}
+  \begin{center}
+  \begin{tabular}{p{2.2cm}p{4.9cm}p{4.4cm}}
+    \toprule
+    & \good{Chaining buys} & \bad{Chaining costs} \\
+    \midrule
+    Capacity & $\alpha$ may exceed $1$; never ``fills'' &
+      Memory: $m$ heads + a link and an allocation per entry \\[4pt]
+    Deletion & unlink a node --- a list operation &
+      Pointer chasing: each link is a likely cache miss \\[2pt]
+    \bottomrule
+  \end{tabular}
+  \end{center}
+  \begin{itemize}
+    \item Chaining is the safe default when $n$ is unknown or growing, when
+      deletions are common, or when keys are large --- the table stores
+      pointers, not keys.
+    \item Its weakness is not asymptotic but \emph{memory traffic}: the
+      formulas say $2.5$ probes; the hardware charges a cache miss each.
+  \end{itemize}
+  \begin{exampleblock}{Socratic check}
+    With $\alpha = 4$, how many entries must be scanned to prove a key
+    \emph{absent} --- and why does that number not depend on $n$?
+  \end{exampleblock}
+\end{frame}
+
+\transitionslide{Chaining borrows space outside the table. What if the table must hold everything itself?}
 
 % =============================================================================
-% ACT 4 --- CLOSED HASHING (OPEN ADDRESSING)
+% ACT 4 --- CLOSED HASHING
 % =============================================================================
-\section{Closed Hashing}
+\section{Closed Hashing: Open Addressing}
 
 \sectiondivider{Section 4}{Closed Hashing: Open Addressing}
 
-\begin{frame}{Open Addressing: The Idea}
+\begin{frame}{Open Addressing: One Entry Per Slot}
   \begin{itemize}
-    \item Store every key \emph{in the table}. No pointers, no nodes, no
-      allocation --- just an array of $m$ slots.
-    \item On a collision, follow a \key{probe sequence}:
-      $h(k), h(k)+1, h(k)+2, \dots$ (mod $m$) until an empty slot is found.
-    \item Search follows the same sequence until the key is found or an
-      \emph{empty} slot proves it absent. Delete must leave a marker, because
-      clearing a slot would break the proof.
-    \item $\alpha = n/m \le 1$ by construction. Performance is controlled by
-      keeping $\alpha$ below a threshold ($0.5$--$0.75$) and rehashing when
-      it is exceeded.
-    \item Cache-friendly: the probe sequence walks contiguous memory, which
-      is why open addressing often beats chaining in wall-clock time even at
-      the same asymptotic cost.
+    \item No lists, no pointers: the entries \emph{are} the array. Every slot
+      is either occupied or empty, and a collision means \emph{probe} the
+      next candidate slot in a fixed sequence until one is free.
+  \end{itemize}
+  \begin{block}{Definition --- open addressing (closed hashing)
+    (Wirth Sec.~5.3, p.~178; Sedgewick Sec.~3.4, p.~458)}
+    A \key{probe sequence} for key $k$ is a fixed list of slot indices
+    $p_0(k), p_1(k), p_2(k), \dots$, all determined by $k$. Insert with $t$
+      probes: place the entry at the first free $p_t(k)$. Search: follow the
+      same sequence until the key is found (hit) or an empty slot is reached
+      (miss). The table is full precisely when $n = m$, so $\alpha < 1$ is
+      required.
+  \end{block}
+  \begin{itemize}
+    \item The whole family differs only in how the probe sequence is built.
+      Three standard choices follow: linear, quadratic, double hashing ---
+      in increasing order of spread and cost.
   \end{itemize}
 \end{frame}
 
 \begin{frame}{Linear Probing}
-  \[
-    h(k,i) = \bigl(h'(k) + i\bigr) \bmod m, \qquad i = 0,1,2,\dots
-  \]
   \begin{itemize}
-    \item Insert: probe $h'(k)$, $h'(k)+1$, \dots{} until an empty slot.
-      Search: the same walk until the key or an empty slot.
-    \item Trace with $m=11$, $h'(k)=k\bmod 11$, inserting
-      $12,44,13,88,23,94$ in that order:
-      \[
-        \begin{array}{c|cccccc}
-          \text{slot} & 0 & 1 & 2 & 3 & 4 & 6 \\
-          \hline
-          \text{key} & 44 & 12 & 13 & 88 & 23 & 94
-        \end{array}
-      \]
-      $88$ wants slot $0$ (taken), then $1$ (taken), then $2$ (taken), and
-      lands at $3$. $23$ wants $1$, then $2,3$, and lands at $4$.
-    \item A search for $23$ now costs four probes --- the collision has been
-      paid for by every later search, not just by the insert.
+    \item The simplest sequence: on collision, look at the next slot, then
+      the next, wrapping around. \texttt{empty} is the stop signal.
   \end{itemize}
-\end{frame}
-
-\begin{frame}{Linear Probing, Drawn}
+  \begin{block}{Probe sequence --- linear probing}
+    \[ p_i(k) = \big(h(k) + i\big) \bmod m, \qquad i = 0, 1, 2, \dots \]
+  \end{block}
   \begin{center}
-    % Diagram: final 11-slot table after inserting 12,44,13,88,23,94.
-    % Slots at x=0..10, y=0. The brace below slots 1..4 marks the four probes
-    % made by search(23); the brace is 0.55 cm below the slot boxes.
+    % Diagram: 11 slots at x = 0..10 (0.85 cm wide), y = 0. Occupied cells
+    % shaded blue and labelled; the sequence for 20 is drawn as arrows above
+    % the cells at 9 -> 10 -> 0 -> 1 -> 2 -> 3.
     \begin{tikzpicture}[every node/.style={font=\scriptsize}]
-      \foreach \i/\v in {0/44, 1/12, 2/13, 3/88, 4/23, 5/{}, 6/94}
-        \node[draw, fill=light-bg, minimum width=0.8cm,
-          minimum height=0.62cm] at (\i, 0) {\v};
-      \foreach \i/\v in {7/{}, 8/{}, 9/{}, 10/{}}
-        \node[draw, fill=white, minimum width=0.8cm,
-          minimum height=0.62cm] at (\i, 0) {\v};
+      % base cells
       \foreach \i in {0,...,10}
-        \node[text=neutral] at (\i, -0.55) {\tiny \i};
-      \draw[decorate, decoration={brace, mirror, amplitude=4pt},
-        primary-gold] (0.55, -0.85) -- (4.45, -0.85)
-        node[midway, below=7pt, text=primary-gold]
-        {\tiny search $23$: $1 \to 2 \to 3 \to 4$};
-      \node[text=neutral, anchor=west] at (-0.55, 0.55) {%
-        \tiny $h'(23)=1$};
-      \node[text=primary-gold, anchor=west] at (6.6, 0.75)
-        {\tiny four probes, not one};
+        \draw[draw=neutral!50, fill=light-bg] (\i*0.86, -0.3)
+          rectangle ++(0.82, 0.6);
+      % cells visited before the landing slot: 9, 10, 0, 1, 2
+      \foreach \i in {0,1,2,9,10}
+        \draw[draw=negative, fill=negative!14] (\i*0.86, -0.3)
+          rectangle ++(0.82, 0.6);
+      % the slot the key actually lands in
+      \draw[draw=positive, fill=positive!25] (3*0.86, -0.3)
+        rectangle ++(0.82, 0.6);
+      \foreach \i/\v in {0/77,1/44,2/55,3/20,4/26,5/93,6/17,9/31,10/54}
+        \node at (\i*0.86+0.41, 0) {\v};
+      \foreach \i in {7,8}
+        \node[text=neutral!55] at (\i*0.86+0.41, 0) {--};
+      \foreach \i in {0,...,10}
+        \node[text=neutral] at (\i*0.86+0.41, -0.55) {\i};
+      % call-outs, well clear of the cells
+      \draw[->, thick, negative] (8.15, 0.8) -- (8.15, 0.34);
+      \node[text=negative, anchor=south] at (8.15, 0.82)
+        {start: $h(20)=9$};
+      \draw[->, thick, positive] (2.99, 0.8) -- (2.99, 0.34);
+      \node[text=positive, anchor=south] at (2.99, 0.82) {lands at 3};
+      \node[text=neutral, anchor=north] at (4.4, -0.98)
+        {probe order $9 \to 10 \to 0 \to 1 \to 2 \to 3$: six probes};
     \end{tikzpicture}
   \end{center}
-  \vspace{-0.2cm}
-  \begin{itemize}
-    \item The keys $88$ and $23$ were displaced from their home slots, and
-      they push every later key further along. That growing run is
-      \key{primary clustering}.
-  \end{itemize}
+  \vspace{-0.05cm}
+  \muted{Table $m = 11$ after inserting $54,26,93,17,77,31,44,55,20$.
+    Only two slots remain empty --- $\alpha = 9/11 \approx 0.82$.}
 \end{frame}
 
-\begin{frame}{Check Your Prediction: The Next Insert}
-  \begin{block}{Predict before you read the answer}
-    The table holds $44,12,13,88,23,\cdot,94,\cdot,\cdot,\cdot,\cdot$ at
-    slots $0$--$10$. Insert $11$, whose home slot is $h'(11)=0$.
-  \end{block}
-  \begin{itemize}
-    \item It probes $0,1,2,3,4$ --- all occupied --- and lands at slot $5$.
-      One insert paid five probes.
-    \item A search for $11$ now makes six comparisons ($0$ through $5$).
-      The cost of the insert has become the cost of every later lookup of
-      that key.
-    \item That is the difference between linear probing and a chain: the
-      chain's insert touches one node, while the probe's insert commits every
-      future search to the same walk.
-  \end{itemize}
-  \muted{Insert cost is paid once; probe cost is paid on every search. The
-    next two sections are about keeping both small.}
-\end{frame}
-
-\begin{frame}{Primary Clustering}
-  \begin{itemize}
-    \item Once a run of occupied slots forms, any key that hashes into the run
-      must traverse the whole run and extend it. Runs grow faster than the
-      keys that created them.
-    \item Knuth's expected probe counts for linear probing:
-      \[
-        \text{successful} \approx \frac12\left(1+\frac{1}{1-\alpha}\right),
-        \qquad
-        \text{unsuccessful} \approx \frac12\left(1+\frac{1}{(1-\alpha)^2}\right).
-      \]
-  \end{itemize}
+\begin{frame}{Linear Probing, Traced}
   \begin{center}
-  {\footnotesize
-  \begin{tabular}{r r r}
+  {\scriptsize
+  \begin{tabular}{rlp{6.0cm}r}
     \toprule
-    $\alpha$ & successful & unsuccessful \\
+    key & $h(k)$ & probe sequence (stops at the first free slot) & probes \\
     \midrule
-    $0.25$ & $1.17$ & $1.39$ \\
-    $0.50$ & $1.50$ & $2.50$ \\
-    $0.75$ & $2.50$ & $8.50$ \\
-    $0.90$ & $5.50$ & $50.5$ \\
-    $0.95$ & $10.5$ & $200.5$ \\
+    $54$ & $10$ & $10$ free & $1$ \\
+    $26$ & $4$  & $4$ free & $1$ \\
+    $93$ & $5$  & $5$ free & $1$ \\
+    $17$ & $6$  & $6$ free & $1$ \\
+    $77$ & $0$  & $0$ free & $1$ \\
+    $31$ & $9$  & $9$ free & $1$ \\
+    $44$ & $0$  & $0$ taken (77); $1$ free & $2$ \\
+    $55$ & $0$  & $0$ (77), $1$ (44); $2$ free & $3$ \\
+    $20$ & $9$  & $9,10,0,1,2$ taken; $3$ free & $6$ \\
     \bottomrule
   \end{tabular}}
   \end{center}
+  \vspace{-0.15cm}
   \begin{itemize}
-    \item The unsuccessful column is the warning: at $\alpha=0.9$, a miss costs
-      about $50$ probes. Linear probing is safe only well below $0.75$.
+    \item The first six keys are a dream: one probe each. Then $44$ and $55$
+      crowd behind $77$, and $20$ --- nowhere near them by its hash value ---
+      must walk past all five.
+    \item Nine insertions cost $17$ probes instead of $9$. Nothing is wrong
+      with $h$, which did exactly what it promised. The \emph{probe sequence}
+      is the culprit.
   \end{itemize}
 \end{frame}
 
-\begin{frame}{Deletion: The Tombstone}
+\begin{frame}{Primary Clustering: The Quadratic Trap}
   \begin{itemize}
-    \item Delete $13$ from slot $2$ of the trace. If the slot is simply
-      cleared, a later search for $88$ probes $0$ (occupied), $1$ (occupied),
-      $2$ (\emph{empty}) --- and concludes that $88$ is absent. It is wrong:
-      $88$ sits at slot $3$.
-    \item The empty slot is the search's stopping condition, so deletion must
-      not create one. Mark the slot \key{DELETED} (a \key{tombstone}).
-    \item Search treats \texttt{DELETED} as occupied and continues. Insert may
-      reuse the first tombstone it meets. When tombstones dominate, rebuild
-      the table (\key{rehash}).
+    \item Linear probing fills runs. A run of $r$ occupied slots absorbs any
+      key that hashes into it and lengthens by one; runs merge into longer
+      runs. This is \key{primary clustering}, and it is self-reinforcing.
   \end{itemize}
-  \begin{alertblock}{Rule}
-    \texttt{EMPTY} stops a search; \texttt{DELETED} does not. Every slot has
-    one of three states, not two.
-  \end{alertblock}
-\end{frame}
-
-\begin{frame}{Tombstones, Drawn}
   \begin{center}
-    % Diagram: slots 0..4 after deleting 13. Search(88) must pass 0,1,2,3.
-    % Slot 2 is DELETED (red dashed); the probing path is a brace below.
+    % Diagram: the same 11-slot table with the two clusters bracketed above:
+    % run A = slots 9,10,0,1,2,3 (length 6) and run B = slots 4,5,6
+    % (length 3). Braces at y = 0.62 and y = 1.05, drawn with a single
+    % decoration each so no brace crosses a cell boundary.
     \begin{tikzpicture}[every node/.style={font=\scriptsize}]
-      \foreach \i/\v in {0/44, 1/12, 3/88, 4/{}}
-        \node[draw, fill=light-bg, minimum width=1.0cm,
-          minimum height=0.65cm] at (\i, 0) {\v};
-      \node[draw=negative, fill=negative!10, dashed, text=negative,
-        minimum width=1.0cm, minimum height=0.65cm, align=center]
-        at (2, 0) {\tiny DELETED};
-      \foreach \i in {0,...,4}
-        \node[text=neutral] at (\i, -0.55) {\tiny \i};
-      \draw[decorate, decoration={brace, mirror, amplitude=4pt},
-        primary-blue] (-0.45, -0.85) -- (3.45, -0.85)
-        node[midway, below=7pt, text=primary-blue]
-        {\tiny search $88$: probes $0 \to 1 \to 2 \to 3$};
-      \node[text=negative, anchor=west] at (5.4, 0.35)
-        {\tiny not empty --- keep going};
-      \node[text=neutral, anchor=west] at (5.4, -0.25)
-        {\tiny clearing slot $2$ would hide $88$};
-    \end{tikzpicture}
-  \end{center}
-  \vspace{-0.2cm}
-  \begin{itemize}
-    \item The tombstone is a promise: ``a key may have passed through here.''
-      It is the closed-hashing price for having no pointers.
-  \end{itemize}
-\end{frame}
-
-\begin{frame}{Quadratic Probing}
-  \[
-    h(k,i) = \bigl(h'(k) + c_1 i + c_2 i^2\bigr) \bmod m.
-  \]
-  \begin{itemize}
-    \item The probe offsets are $0, c_1+c_2, 2c_1+4c_2, \dots$ --- not
-      consecutive, so a key does not simply extend a run.
-    \item It removes \emph{primary} clustering but creates \key{secondary
-      clustering}: keys with the same home slot follow the same sequence.
-    \item The guarantee is subtler than linear probing's. With $m$ prime and
-      offsets $i^2$, only $\lceil m/2\rceil$ slots are reachable; keep
-      $\alpha \le 1/2$. With $m = 2^p$ and offsets $i(i+1)/2$, all slots are
-      reachable.
-    \item Expected probes are lower than linear at the same $\alpha$, but the
-      arithmetic is more expensive and the cache behaviour is worse.
-  \end{itemize}
-\end{frame}
-
-\begin{frame}{Double Hashing}
-  \[
-    h(k,i) = \bigl(h_1(k) + i\,h_2(k)\bigr) \bmod m.
-  \]
-  \begin{itemize}
-    \item The step size is a second hash of the key, so two keys with the same
-      home slot usually take different paths. This is the closest practical
-      approximation to uniform hashing.
-    \item Requirement: $h_2(k)$ must be \key{coprime to $m$}, or the sequence
-      visits only a fraction of the slots. With prime $m$, choose
-      $h_2(k) \in \{1,\dots,m-1\}$; with $m=2^p$, force $h_2(k)$ odd.
-    \item Common choice: $h_2(k) = 1 + (k \bmod (m-1))$, which is never $0$
-      and is coprime to a prime $m$.
-  \end{itemize}
-  \begin{exampleblock}{Worked example}
-    $m=11$, $h_1(k)=k\bmod 11$, $h_2(k)=1+(k\bmod 10)$. For $k=23$:
-    $h_1=1$, $h_2=4$, so the probes are
-    $1, 5, 9, 2, 6, 10, 3, 7, 0, 4, 8$ --- every slot exactly once.
-  \end{exampleblock}
-\end{frame}
-
-\begin{frame}{Probe Sequences Compared}
-  \begin{center}
-    % Diagram: probe order for key 23 (h1=1) under the three schemes.
-    % Rows at y=2.2 (linear), 0.8 (quadratic), -0.6 (double); slots x=0..10.
-    % Filled slots carry the probe number 1..4.
-    \begin{tikzpicture}[every node/.style={font=\scriptsize}]
-      \foreach \r/\lab in {2.2/linear, 0.8/quadratic, -0.6/double}
-        \node[text=neutral, anchor=east] at (-0.55, \r) {\lab};
-      \foreach \p in {1,2,3,4}
-        \node[draw, fill=primary-gold!25, minimum width=0.62cm,
-          minimum height=0.45cm] at ({1+\p-1}, 2.2) {\p};
-      \foreach \p/\s in {1/1, 2/2, 3/5, 4/10}
-        \node[draw, fill=primary-gold!25, minimum width=0.62cm,
-          minimum height=0.45cm] at (\s, 0.8) {\p};
-      \foreach \p/\s in {1/1, 2/5, 3/9, 4/2}
-        \node[draw, fill=primary-gold!25, minimum width=0.62cm,
-          minimum height=0.45cm] at (\s, -0.6) {\p};
       \foreach \i in {0,...,10}
-        \node[text=neutral] at (\i, -1.3) {\tiny \i};
+        \draw[draw=neutral!50, fill=light-bg] (\i*0.86, -0.3)
+          rectangle ++(0.82, 0.6);
+      \foreach \i/\v in {0/77,1/44,2/55,3/20,4/26,5/93,6/17,9/31,10/54}
+        \node at (\i*0.86+0.41, 0) {\v};
+      \foreach \i in {7,8}
+        \node[text=neutral!55] at (\i*0.86+0.41, 0) {--};
+      \draw[decorate, decoration={brace, amplitude=4pt}, negative]
+        (9*0.86, 0.42) -- (10*0.86+0.82, 0.42)
+        node[midway, above=4pt] {run of 2 wraps};
+      \draw[decorate, decoration={brace, amplitude=4pt}, negative]
+        (0, -0.42) -- (3*0.86+0.82, -0.42)
+        node[midway, below=9pt] {merges into one run of 6};
+      \draw[decorate, decoration={brace, amplitude=4pt}, positive]
+        (4*0.86, 0.42) -- (6*0.86+0.82, 0.42)
+        node[midway, above=4pt] {run of 3};
     \end{tikzpicture}
   \end{center}
-  \vspace{-0.1cm}
+  \vspace{-0.05cm}
   \begin{itemize}
-    \item Steps: linear $+1$; quadratic $+1,+4,+9$; double $+4$ each time.
-      All three find a slot, but only double hashing scatters the probes.
+    \item A key hashing to any slot in a run of length $r$ pays up to $r$
+      probes, and \emph{all} keys hashing to that run add to its length.
+      The cost of the $i$-th such key grows like $i$ --- total
+      $\Theta(r^2)$ --- which is why linear probing degrades from graceful to
+      catastrophic as $\alpha \to 1$.
+    \item Clustering also creates a second-order problem: keys with
+      \emph{different} hash values compete for the same run. The hash
+      function cannot fix this, because the damage happens after hashing.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Quadratic Probing: Jump Further Each Time}
+  \small
+  \begin{itemize}
+    \item If the walk is the problem, stop walking adjacent slots: grow the
+      step with each probe. Clusters still form, but of \emph{starting} slots
+      rather than occupied runs.
+  \end{itemize}
+  \begin{block}{Probe sequence --- quadratic probing}
+    \footnotesize
+    \[ p_i(k) = \big(h(k) + c_1 i + c_2 i^2\big) \bmod m,
+       \quad\text{commonly } p_i(k) = \big(h(k) + i^2\big) \bmod m . \]
+  \end{block}
+  \begin{itemize}
+    \item $h(k) = k \bmod 11$, key $20$: $9 \to 10 \to 2 \to 7$ --- four
+      probes instead of six, landing in a gap the linear probe tunnelled
+      through.
+    \item \bad{The catch:} the sequence may never visit every slot. With
+      $m = 2^p$ it inspects only about $m/2$ slots; with $m$ prime the first
+      $m/2$ probes are distinct --- still half the table. Safe rules: $m$
+      prime and the table at most half full.
+    \item \key{Secondary clustering} remains: keys sharing $h(k)$ follow the
+      same sequence forever. To break it the step must depend on the key.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Double Hashing: A Step That Depends on the Key}
+  \small
+  \begin{itemize}
+    \item Let a \emph{second} function choose the stride, so two keys that
+      agree on the start still disagree on the walk. This is the closest
+      practical approximation to ``uniform hashing'', the cost formulas'
+      assumption.
+  \end{itemize}
+  \begin{block}{Probe sequence --- double hashing
+    (Wirth Sec.~5.3, p.~178; Sedgewick Sec.~3.4, p.~458)}
+    \footnotesize
+    \[ p_i(k) = \big(h_1(k) + i \cdot h_2(k)\big) \bmod m ,
+       \qquad h_2(k) \neq 0 . \]
+    Every slot is visited only if the stride is coprime with $m$: take $m$
+    prime and $1 \le h_2(k) \le m-1$.
+  \end{block}
+  \begin{itemize}
+    \item Worked, $m = 11$, $h_1 = k \bmod 11$, $h_2 = 1 + (k \bmod 10)$.
+      Key $55$: $h_1 = 0$, $h_2 = 6$, so the walk is
+      $0 \to 6 \to 1 \to 7 \to 2 \to 8 \to 3$ --- seven distinct sites.
+    \item Cost: two hashes per lookup. A poor $h_2$ (say $k \bmod 2$)
+      collapses the scheme straight back to linear probing.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Deleting: The Tombstone Problem}
+  \begin{itemize}
+    \item In open addressing, a search \emph{stops} at the first empty slot.
+      So deleting by blanking a slot breaks every chain that passed through
+      it --- and the table silently starts losing records that are still
+      there.
+  \end{itemize}
+  \begin{center}
+    % Diagram: two panels of 6 slots separated by a vertical rule at x = 4.9.
+    % Panel A (left) x = 0..3.3: 77, TOMBSTONE, 55, 20(--), 26(--), 93(--).
+    % Panel B (right) x = 5.3..8.6: 77, EMPTY, 55, 20... showing the failed
+    % search for 55 stopping at slot 1.
+    \begin{tikzpicture}[every node/.style={font=\scriptsize}]
+      \foreach \i/\v/\c in {0/77/b,1/TM/t,2/55/b,3/20/b}{
+        \ifx\c t
+          \draw[draw=negative, fill=negative!10, dashed] (\i*0.86, -0.3)
+            rectangle ++(0.82, 0.6);
+          \node[text=negative] at (\i*0.86+0.41, 0) {\tiny TM};
+        \else
+          \draw[draw=primary-blue, fill=light-bg] (\i*0.86, -0.3)
+            rectangle ++(0.82, 0.6);
+          \node at (\i*0.86+0.41, 0) {\v};
+        \fi
+        \node[text=neutral] at (\i*0.86+0.41, -0.55) {\i};
+      }
+      \node[text=positive, anchor=south] at (1.7, 0.40)
+        {\good{delete 44 $\to$ tombstone}};
+      \node[text=neutral, anchor=north] at (1.7, -0.82)
+        {search 55 continues past it};
+      \draw[negative, thick] (4.9, -0.9) -- (4.9, 0.28);
+      \foreach \i/\v/\c in {0/77/b,1//e,2/55/b,3/20/b}{
+        \ifx\c e
+          \draw[draw=negative, fill=white] (\i*0.86+5.3, -0.3)
+            rectangle ++(0.82, 0.6);
+          \node[text=negative!70] at (\i*0.86+5.71, 0) {--};
+        \else
+          \draw[draw=primary-blue, fill=light-bg] (\i*0.86+5.3, -0.3)
+            rectangle ++(0.82, 0.6);
+          \node at (\i*0.86+5.71, 0) {\v};
+        \fi;
+      }
+      \node[text=negative, anchor=south west] at (5.3, 0.38)
+        {\bad{blank 44: search 55 fails at slot 1}};
+    \end{tikzpicture}
+  \end{center}
+  \vspace{-0.05cm}
+  \begin{itemize}
+    \item Fix: mark the slot with a distinguished \key{tombstone} (a third
+      state --- occupied, \texttt{DELETED}, empty). A search walks \emph{over}
+      tombstones; an insert may \emph{reuse} them. The table now has three
+      states, not two.
+    \item Tombstones accumulate: after many deletes, searches pay for ghosts
+      of records that no longer exist. Track a live count and rehash when
+      $\alpha$ (live $+$ tombstones) crosses the ceiling.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Rehashing: The Load-Factor Ceiling}
+  \begin{itemize}
+    \item Open addressing has a hard requirement $\alpha < 1$, but the useful
+      ceiling is far lower: performance decays sharply around
+      $\alpha = 0.75$ and collapses above $0.9$. So the table must be allowed
+      to grow.
+  \end{itemize}
+  \begin{block}{When $\alpha$ exceeds the ceiling: allocate, rehash, free
+    (Sedgewick Sec.~3.4, p.~458)}
+    Allocate a new table of size $m' \approx 2m$ (the next prime), then
+    re-insert every live entry by \emph{recomputing} $h \bmod m'$. Rehashing
+    cannot copy slots, because every index changes.
+  \end{block}
+  \begin{itemize}
+    \item The cost looks like the worst thing possible --- a $\Theta(n)$
+      operation inside an $O(1)$ structure. It is still $O(1)$
+      \emph{amortized}: doubling means the $i$-th rehash copies $2^{i}$ entries
+      and is paid for by the $2^{i-1}$ insertions since the last one, so the
+      total across $n$ insertions is $\Theta(n)$.
+    \item When doubling is inappropriate (hard real-time), rehash on a
+      schedule, or use chaining, which needs no rehash at all --- one more
+      entry in the ``what chaining buys'' column.
   \end{itemize}
 \end{frame}
 
 \begin{frame}[fragile]{Open Addressing in C}
   \scriptsize
-\begin{verbatim}
-typedef struct {
-    const char *key; int value; unsigned char state;  /* 0=E, 1=O, 2=D */
-} Slot;
+  \begin{block}{Linear probing with tombstones
+    (Karumanchi Ch.~14; Sedgewick Sec.~3.4)}
+\begin{semiverbatim}
+enum state { EMPTY, OCCUPIED, DELETED };
+struct slot { char *key; int val; enum state st; };
+struct slot tab[M];
 
-int probe(Table *t, const char *key) {
-    unsigned i = hash(key, t->m), step = 1 + hash2(key, t->m - 1);
-    for (unsigned k = 0; k < t->m; k++) {
-        Slot *s = &t->slot[(i + k*step) % t->m];  /* double hashing */
-        if (s->state == EMPTY) return -1;         /* absent */
-        if (s->state == OCCUPIED && !strcmp(s->key, key))
-            return (int)((i + k*step) % t->m);
-    }
-    return -1;
+/* returns the slot holding key, or the slot where it should go, or NULL */
+struct slot *find(const char *key) {
+  unsigned long i = hash(key, M), start = i;
+  do {
+    if (tab[i].st == EMPTY) return &tab[i];           /* miss: free slot */
+    if (tab[i].st == OCCUPIED && strcmp(tab[i].key, key) == 0)
+      return &tab[i];                                  /* hit */
+    i = (i + 1) % M;                                   /* linear probe */
+  } while (i != start);
+  return NULL;                                         /* table full */
 }
-\end{verbatim}
-  \vspace{-0.1cm}
-  \footnotesize
-  \muted{Search stops only on \texttt{EMPTY}; \texttt{DELETED} keeps the
-    probe chain alive. Insert reuses the first \texttt{DELETED} slot it
-    passes. Rehash when $\alpha$ or the tombstone count crosses its
-    threshold.}
+\end{semiverbatim}
+  \end{block}
+  \begin{itemize}
+    \item The \texttt{do--while} guard is not paranoia: without it, a full
+      table (or an all-tombstone table) loops forever. \texttt{DELETED} is
+      walked over by search and reused by insert --- one \texttt{enum}
+      carrying the whole deletion policy.
+  \end{itemize}
 \end{frame}
 
-\transitionslide{Expected $O(1)$ is a promise about the load factor.}
+\transitionslide{Two collision families, three probe sequences. Which one, and when does the whole idea fail?}
 
 % =============================================================================
-% ACT 5 --- CHOOSING AND THE CLOSE
+% ACT 5 --- ANALYSIS AND THE CLOSE
 % =============================================================================
-\section{Choosing and the Close}
+\section{Analysis, Choice, and the Close}
 
-\sectiondivider{Section 5}{Comparison, Choice, and the Close}
+\sectiondivider{Section 5}{Analysis, Choice, and the Close}
 
-\begin{frame}{Chaining vs.\ Open Addressing}
+\begin{frame}{The Load Factor Is the Only Parameter}
+  \begin{itemize}
+    \item Two numbers, one ratio: $n$ entries in $m$ slots,
+      $\alpha = n/m$. Every cost formula this week is a function of
+      $\alpha$ and nothing else --- not of $n$, not of the key type, not of
+      the language.
+  \end{itemize}
+  \begin{block}{Definition --- load factor}
+    \[ \alpha = \frac{n}{m} \quad\text{(entries per slot)} . \]
+    Chaining: any $\alpha \ge 0$ is legal. Open addressing: $0 \le \alpha < 1$
+    with a practical ceiling near $0.75$.
+  \end{block}
+  \begin{itemize}
+    \item Why the ratio is the right variable: under uniform hashing entries
+      behave like $n$ balls in $m$ bins, and only the ratio sets a bin's
+      population. $10^6$ slots holding $5\times10^5$ keys behave exactly like
+      $10$ slots holding $5$ --- both $\alpha = 0.5$.
+    \item $5{,}000$ identifiers in $8{,}192$ slots: $\alpha = 0.61$. The same
+      $5{,}000$ in $4{,}096$ slots: $\alpha = 1.22$ --- legal for chaining,
+      illegal for open addressing.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{The Probe-Cost Table}
+  \begin{itemize}
+    \item Expected probes under uniform hashing (Knuth's analysis; Sedgewick
+      Sec.~3.4, p.~458; Wirth Sec.~5.4, p.~180). ``S'' = key present,
+      ``U'' = key absent.
+  \end{itemize}
+  {\footnotesize
+  \begin{center}
+  \begin{tabular}{lcccc}
+    \toprule
+    & \multicolumn{2}{c}{separate chaining} &
+      \multicolumn{2}{c}{open addressing} \\
+    \cmidrule(lr){2-3}\cmidrule(lr){4-5}
+    $\alpha$ & S $1+\alpha/2$ & U $\alpha$
+      & S $\frac{1}{\alpha}\ln\frac{1}{1-\alpha}$ & U $\frac{1}{1-\alpha}$ \\
+    \midrule
+    $0.25$ & $1.13$ & $0.25$ & $1.15$ & $1.33$ \\
+    $0.50$ & $1.25$ & $0.50$ & $1.39$ & $2.00$ \\
+    $0.75$ & $1.38$ & $0.75$ & $1.85$ & $4.00$ \\
+    $0.90$ & $1.45$ & $0.90$ & $2.56$ & $10.00$ \\
+    \bottomrule
+  \end{tabular}
+  \end{center}}
+  \vspace{0.05cm}
+  \begin{itemize}
+    \item Read the last column: doubling $\alpha$ from $0.5$ to $0.9$
+      \emph{quintuples} the cost of proving a key absent. Successful
+      searches barely notice, which is why measuring only successful lookups
+      hides the damage.
+    \item Linear probing is strictly worse than the table (it obeys
+      $\tfrac12(1 + 1/(1-\alpha)^2)$ for unsuccessful search: $8.5$ probes at
+      $\alpha = 0.75$, $50.5$ at $0.9$). Double hashing is what the table
+      models, and is why it is worth the second hash function.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{When Hashing Fails}
+  \small
+  \begin{itemize}
+    \item Expected $\Theta(1)$ is not worst-case $\Theta(1)$. Every structure
+      in this course has a worst case; hashing's is unusually easy to trigger
+      --- and unusually easy to trigger \emph{on purpose}.
+  \end{itemize}
+  \begin{enumerate}
+    \item \key{A bad key distribution meets a bad function.} Weeks 1--9's
+      student IDs are sequential, so \texttt{key mod 2} is catastrophically
+      non-uniform. Fix the function, not the data.
+    \item \key{Adversarial keys.} If the hash function is public and
+      deterministic, an attacker can precompute $m$ keys that share a slot and
+      hand them to your server --- every lookup becomes $\Theta(n)$. This is
+      \key{hash-flooding}, a denial-of-service class of attack.
+    \item \key{The fix: universal hashing.} Choose $h$ at random from a
+      family at startup, so no attacker can know the mapping in advance. Any
+      \emph{fixed} input then collides with probability at most $1/m$, and
+      the expected cost over the choice of $h$ is $\Theta(1)$ again.
+  \end{enumerate}
+  \begin{alertblock}{The honest statement}
+    Hashing gives $\Theta(1)$ \emph{expected} and $O(n)$ \emph{worst case}.
+    Quoting only the first half is quoting half the theorem.
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}{Hashing vs.\ Binary Search vs.\ a BST}
+  {\footnotesize
+  \begin{center}
+  \begin{tabular}{lccc}
+    \toprule
+    & Hash table & Sorted array & Balanced BST (Week 11) \\
+    \midrule
+    Search & $\Theta(1)$ exp., $O(n)$ worst & $\Theta(\log n)$ & $\Theta(\log n)$ \\
+    Insert & $\Theta(1)$ exp., $O(n)$ worst & $\Theta(n)$ (shift) & $\Theta(\log n)$ \\
+    Delete & $\Theta(1)$ exp. & $\Theta(n)$ (shift) & $\Theta(\log n)$ \\
+    Min / max & \bad{not supported} & \good{$\Theta(1)$} & \good{$\Theta(\log n)$} \\
+    Range query & \bad{not supported} & $\Theta(\log n + k)$ & $\Theta(\log n + k)$ \\
+    In-order output & \bad{not supported} & \good{free} & \good{free} \\
+    Space & $\Theta(n + m)$ & $\Theta(n)$ & $\Theta(n)$ \\
+    \bottomrule
+  \end{tabular}
+  \end{center}}
+  \vspace{0.1cm}
+  \begin{itemize}
+    \item Three columns, one lesson: the fastest structure is fastest only for
+      the questions it can answer. Hashing wins outright on lookup; it loses
+      unconditionally on order.
+    \item Binary search's $\Theta(\log n)$ is a \emph{worst-case} promise and
+      its sorted output is free; hashing trades that guarantee for a much
+      smaller constant factor.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{The Week 6 Payoff: 2,000 Identifiers}
   \begin{center}
   {\footnotesize
-  \begin{tabular}{p{3.2cm} p{4.4cm} p{4.4cm}}
+  \begin{tabular}{lrrl}
     \toprule
-    & \textbf{open hashing (chaining)} &
-      \textbf{closed hashing (open addressing)} \\
+    Symbol table as\dots & comparisons & at $n = 2{,}000$ & order kept? \\
     \midrule
-    load factor & any $\alpha$; can exceed $1$ & must stay below $1$ \\
-    space & $n$ nodes $+$ $m$ heads & $m$ slots, no pointers \\
-    deletion & unlink a node & tombstone $+$ periodic rehash \\
-    cache & pointer chasing & contiguous probes \\
-    clustering & none --- chains are separate & primary / secondary \\
-    ordered scan & sort the chains & none \\
-    worst case & $\Theta(n)$ & $\Theta(n)$ \\
+    Singly linked list (Week 6) & $n/2$ average & $1{,}000$ & insertion only \\
+    Sorted array + binary search (Week 9) & $\log_2 n$ & $11$ & yes \\
+    \key{Hash table, chaining}, $\alpha = 0.75$ & $1 + \alpha/2$ & $1.4$ & \bad{no} \\
     \bottomrule
   \end{tabular}}
   \end{center}
+  \vspace{0.1cm}
   \begin{itemize}
-    \item Chaining is easier to reason about and to delete from; open
-      addressing is faster in memory but unforgiving of a high $\alpha$.
+    \item Week 6 built the calculator's symbol table as a linked list because
+      it needed only \texttt{insert} and \texttt{search} --- and paid $1{,}000$
+      comparisons per token lookup. Week 10 shows that the same two
+      operations, with the same asymptotic naivety, cost $1.4$.
+    \item The calculator never asks for its identifiers in sorted order, never
+      asks for the minimum, never prints a range. Every one of the three
+      greyed rows of the ADT table is unused. \key{That is why hashing is
+      correct here} --- not because it is faster, but because nothing it
+      cannot do is needed.
+    \item Change one requirement --- ``print the identifier table
+      alphabetically at exit'' --- and the hash table must be replaced by
+      Week 11's tree. Selection is driven by the operations, not the
+      timings.
   \end{itemize}
 \end{frame}
 
-\begin{frame}{Choosing: Read the Workload, Then the Structure}
-  \begin{center}
+\begin{frame}{Choosing a Collision Strategy}
   {\footnotesize
-  \begin{tabular}{p{6.4cm} p{5.4cm}}
+  \begin{center}
+  \begin{tabular}{p{3.9cm}p{5.2cm}p{5.2cm}}
     \toprule
-    \textbf{workload} & \textbf{choose} \\
+    Situation & Choose & Because \\
     \midrule
-    point lookups, inserts, deletes, unknown keys & chaining, or double hashing \\
-    tight memory, cache-sensitive, $\alpha \le 0.5$ & linear probing \\
-    range queries or ordered traversal & indexed sequential or a search tree \\
-    adversarial or untrusted keys & universal / randomized hashing \\
-    static file, dense integer key & direct (relative) file \\
-    batch scan of every record & sequential file \\
+    $n$ unknown or growing & separate chaining & never fills; no rehash \\
+    Deletions frequent & separate chaining & unlink, no tombstones \\
+    Keys are large (strings) & separate chaining & table stores pointers \\
+    Memory-tight, keys small & open addressing & no per-entry link \\
+    Cache-sensitive (hot loop) & linear probing & one contiguous array \\
+    Latency must not spike & separate chaining & rehash is $O(n)$ \\
+    Adversarial input possible & universal hashing + any & no fixed target \\
     \bottomrule
-  \end{tabular}}
-  \end{center}
+  \end{tabular}
+  \end{center}}
   \begin{itemize}
-    \item The same discipline as Week 9: state the workload, then justify the
-      structure. ``Hashing is faster'' is not a justification --- it is a
-      claim about one column of the table.
-    \item The one thing hashing cannot buy is \emph{order}. Week 11's trees
-      are the structures that keep both logarithmic search and order.
+    \item The tie-breaker is \emph{memory layout}: open addressing chases one
+      array (cache-friendly), chaining chases pointers (cache-hostile) ---
+      often worth more than the probe-count formulas predict.
+    \item Pin $\alpha$ in the design: near $1$ for chaining, under $0.75$ for
+      open addressing. An unstated load factor is an unstated guarantee.
   \end{itemize}
 \end{frame}
 
-\begin{frame}{Three Classic Mistakes}
-  \begin{itemize}
-    \item \bad{``Open hashing means open addressing.''} It is the reverse.
-      Open hashing is separate chaining; closed hashing is open addressing.
-      Give both names every time the pair appears.
-    \item \bad{``A hash lookup is $O(1)$'' with no qualifier.} It is
-      $O(1+\alpha)$ \emph{expected} under uniform hashing, and $\Theta(n)$
-      worst case when everything collides. At $\alpha=0.9$, linear probing
-      needs about $50$ probes for a miss.
-    \item \bad{``To delete, clear the slot.''} An empty slot is the search's
-      stopping condition; clearing it hides every key that probed past it.
-      Mark \texttt{DELETED}, and rehash when tombstones accumulate.
-  \end{itemize}
+\begin{frame}{Common Misconceptions}
+  \small
+  \begin{enumerate}
+    \item \bad{``A good hash function has no collisions.''} Impossible --- a
+      good one makes them \emph{uniform}, not absent.
+    \item \bad{``Hashing is $O(1)$.''} It is $\Theta(1)$ \emph{expected};
+      worst case is $\Theta(n)$, and an adversary can force it.
+    \item \bad{``Open hashing uses open addressing.''} Inverted: open
+      hashing $=$ chaining, closed hashing $=$ open addressing.
+    \item \bad{``You can delete from an open-addressed table by blanking the
+      slot.''} That severs probe chains and loses live records. Use tombstones.
+    \item \bad{``$h(k) = k \bmod 2^p$ is fine because it is fast.''} It reads
+      only the low $p$ bits of the key.
+    \item \bad{``A hash table is a search tree without the rotations.''} It
+      cannot do min, max, range, or in-order output at any cost. Order is
+      gone, not deferred.
+  \end{enumerate}
   \begin{exampleblock}{How to revise}
-    For each scheme, write one line: the collision rule, the expected probes
-    at $\alpha=0.5$, how deletion works, and whether order survives. Then
-    trace an insert and a delete by hand on a table of $11$ slots. The exam
-    tests traces and cases, not definitions alone.
+    For each organization and probe sequence, write one line: the rule, the
+    cost, the deletion story, and what it cannot do. Then trace one
+    insertion and one deletion by hand.
   \end{exampleblock}
 \end{frame}
 
 \begin{frame}{Week 10 Summary}
+  \small
   \begin{itemize}
-    \item \key{File organization} --- sequential, direct, indexed sequential
-      and hashed layouts trade lookup speed against order, space and update
-      cost; the access scheme describes the device, the layout decides the
-      algorithm.
-    \item \key{Hashing} --- $n$ keys in $m$ slots via $h(k)$; $\alpha=n/m$
-      sets the expected cost. A good $h$ is deterministic, uniform on the real
-      keys, fast, and uses the whole key.
-    \item \key{Open hashing} (chaining) --- collisions go in per-slot lists:
-      $1+\alpha/2$ probes for a hit, $\alpha$ for a miss; simple deletion;
-      $\alpha$ may exceed $1$.
-    \item \key{Closed hashing} (open addressing) --- probes inside the table:
-      linear, quadratic, double. Deletion needs tombstones; keep $\alpha$
-      below $0.5$--$0.75$.
+    \item \key{File organization} --- sequential (ordered, cheap scan, costly
+      insert), direct (address arithmetic, $O(1)$, wastes space), indexed
+      sequential (order plus sparse index), hashed (one block, no order).
+    \item \key{Hash functions} --- division (prime $m$, never $2^p$),
+      multiplication (any $m$, fractional part), mid-square and folding
+      (digit-local keys), polynomial rolling (strings). Judged on
+      determinism, uniformity, whole-key use, avalanche.
+    \item \key{Open hashing} $=$ chaining: a list per slot, $\alpha$ may
+      exceed $1$, deletion is an unlink, expected $1 + \alpha/2$ probes.
+    \item \key{Closed hashing} $=$ open addressing: linear (clusters
+      quadratically), quadratic (secondary clustering), double
+      (near-uniform). Deletion needs tombstones; growth needs rehashing.
+    \item \key{The governing number} is $\alpha = n/m$; the honest claim is
+      $\Theta(1)$ expected, $O(n)$ worst, and no ordering operations at all.
   \end{itemize}
   \begin{exampleblock}{Next week}
-    Hashing finds a key in one probe but cannot answer ``the next key'' or
-    ``all keys between $a$ and $b$''. Week 11 builds trees --- binary trees,
-    BSTs and AVL rotations --- that keep order \emph{and} logarithmic search.
+    Week 11 asks what hashing refused: smallest key, next key, all keys in
+    order --- with logarithmic search as the data changes. Trees and AVL.
   \end{exampleblock}
-  \vspace{-0.2cm}
+  \vspace{-0.18cm}
 \end{frame}
 
 \begin{frame}{Before You Go: Predict}
   \begin{block}{Three one-line predictions}
-    Answer from the algorithms, then check in the lab.
+    Answer from the structures, then check in the lab.
   \end{block}
   \begin{enumerate}
-    \item $m=11$, $h(k)=k\bmod 11$, inserting $12,44,13,88,23,94$ with linear
-      probing: where does $88$ land, and how many probes does a search for
-      $23$ take?
-    \item With linear probing at $\alpha=0.9$, roughly how many probes does an
-      unsuccessful search need? What if the table used chaining at the same
-      $\alpha$?
-    \item You need both point lookups on roll numbers and the query ``list
-      all students with roll in $[20231000,20231999]$''. Which file
-      organization, and why not a hash table?
+    \item Insert $19, 28, 37, 46$ into an 11-slot table with linear probing
+      and $h(k) = k \bmod 11$. Where does each land, and how many probes does
+      the last one take?
+    \item A chained table has $m = 1{,}000$ slots and $n = 2{,}000$ keys.
+      What is $\alpha$, and is the table legal? What would change for open
+      addressing?
+    \item Your keys are 32-bit sequential file offsets $0, 1, 2, \dots$ and
+      you need them in ascending order at the end. Hash table or not?
   \end{enumerate}
-  \muted{Answers: $88$ probes $0,1,2$ and lands at $3$; $23$ probes
-    $1,2,3,4$ --- four probes. Linear probing at $0.9$: about $50.5$ probes;
-    chaining at $0.9$: about $0.9$ nodes for a miss, so roughly one.
-    Indexed sequential (or a tree): hashing destroys order, so a range query
-    would have to scan the whole table.}
+  \muted{Answers: $19 \to 8$; $28 \to 6$; $37 \to 4$; $46 \to 2$ --- all
+    distinct, one probe each (a run of collisions needs keys sharing a
+    residue, and these do not). $\alpha = 2$, legal for chaining ($\alpha$
+    may exceed $1$), impossible for open addressing, which needs
+    $\alpha < 1$ and practically $\le 0.75$. Not a hash table: the keys are
+    already an ordering and the requirement is order --- use direct
+    organization (or a sorted array), because hashing would destroy exactly
+    the property you need.}
 \end{frame}
 
 \begin{frame}[allowframebreaks]{References}

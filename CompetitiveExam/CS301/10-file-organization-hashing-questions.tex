@@ -1,27 +1,37 @@
 % =============================================================================
 % CompetitiveExam/CS301/10-file-organization-hashing-questions.tex
-% Competitive Exam Practice 10 — GATE (Computer Science) Pattern
-% File organization (sequential, direct, indexed sequential, hashed) and
-% hashing: hash-function design, open hashing (separate chaining), closed
-% hashing (linear/double probing), load factor, tombstones.
+% Competitive Exam Practice 10 - GATE (Computer Science) Pattern
+% File organization and hashing: access schemes, hash-function design,
+% separate chaining, open addressing (linear/quadratic/double), tombstones,
+% load factor, and probe-cost analysis.
 %
-% Student-facing — NO answers. Answer key: 10-file-organization-hashing-answers.tex.
+% Student-facing - NO answers. Answer key: 10-file-organization-hashing-answers.tex.
 %
-% Provenance (Tier 1: local GATEOverflow compilation CompetitiveExam/Books/
-% GATE-PYQs/filter1_volume2.pdf, question text recovered by page-render + OCR;
-% each answer independently re-derived by a Python trace this session and
-% cross-checked against GeeksforGeeks / ExamSIDE / ExamGOAL mirrors):
-%   Q1 [GATE CSE 1996 Q1.13, verified — GATEOverflow Vol.2 p.228]
-%   Q2 [GATE CSE 2004 Q7, verified — GATEOverflow Vol.2 p.228]
-%   Q3 [GATE CSE 2014 Set 1 Q40, verified — GATEOverflow Vol.2 p.230]
-%   Q4 [GATE CSE 2007 Q40, verified — GATEOverflow Vol.2 p.229]
-%   Q5 [GATE CSE 2020 Q23, verified — GATEOverflow Vol.2 p.39]
-%   Q6 [GATE CSE 2023 Q10, verified — GATEOverflow Vol.2 p.54]
-%   Q7-Q10 [Original, GATE-pattern] — fresh numbers, none reused from the deck
-%     or the written assignment; every answer re-derived in the key.
+% Provenance (Tier 1 where possible: local GATEOverflow compilation
+% CompetitiveExam/Books/GATE-PYQs/filter1_volume2.pdf, whose hashing chapter
+% 3.8 spans PDF pp.228-231):
+%   - Q1 [GATE CSE 1996 | Question: 1.13, verified - GATEOverflow V2 p.228].
+%     Question text is fully present in the PDF's text layer; answer derived
+%     independently (Deletion is easier). Answer (C).
+%   - Q2 [GATE CSE 1990 | Question: 13b, verified - GATEOverflow V2 p.228].
+%     Descriptive; text fully present. Worst-case insertion Theta(n), worst
+%     instance = all keys hashing to one bucket.
+%   - Q3-Q10 [Original, GATE-pattern]. The remaining hashing PYQs in the local
+%     volume (3.8.4 GATE 2004 Q7, 3.8.5 GATE 2007 Q40, 3.8.6 GATE 2009 Q36,
+%     3.8.7/8 GATE 2010 Q52/Q53, 3.8.9 GATE 2014 S1 Q40, 3.8.11-12 GATE 2015,
+%     1.20.x GATE 1989/2021/2023/2026/IT-2005) carry their numeric data in
+%     IMAGES, which this PDF's text layer does not expose and no OCR is
+%     available for in this environment. They were therefore NOT reproduced:
+%     guessing the missing numbers would fabricate a question. Original items
+%     below cover the same topics with fully computed data instead.
 %
-% Compile with: cd CompetitiveExam/CS301 &&
-%   TEXINPUTS=../../Preambles:$TEXINPUTS xelatex -interaction=nonstopmode 10-file-organization-hashing-questions.tex
+% Every numeric answer in this set was computed mechanically (Python trace of
+% the specified probe sequences) before the question was written; the log is
+% in the answers file.
+%
+% Compile with (Windows/MiKTeX, ';'-joined TEXINPUTS):
+%   cd CompetitiveExam/CS301 &&
+%   TEXINPUTS="../../Preambles;" xelatex -interaction=nonstopmode 10-file-organization-hashing-questions.tex (3 passes)
 % =============================================================================
 
 \documentclass[11pt]{article}
@@ -29,9 +39,9 @@
 \input{../../Preambles/header}
 \coursecode{CS301}
 \renewcommand{\thesection}{10.\arabic{section}}
-\setlength{\emergencystretch}{2em}
+\setlength{\emergencystretch}{2.5em}
 
-\title{Competitive Exam Practice 10: File Organization and Hashing\\\large GATE (Computer Science) Pattern}
+\title{Competitive Exam Practice 10: File Organization \& Hashing\\\large GATE (Computer Science) Pattern}
 \author{Auqib Hamid Lone\\[0.3em]
   \emph{Department of Computer Science \& Engineering}, \emph{GCET Ganderbal}}
 \date{\today}
@@ -39,102 +49,72 @@
 \begin{document}
 \maketitle
 
-\noindent Each question carries 1--2 marks. MCQ = single correct option; NAT = Numerical Answer Type. Arrays and hash tables are 0-indexed unless a question states otherwise. ``Probe'' means one slot examined, counting the home slot as the first probe.
+\noindent Each question carries 1--2 marks. MCQ = single correct option; NAT = Numerical Answer Type. Unless a question says otherwise: slots are numbered from $0$, the hash function is applied first and probing second, and a probe count includes the slot in which the key is finally placed. $\alpha = n/m$ is the load factor.
 
 \begin{enumerate}
-\item[\textbf{Q1}] \textit{[GATE CSE 1996 Q1.13, verified --- GATEOverflow Vol.~2 p.~228]} \textbf{[MCQ, 1 mark]} An advantage of a chained hash table (external hashing) over the open addressing scheme is
+
+\item[\textbf{Q1}] \textit{[GATE CSE 1996, Question 1.13 --- verified, GATEOverflow V2 p.228]} \textbf{[MCQ, 1 mark]} An advantage of a chained hash table (external hashing) over the open addressing scheme is
 \begin{enumerate}
-  \item[(A)] worst case complexity of search operations is less
+  \item[(A)] worst-case complexity of search operations is less
   \item[(B)] space used is less
   \item[(C)] deletion is easier
   \item[(D)] none of the above
 \end{enumerate}
 
-\item[\textbf{Q2}] \textit{[GATE CSE 2004 Q7, verified --- GATEOverflow Vol.~2 p.~228]} \textbf{[MCQ, 2 marks]} Given the input
-\[
-(4322,\ 1334,\ 1471,\ 9679,\ 1989,\ 6171,\ 6173,\ 4199)
-\]
-and the hash function $h(x)=x \bmod 10$, which of the following statements are true?
+\item[\textbf{Q2}] \textit{[GATE CSE 1990, Question 13b --- verified, GATEOverflow V2 p.228]} \textbf{[Short answer, 2 marks]} Consider a hash table with a chaining scheme for overflow handling.
 \begin{enumerate}
-  \item[I.] $9679$, $1989$, $4199$ hash to the same value.
-  \item[II.] $1471$, $6171$ hash to the same value.
-  \item[III.] All elements hash to the same value.
-  \item[IV.] Each element hashes to a different value.
-\end{enumerate}
-\begin{enumerate}
-  \item[(A)] I only
-  \item[(B)] II only
-  \item[(C)] I and II only
-  \item[(D)] III or IV
+  \item[(a)] What is the worst-case time complexity of inserting $n$ elements into such a table, stated per insertion?
+  \item[(b)] For what type of instance does this scheme take the worst-case time for insertion? State the instance in terms of the hash function and the keys.
 \end{enumerate}
 
-\item[\textbf{Q3}] \textit{[GATE CSE 2014 Set 1 Q40, verified --- GATEOverflow Vol.~2 p.~230]} \textbf{[MCQ, 2 marks]} Consider a hash table with $9$ slots. The hash function is $h(k)=k \bmod 9$. Collisions are resolved by chaining. The following $9$ keys are inserted in the order
-\[
-5,\ 28,\ 19,\ 15,\ 20,\ 33,\ 12,\ 17,\ 10.
-\]
-The maximum, minimum, and average chain lengths in the hash table, respectively, are
+\item[\textbf{Q3}] \textit{[Original, GATE-pattern]} \textbf{[NAT, 1 mark]} A chained hash table has $m = 2{,}000$ slots and stores $n = 1{,}500$ keys. Under simple uniform hashing, the expected number of probes for a \emph{successful} search is $1 + \alpha/2$. Give that value to two decimal places.
+
+\item[\textbf{Q4}] \textit{[Original, GATE-pattern]} \textbf{[MCQ, 1 mark]} Which statement about the two collision-resolution families is TRUE?
 \begin{enumerate}
-  \item[(A)] $3$, $0$, and $1$
-  \item[(B)] $3$, $3$, and $3$
-  \item[(C)] $4$, $0$, and $1$
-  \item[(D)] $3$, $0$, and $2$
+  \item[(A)] Open hashing uses open addressing, and requires $\alpha < 1$.
+  \item[(B)] Closed hashing uses separate chaining, and permits $\alpha \ge 1$.
+  \item[(C)] Open hashing uses separate chaining, and permits $\alpha \ge 1$.
+  \item[(D)] Both families require $\alpha < 1$, but closed hashing has the lower constant factor.
 \end{enumerate}
 
-\item[\textbf{Q4}] \textit{[GATE CSE 2007 Q40, verified --- GATEOverflow Vol.~2 p.~229]} \textbf{[MCQ, 2 marks]} Consider a hash table of size seven, with starting index zero, and a hash function $(3x+4) \bmod 7$. Assuming the table is initially empty, which of the following is the contents of the table when the sequence $1,3,8,10$ is inserted using closed hashing? A ``--'' denotes an empty location.
+\item[\textbf{Q5}] \textit{[Original, GATE-pattern]} \textbf{[NAT, 2 marks]} A hash table has $m = 7$ slots, initially empty, with $h(k) = k \bmod 7$ and \emph{linear probing}. The keys $10, 17, 24, 31$ are inserted in that order. What is the total number of probes performed by the four insertions?
+
+\item[\textbf{Q6}] \textit{[Original, GATE-pattern]} \textbf{[MCQ, 1 mark]} A table has $m = 11$ slots with $h(k) = k \bmod 11$, and collisions are resolved by \emph{quadratic probing} with $p_i(k) = (h(k) + i^2) \bmod 11$. Which sequence gives the first four slots probed for the key $30$?
 \begin{enumerate}
-  \item[(A)] $8$, --, --, --, --, --, $10$
-  \item[(B)] $1$, $8$, $10$, --, --, --, $3$
-  \item[(C)] $1$, --, --, --, --, --, $3$
-  \item[(D)] $1$, $10$, $8$, --, --, --, $3$
+  \item[(A)] $8, 9, 10, 0$
+  \item[(B)] $8, 9, 2, 6$
+  \item[(C)] $8, 9, 1, 6$
+  \item[(D)] $8, 7, 4, 10$
 \end{enumerate}
 
-\item[\textbf{Q5}] \textit{[GATE CSE 2020 Q23, verified --- GATEOverflow Vol.~2 p.~39]} \textbf{[NAT, 1 mark]} Consider a double hashing scheme in which the primary hash function is $h_1(k)=k \bmod 23$ and the secondary hash function is $h_2(k)=1+(k \bmod 19)$. The table size is $23$. The address returned by probe $1$ in the probe sequence (the sequence begins at probe $0$) for the key value $k=90$ is \underline{\hspace{1.5cm}}.
+\item[\textbf{Q7}] \textit{[Original, GATE-pattern]} \textbf{[NAT, 2 marks]} A table has $m = 13$ slots, with $h_1(k) = k \bmod 13$ and $h_2(k) = 1 + (k \bmod 11)$, and \emph{double hashing} probes $p_i(k) = (h_1(k) + i\,h_2(k)) \bmod 13$. The keys $6, 19, 32, 45, 58$ are inserted in that order into an empty table. In which slot does the key $58$ end up?
 
-\item[\textbf{Q6}] \textit{[GATE CSE 2023 Q10, verified --- GATEOverflow Vol.~2 p.~54]} \textbf{[MCQ, 1 mark]} An algorithm has to store several keys generated by an adversary in a hash table. The adversary is malicious and tries to maximize the number of collisions. Let $k$ be the number of keys, $m$ the number of slots, and $k>m$. Which one of the following is the best hashing strategy to counteract the adversary?
+\item[\textbf{Q8}] \textit{[Original, GATE-pattern]} \textbf{[MCQ, 1 mark]} In an open-addressed table, a record is deleted by setting its slot to a \emph{tombstone} (a third state) rather than to empty. The reason is that
 \begin{enumerate}
-  \item[(A)] Division method, i.e., use $h(k)=k \bmod m$.
-  \item[(B)] Multiplication method, i.e., use $h(k)=\lfloor m(kA-\lfloor kA\rfloor)\rfloor$ for a carefully chosen constant $A$.
-  \item[(C)] Universal hashing method.
-  \item[(D)] If $k$ is a prime number, use the division method; otherwise use the multiplication method.
+  \item[(A)] an empty slot wastes more space than a tombstone
+  \item[(B)] a search must be able to walk past the slot without stopping, or it would report live records as absent
+  \item[(C)] tombstones make the hash function uniform
+  \item[(D)] a tombstone reduces the load factor
 \end{enumerate}
 
-\item[\textbf{Q7}] \textit{[Original, GATE-pattern]} \textbf{[Analysis, 2 marks]} A separate-chaining hash table has $m=2000$ slots and currently holds $n=1500$ keys.
+\item[\textbf{Q9}] \textit{[Original, GATE-pattern]} \textbf{[MCQ, 1 mark]} A table uses $h(k) = k \bmod 2^p$, and every key in the workload is a multiple of $2^d$ with $d < p$. How many of the $2^p$ slots can those keys ever occupy?
 \begin{enumerate}
-  \item[(a)] Give the load factor $\alpha$.
-  \item[(b)] Using the uniform-hashing approximations, give the expected number of key comparisons for a successful and for an unsuccessful search under chaining.
-  \item[(c)] The same $n$ keys are stored in a table of $m=2000$ slots using linear probing, also at $\alpha=0.75$. Give the expected number of probes for a successful and for an unsuccessful search.
-  \item[(d)] In one sentence, say which scheme is the safer choice at this load factor and why.
+  \item[(A)] $2^p$
+  \item[(B)] $2^{p-d}$
+  \item[(C)] $2^{d}$
+  \item[(D)] $2^{p}/d$
 \end{enumerate}
 
-\item[\textbf{Q8}] \textit{[Original, GATE-pattern]} \textbf{[Trace, 2 marks]} A table of $m=11$ slots uses $h(k)=k \bmod 11$ with linear probing. The keys
-\[
-12,\ 44,\ 13,\ 88,\ 23,\ 94
-\]
-are inserted in that order into an initially empty table.
+\item[\textbf{Q10}] \textit{[Original, GATE-pattern]} \textbf{[MCQ, 1 mark]} An accounts file must support (i) lookup by account number, (ii) a monthly report printed in ascending account-number order, and (iii) frequent insertions of new accounts. Which organization should be chosen?
 \begin{enumerate}
-  \item[(a)] Give the final table, with each key in its slot.
-  \item[(b)] The key $13$ is deleted. Show the table after the deletion, using \texttt{DEL} for a tombstone.
-  \item[(c)] After the deletion, how many probes does \texttt{search(88)} take, and why does it still succeed?
-  \item[(d)] The key $35$ is then inserted. Which slot does it occupy, and how many probes does the insertion take?
-  \item[(e)] Suppose slot $2$ had been cleared to \texttt{EMPTY} instead of marked \texttt{DEL}. What would \texttt{search(88)} return, and after how many probes?
+  \item[(A)] sequential, because the report is the most expensive operation
+  \item[(B)] direct (relative), because lookup becomes $O(1)$
+  \item[(C)] indexed sequential, because it pays nothing extra for lookup and for ordered output
+  \item[(D)] hashed, because lookup is the most frequent single operation
 \end{enumerate}
 
-\item[\textbf{Q9}] \textit{[Original, GATE-pattern]} \textbf{[Design, 2 marks]} A university stores $400{,}000$ student records of $80$ bytes each. The disk block size is $4096$ bytes and records do not span blocks. The key is the roll number. The workload mixes point lookups (``find roll $X$'') with range queries (``list every roll in $[a,b]$'').
-\begin{enumerate}
-  \item[(a)] Give the number of records per block and the number of blocks in the file.
-  \item[(b)] Choose one file organization and give the number of block reads for a point lookup, counting both the index and the data.
-  \item[(c)] Give the number of block reads for a range query returning $5{,}000$ consecutive records under your choice.
-  \item[(d)] What would the same range query cost in a hashed file, and why?
-  \item[(e)] State one workload for which a direct (relative) file would beat both.
 \end{enumerate}
 
-\item[\textbf{Q10}] \textit{[Original, GATE-pattern]} \textbf{[Compute, 2 marks]} Compute each hash value, showing the intermediate value.
-\begin{enumerate}
-  \item[(a)] \emph{Mid-square}, $m=1000$: key $k=3214$. Give the middle four digits of $k^2$ and then the slot.
-  \item[(b)] \emph{Folding}, $m=1000$: key $987654321$ split into three-digit groups from the right. Add the groups and reduce modulo $1000$.
-  \item[(c)] \emph{Polynomial string hashing}, $m=97$, base $B=31$: give $h(\texttt{"dog"})$ using the character codes $d=100$, $o=111$, $g=103$.
-  \item[(d)] In one sentence, why is a prime $m$ preferred for the division method $h(k)=k \bmod m$?
-\end{enumerate}
-\end{enumerate}
-
+\bibliography{../../Bibliography_base}
+\bibliographystyle{plain}
 \end{document}

@@ -1,204 +1,200 @@
 /*
- * hash.h -- the contract for Coding Assignment 10 (File Organization and
- * Hashing), Week 10's institute practical: hash-table construction and
+ * hash.h -- the contract for Coding Assignment 10 (File Organization &
+ * Hashing), the instructor-supplied Week 10 lab: hash-table construction and
  * collision handling.
  *
- * This header is given to you; do NOT change it. Your job is to provide the
- * functions below in hash.c (start from starter_hash.c).
+ * This header is given to you; do NOT change it. Your job is to implement the
+ * twelve functions below in hash.c (start from starter_hash.c).
  *
- * Setting (the running calculator, Weeks 3-11). Week 9 sorted the calculator's
- * symbol table once and searched it in Theta(log n). Week 10 replaces it with a
- * hash table: slot = h(name), one probe expected, and the price is that the
- * table no longer keeps the names in order. You build the same table twice,
- * once with each collision policy from the deck:
+ * Setting (the running calculator, Weeks 3-10). Since Week 6 the calculator
+ * has kept its identifier table as a linked list, and every token lookup has
+ * cost up to n comparisons. This module is the replacement: the SAME
+ * symbol-table ADT -- put / get / delete, key is a C string -- built twice,
+ * once with each collision family from the lecture:
  *
- *   ChainTable -- open hashing / SEPARATE CHAINING (Section 3 of the deck).
- *                 Colliding entries live in a per-slot linked list.
- *   OpenTable  -- closed hashing / OPEN ADDRESSING (Section 4), using
- *                 LINEAR PROBING with tombstones.
+ *   ChainTable  open hashing   = separate chaining   (a list per slot)
+ *   OpenTable   closed hashing = open addressing     (linear probing,
+ *                                                    with tombstones)
  *
- * Both tables store (key, value) pairs where the key is a C string of any
- * length (including the empty string ""), and the value is an int. Both must
- * behave the same way for the operations they share:
+ * Both tables are FIXED SIZE for grading: init allocates m slots, and no
+ * function ever resizes. Load-factor policy (rehashing) is a design question
+ * on the written assignment, not code here.
  *
- *   DUPLICATE POLICY. The key is unique in the table. Inserting a key that is
- *   already present REPLACES its value and leaves the count unchanged. The
- *   replacement returns 0; a genuinely new key returns 1.
+ * Keys are NUL-terminated strings; the table COPIES each key, so the caller
+ * may free or reuse its buffer immediately after a successful put.
  *
- *   KEY OWNERSHIP. The table stores its own private copy of every key. The
- *   caller's buffer may be a stack array, may be overwritten, and may go out
- *   of scope after the call -- the table must still find the key afterwards.
- *   Every copy is released by delete, by rehash (the copy is moved, not
- *   duplicated) and by destroy. No key bytes may leak.
+ * Return conventions (identical in both tables):
+ *   put :  1  inserted a new entry
+ *          0  an entry for this key already existed and its value was updated
+ *         -1  could not insert (allocation failure, or open table full)
+ *   get :  1  key present, *out receives the value
+ *          0  key absent (*out untouched)
+ *   del :  1  key was present and has been removed
+ *          0  key absent, table unchanged
  *
- *   FAILURE. create returns NULL when it cannot allocate (and when m == 0).
- *   insert returns -1 when it cannot allocate. Every other function is
- *   NULL-safe on a NULL table: search/delete return 0, count/slots return 0,
- *   load_factor returns 0.0, destroy does nothing. A NULL key is never passed
- *   to you; a NULL out pointer in search means "found or not, do not report
- *   the value".
- *
- * The deck's C is at Slides/CS301/10-file-organization-hashing.tex:
- * hash functions (Section 2), separate chaining (Section 3), open addressing,
- * linear probing and the tombstone rule (Section 4). The worked examples in
- * the problem statement are fresh data to check against.
+ * Every function that takes a table pointer requires it to have been
+ * initialised by the matching init, and init requires m > 0.
  */
 
 #ifndef HASH_H
 #define HASH_H
 
-/* ------------------------------------------------------------------ */
-/* Hash functions (Section 2 of the deck)                             */
-/* ------------------------------------------------------------------ */
+#include <stddef.h>
 
-/*
- * hash_string: hash the NUL-terminated string s into [0, m-1] with the deck's
- * polynomial (Horner) scheme -- base B = 31, reduced modulo m at EVERY step,
- * unsigned arithmetic:
+/* -------------------------------------------------------------------------
+ * hash_str -- the polynomial (rolling) hash from the lecture.
  *
- *     unsigned h = 0;
- *     for each byte c of s:  h = (h * 31u + (unsigned char)c) % m;
- *     return h;
+ *   h = 0; for each character c of s: h = (h * 31 + c) mod m
  *
- * The reduction inside the loop is what keeps 31^len from overflowing; do not
- * "optimise" it into one final modulo. hash_string("", m) is 0.
- * Precondition: s != NULL, m >= 1. Undefined if m == 0.
- */
-unsigned hash_string(const char *s, unsigned m);
+ * Requirements:
+ *   - the accumulation must use UNSIGNED arithmetic and the character must be
+ *     cast to unsigned char before it enters the sum (a plain char may be
+ *     signed, and a byte above 127 would then contribute a negative value --
+ *     the bug the lecture calls out);
+ *   - returns a value in [0, m-1]; m > 0;
+ *   - cost O(length of s), one pass, no recursion, no allocation;
+ *   - the empty string hashes to 0.
+ * ------------------------------------------------------------------------- */
+unsigned long hash_str(const char *s, unsigned long m);
 
-/*
- * hash_int: the division method for an integer key, h(k) = k mod m, with the
- * key reinterpreted as unsigned (two's complement) so that negative keys stay
- * in range: return (unsigned)key % m.
- * Precondition: m >= 1. Undefined if m == 0.
+/* -------------------------------------------------------------------------
+ * ChainTable -- open hashing (separate chaining).
  *
- * Worked values with m = 13: 40 -> 1, 53 -> 1, 66 -> 1, 100 -> 9, -1 -> 8.
- */
-unsigned hash_int(int key, unsigned m);
+ *   slots[i] is the head of the list of every entry whose hash is i.
+ *   The slot array itself is allocated by chain_init.
+ * ------------------------------------------------------------------------- */
 
-/* ------------------------------------------------------------------ */
-/* Open hashing: separate chaining                                    */
-/* ------------------------------------------------------------------ */
+typedef struct HNode {
+    char         *key;   /* owned copy of the key */
+    int           val;
+    struct HNode *next;
+} HNode;
 
-typedef struct ChainTable ChainTable;
-
-/*
- * chain_create: make an empty table with exactly m slots.
- *   - returns NULL if m == 0 or allocation fails;
- *   - no rehash happens here, so chain_slots(chain_create(m)) == m.
- */
-ChainTable *chain_create(unsigned m);
-
-/*
- * chain_insert: insert (key, value), or replace value if key is present.
- *   - returns 1 if a new key was inserted, 0 if an existing key's value was
- *     replaced (count unchanged), -1 on allocation failure;
- *   - OWNS A COPY of key (see KEY OWNERSHIP above);
- *   - RESIZE RULE: if inserting a new key would make n > m (that is, the load
- *     factor alpha = n/m would exceed 1.0), the table is first rehashed into
- *     a larger slot array. Consequently, after any insert that returns 1,
- *     chain_count(t) <= (int)chain_slots(t). Any growth factor >= 2 is fine.
- *   - expected O(1 + alpha).
- */
-int chain_insert(ChainTable *t, const char *key, int value);
+typedef struct {
+    HNode  **slots;      /* slots[0..m-1], each NULL when the chain is empty */
+    size_t   m;          /* number of slots */
+    size_t   n;          /* number of stored entries */
+} ChainTable;
 
 /*
- * chain_search: look up key.
- *   - returns 1 and stores the value in *out (when out != NULL) if present,
- *     0 if absent;
+ * chain_init: allocate m slot pointers, all NULL; n = 0.
+ *   returns 0 on success, -1 if m == 0 or the allocation fails (the table is
+ *   left in a state that chain_free can safely be called on).
+ */
+int chain_init(ChainTable *t, size_t m);
+
+/*
+ * chain_put: insert (key, val), or update the value if the key is present.
+ *   - the key must be COPIED (the caller retains ownership of its buffer);
+ *   - an update must NOT add a second node for the same key;
+ *   - new nodes may be pushed at the head (O(1)) -- probe order is then
+ *     newest-first, which chain_probes below must match;
+ *   - returns 1 / 0 / -1 as documented at the top of this file.
+ */
+int chain_put(ChainTable *t, const char *key, int val);
+
+/*
+ * chain_get: 1 and *out = value if present, else 0.
+ */
+int chain_get(const ChainTable *t, const char *key, int *out);
+
+/*
+ * chain_del: unlink and free the node for key; 1 if it was present, else 0.
+ */
+int chain_del(ChainTable *t, const char *key);
+
+/*
+ * chain_probes: how many stored keys are compared before the key is found,
+ * or -- when the key is absent -- the length of its chain (the number of
+ * nodes examined before the walk reaches NULL). Counting starts at 1 for the
+ * head node; an absent key in an empty chain costs 0.
+ *   - must not modify the table; cost O(chain length).
+ */
+size_t chain_probes(const ChainTable *t, const char *key);
+
+/*
+ * chain_free: release every node and every copied key, then the slot array,
+ * and zero the struct. Safe on a table whose init failed.
+ */
+void chain_free(ChainTable *t);
+
+/* -------------------------------------------------------------------------
+ * OpenTable -- closed hashing (open addressing, linear probing, tombstones).
+ *
+ *   Every entry lives in a slot of the array itself. A slot is in exactly one
+ *   of three states:
+ *     EMPTY     never held an entry (or holds none now and can stop a search)
+ *     OCCUPIED  holds a live entry
+ *     DELETED   holds no entry but must NOT stop a search (a tombstone)
+ *
+ *   n      counts LIVE entries,
+ *   used   counts OCCUPIED + DELETED slots (everything that is not EMPTY),
+ *          which is what decides whether a free slot still exists.
+ * ------------------------------------------------------------------------- */
+
+#define OA_EMPTY   0
+#define OA_OCCUPIED 1
+#define OA_DELETED 2
+
+typedef struct {
+    char         *key;    /* owned copy, NULL unless OCCUPIED */
+    int           val;
+    unsigned char state;  /* OA_EMPTY / OA_OCCUPIED / OA_DELETED */
+} OASlot;
+
+typedef struct {
+    OASlot *slots;        /* slots[0..m-1] */
+    size_t  m;
+    size_t  n;            /* live entries */
+    size_t  used;         /* non-empty slots (live + tombstones) */
+} OpenTable;
+
+/*
+ * oa_init: allocate m slots, all OA_EMPTY; n = used = 0.
+ *   returns 0 on success, -1 on m == 0 or allocation failure.
+ */
+int oa_init(OpenTable *t, size_t m);
+
+/*
+ * oa_put: insert with linear probing, starting at hash_str(key, m).
+ *   - if the key is already present, update its value and return 0;
+ *   - otherwise insert at the FIRST EMPTY slot reachable, but REUSE an
+ *     earlier tombstone if the walk passed one (keep the index of the first
+ *     DELETED slot seen and place the new entry there);
+ *   - a tombstone does NOT stop the walk: an existing key further along must
+ *     still be found and updated, not duplicated;
+ *   - returns 1 on insert, 0 on update, -1 if the table has no usable slot
+ *     (every slot OCCUPIED, or every remaining slot DELETED with no key match).
+ */
+int oa_put(OpenTable *t, const char *key, int val);
+
+/*
+ * oa_get: probe from hash_str(key, m); 1 and *out = value on a match.
+ * A DELETED slot is walked over; the search stops at the first EMPTY slot
+ * (absent, return 0) or when every slot has been examined (absent, return 0).
+ */
+int oa_get(const OpenTable *t, const char *key, int *out);
+
+/*
+ * oa_del: on a match, free the key, set the slot to OA_DELETED, decrement n
+ * (used is unchanged -- the slot is still not EMPTY), and return 1; else 0.
+ */
+int oa_del(OpenTable *t, const char *key);
+
+/*
+ * oa_probes: number of SLOT INSPECTIONS a get for this key performs.
+ *   - on a hit: slots examined up to and including the matching slot;
+ *   - on a miss: slots examined up to and including the terminating EMPTY
+ *     slot (so a miss in a table whose first probe is empty costs 1);
+ *   - if the table is full and the key is absent, every slot is examined.
  *   - must not modify the table.
  */
-int chain_search(const ChainTable *t, const char *key, int *out);
+size_t oa_probes(const OpenTable *t, const char *key);
 
 /*
- * chain_delete: remove key.
- *   - returns 1 if it was present and is now gone, 0 if it was absent;
- *   - frees the stored key copy;
- *   - expected O(1 + alpha).
+ * oa_free: free every owned key, then the slot array, and zero the struct.
+ * Safe on a table whose init failed.
  */
-int chain_delete(ChainTable *t, const char *key);
-
-/* Number of live (key, value) pairs; 0 for a NULL table. */
-int chain_count(const ChainTable *t);
-
-/* Current number of slots m (it changes after a rehash); 0 for NULL. */
-unsigned chain_slots(const ChainTable *t);
-
-/* n/m as a double; 0.0 for a NULL table. Never exceeds 1.0 after an insert. */
-double chain_load_factor(const ChainTable *t);
-
-/* Release the table, every chain node and every stored key copy. NULL-safe. */
-void chain_destroy(ChainTable *t);
-
-/* ------------------------------------------------------------------ */
-/* Closed hashing: open addressing with linear probing + tombstones    */
-/* ------------------------------------------------------------------ */
-
-typedef struct OpenTable OpenTable;
-
-/*
- * oa_create: make an empty table with exactly m slots, all EMPTY.
- *   - returns NULL if m == 0 or allocation fails;
- *   - oa_slots(oa_create(m)) == m and oa_tombstones(...) == 0.
- *
- * Each slot is in one of three states: EMPTY, OCCUPIED, DELETED.
- *   - a search stops only at EMPTY; DELETED is "keep probing";
- *   - an insert may reuse the first DELETED slot it passes.
- */
-OpenTable *oa_create(unsigned m);
-
-/*
- * oa_insert: insert (key, value), or replace value if key is present.
- *   - returns 1 if a new key was inserted, 0 if an existing key's value was
- *     replaced, -1 on allocation failure;
- *   - OWNS A COPY of key;
- *   - LINEAR PROBING: the probe sequence for key is
- *     h, h+1, h+2, ... (mod m) with h = hash_string(key, m);
- *   - RESIZE RULE. After any insert that returns 1 (a new key), both of these
- *     must hold:
- *         (a) occupancy:  n + tombstones <= m/2   (so 2*n <= m);
- *         (b) tombstones: tombstones   <= m/4.
- *     Reach them by rehashing: grow the slot array when (a) would be broken,
- *     and rebuild the table (same m is enough) when (b) would be broken. Both
- *     rehashes are what keep a linear-probing table from degrading.
- *   - expected O(1 + 1/(1-alpha)) probes.
- */
-int oa_insert(OpenTable *t, const char *key, int value);
-
-/*
- * oa_search: look up key with the SAME probe sequence.
- *   - returns 1 and stores the value in *out (when out != NULL) if present,
- *     0 if absent;
- *   - stops at EMPTY, continues past DELETED, stops at m probes;
- *   - must not modify the table.
- */
-int oa_search(const OpenTable *t, const char *key, int *out);
-
-/*
- * oa_delete: remove key.
- *   - returns 1 if it was present and is now gone, 0 if it was absent;
- *   - MUST NOT clear the slot: mark it DELETED (a tombstone), increment the
- *     tombstone count, free the stored key copy, decrement the count;
- *   - clearing the slot hides every key that probed past it -- the hidden
- *     suite tests exactly that;
- *   - expected O(1 + 1/(1-alpha)) probes.
- */
-int oa_delete(OpenTable *t, const char *key);
-
-/* Number of live (key, value) pairs; 0 for NULL. */
-int oa_count(const OpenTable *t);
-
-/* Number of DELETED slots currently in the table; 0 for NULL. */
-int oa_tombstones(const OpenTable *t);
-
-/* Current number of slots m (it changes after a rehash); 0 for NULL. */
-unsigned oa_slots(const OpenTable *t);
-
-/* n/m as a double (live entries per slot); 0.0 for NULL. Never exceeds 0.5
- * after an insert that returned 1. */
-double oa_load_factor(const OpenTable *t);
-
-/* Release the table, every stored key copy and the slot array. NULL-safe. */
-void oa_destroy(OpenTable *t);
+void oa_free(OpenTable *t);
 
 #endif /* HASH_H */

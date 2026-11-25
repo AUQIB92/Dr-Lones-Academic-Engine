@@ -2,27 +2,39 @@
 % CompetitiveExam/CS301/10-file-organization-hashing-answers.tex
 % Answer key for 10-file-organization-hashing-questions.tex.
 %
-% Tier-1 PYQs Q1-Q6: question text from GATEOverflow Vol.2 (filter1_volume2.pdf)
-% by page render + OCR; answers independently re-derived by a Python trace and
-% cross-checked against GeeksforGeeks / ExamSIDE / ExamGOAL mirrors.
-%   Q1  GATE CSE 1996 Q1.13 p.228  (C)
-%   Q2  GATE CSE 2004 Q7    p.228  (C)
-%   Q3  GATE CSE 2014 S1 Q40 p.230 (A)
-%   Q4  GATE CSE 2007 Q40   p.229  (B)
-%   Q5  GATE CSE 2020 Q23   p.39   13
-%   Q6  GATE CSE 2023 Q10   p.54   (C)
-% Q7-Q10 are original; each was re-derived by hand and by Python this session.
+% Provenance of the real PYQs (both Tier 1: the local GATEOverflow compilation
+% CompetitiveExam/Books/GATE-PYQs/filter1_volume2.pdf, hashing chapter 3.8):
+%   Q1  GATE CSE 1996 Question 1.13 - PDF p.228, text layer complete.
+%   Q2  GATE CSE 1990 Question 13b  - PDF p.228, text layer complete.
+% Neither book key is printed in the volume, so both answers were derived
+% independently below. Q3-Q10 are original; every number was produced by a
+% Python simulation of the stated probe sequence before the question was
+% written, and re-derived by hand here.
 %
-% Python re-derivation log (2026-11-19): residues, all probe sequences, chain
-% lengths, tombstone trace, block arithmetic and hash-function values all PASS.
-%   Q3 max=3, min=0, avg=9/9=1.0        Q4 table [1,8,10,-,-,-,3]
-%   Q5 (21 + 1*15) mod 23 = 13          Q7 alpha=.75 -> 1.375/.75, 2.5/8.5
-%   Q8 88: 4 probes; 35 -> slot 2; clearing slot 2 hides 88 (3 probes, miss)
-%   Q9 51 rec/block, 7844 blocks, 13+1=14 reads, 13+99=112 blocks
-%   Q10 3297 (slot 297), 962, 25
+% Re-derivation log (2026-11-19):
+%   Q1  chaining unlinks in O(1) given the node; open addressing needs
+%       tombstones that lengthen later searches -> (C). Worst-case search is
+%       Theta(n) in both, so (A) false. Chaining uses MORE space, (B) false.
+%   Q2  insert scans the chain for a duplicate first -> Theta(n) worst case;
+%       instance: every key hashes to one bucket.
+%   Q3  alpha = 1500/2000 = 0.75; 1 + 0.75/2 = 1.375 -> 1.38. PASS
+%   Q4  open = chaining, closed = open addressing; chaining permits alpha>=1
+%       -> (C). PASS
+%   Q5  10, 17, 24, 31 all have residue 3 mod 7 -> slots 3,4,5,6 ->
+%       1+2+3+4 = 10 probes. PASS (Python trace agrees)
+%   Q6  30 mod 11 = 8; 8+1=9, 8+4=12=1, 8+9=17=6 -> 8,9,1,6 -> (C). PASS
+%   Q7  all five keys are 6 mod 13; h2 = 7,9,11,2,4; 58 lands in slot 10
+%       after 2 probes. PASS (Python trace: table 2:19, 4:32, 6:6, 8:45,
+%       10:58)
+%   Q8  a blanked slot stops the probe walk early -> live keys reported
+%       absent; the tombstone keeps the chain -> (B). PASS
+%   Q9  keys are multiples of 2^d, so the low d bits are zero and only the
+%       p-d remaining bits vary -> 2^{p-d} slots -> (B). PASS
+%   Q10 order + lookup + insertion -> indexed sequential -> (C). PASS
 %
-% Compile with: cd CompetitiveExam/CS301 &&
-%   TEXINPUTS=../../Preambles:$TEXINPUTS xelatex -interaction=nonstopmode 10-file-organization-hashing-answers.tex
+% Compile with (Windows/MiKTeX, ';'-joined TEXINPUTS):
+%   cd CompetitiveExam/CS301 &&
+%   TEXINPUTS="../../Preambles;" xelatex -interaction=nonstopmode 10-file-organization-hashing-answers.tex
 % =============================================================================
 
 \documentclass[11pt]{article}
@@ -32,7 +44,7 @@
 \renewcommand{\thesection}{10.\arabic{section}}
 \setlength{\emergencystretch}{2.5em}
 
-\title{Competitive Exam Practice 10: File Organization and Hashing\\\large Answer Key}
+\title{Competitive Exam Practice 10: File Organization \& Hashing\\\large Answer Key}
 \author{Auqib Hamid Lone\\[0.3em]
   \emph{Department of Computer Science \& Engineering}, \emph{GCET Ganderbal}}
 \date{\today}
@@ -44,227 +56,100 @@
 
 \section*{Q1 --- Answer (C)}
 
-Chaining stores collisions outside the table in per-slot lists. Deleting a key is a linked-list unlink: find it, redirect one pointer, free the node. Open addressing has no pointers, so a deleted slot cannot simply be cleared --- the empty slot is the search's stopping condition and would hide every key that probed past it. It must become a \texttt{DELETED} tombstone, and tombstones accumulate until the table is rehashed. Hence deletion is easier with chaining.
+Deletion is the operation that separates the two families. In a chained table the entry is a node in a list: given the key (or the node), unlinking it is a constant number of pointer assignments, and nothing else in the table is disturbed. In an open-addressed table the entry \emph{is} a slot, and a search stops at the first empty slot, so simply blanking the slot severs every probe chain that passed through it and makes live records unreachable. The repair --- a tombstone --- is extra state, extra bookkeeping, and a slower table as tombstones accumulate.
 
-\emph{Why the distractors tempt.} (A) is tempting because chaining ``feels'' faster, but with all $n$ keys in one chain the worst case is $\Theta(n)$ for both schemes. (B) is the reverse of the truth: chaining adds $n$ nodes and $m$ head pointers, so it uses more space than an array of $m$ slots.
+The other options are traps. Worst-case search (A) is $\Theta(n)$ in \emph{both} families (one chain, or one long probe run), so chaining is not better there. Chaining uses more space (B), not less: $m$ slot pointers plus a link, an allocation header, and a copied key per entry, where open addressing stores the key inline. (D) is false because deletion is exactly the differentiator.
 
-\section*{Q2 --- Answer (C)}
+\section*{Q2 --- Answer}
 
-The hash function keeps only the last decimal digit:
+\textbf{(a)} $\Theta(n)$ worst case per insertion, for $n$ elements already stored. The reason is the duplicate check: before inserting, the implementation walks the target chain to see whether the key is already present, and a chain can hold every stored key. \muted{If the specification says insertion may blindly push a new node without checking for duplicates, the cost is $\Theta(1)$; say which contract you are analysing. The GATE question expects the duplicate-checking answer.}
+
+\textbf{(b)} The worst instance is the one in which \emph{every key hashes to the same bucket}: all $n$ entries form one chain, which is a linked list in disguise, and the insert becomes a linear scan. This is not hypothetical --- a constant hash, a modulus with a common factor to the keys, or a deliberate adversary all produce it, which is why the lecture pairs ``$\Theta(1)$ expected'' with ``$\Theta(n)$ worst case'' and why hash-flooding is a real denial-of-service attack.
+
+\section*{Q3 --- Answer: $1.38$}
+
 \[
-\begin{array}{c|cccccccc}
-x & 4322 & 1334 & 1471 & 9679 & 1989 & 6171 & 6173 & 4199\\
-\hline
-x \bmod 10 & 2 & 4 & 1 & 9 & 9 & 1 & 3 & 9
-\end{array}
+  \alpha = \frac{n}{m} = \frac{1{,}500}{2{,}000} = 0.75,
+  \qquad
+  1 + \frac{\alpha}{2} = 1 + 0.375 = 1.375 \approx 1.38 .
 \]
-Statement I: $9679$, $1989$, $4199$ all give $9$ --- true. Statement II: $1471$ and $6171$ both give $1$ --- true. Statement III is false ($2,4,1,9,3$ all occur). Statement IV is false (several residues repeat). Only I and II hold.
+The unsuccessful cost would be $\alpha = 0.75$ probes. Both are linear in $\alpha$: chaining degrades gracefully and never fills.
 
-\emph{Why the distractors tempt.} (A) is chosen by a solver who stops at the first true statement without testing II. (D) is chosen by someone who assumes ``different keys give different residues'' --- the whole point of a collision is that they do not.
+\section*{Q4 --- Answer (C)}
 
-\section*{Q3 --- Answer (A)}
+The names are historically inverted, and the exam tests exactly that. \key{Open hashing} is \key{separate chaining} --- the address space stays open because entries live outside the table, in lists, so a chain may hold many entries and $\alpha \ge 1$ is legal. \key{Closed hashing} is \key{open addressing} --- entries live closed inside the array, one per slot, so the table is full at $n = m$ and $\alpha < 1$ is required. (A) and (B) swap the names; (D) is false because chaining has no upper bound on $\alpha$.
 
-Reduce each key modulo $9$ and append it to that slot's chain:
-\[
-\begin{array}{c|l|c}
-\text{slot} & \text{chain} & \text{length}\\
-\hline
-0 & - & 0\\
-1 & 28,\ 19,\ 10 & 3\\
-2 & 20 & 1\\
-3 & 12 & 1\\
-4 & - & 0\\
-5 & 5 & 1\\
-6 & 15,\ 33 & 2\\
-7 & - & 0\\
-8 & 17 & 1
-\end{array}
-\]
-The longest chain has length $3$ ($28,19,10$ all leave residue $1$). Three slots ($0,4,7$) are empty, so the minimum is $0$. The average is taken over all $m=9$ slots:
-\[
-\bar{L}=\frac{3+0+1+1+0+1+2+0+1}{9}=\frac{9}{9}=1.
-\]
-So the triple is $(3,0,1)$.
+\section*{Q5 --- Answer: $10$}
 
-\emph{Why the distractors tempt.} (C) counts the chain head plus its nodes. (D) comes from averaging over the six occupied slots only, $9/6=1.5$, and rounding up to $2$; the GATE convention averages over all $m$ slots.
+All four keys share the residue $3$ modulo $7$: $10 = 7+3$, $17 = 14+3$, $24 = 21+3$, $31 = 28+3$. So the four insertions walk one run.
 
-\section*{Q4 --- Answer (B)}
+\begin{center}
+{\small
+\begin{tabular}{rcccc}
+  \toprule
+  key & $h(k)$ & slots probed & probes & lands at \\
+  \midrule
+  $10$ & $3$ & $3$ & $1$ & $3$ \\
+  $17$ & $3$ & $3,4$ & $2$ & $4$ \\
+  $24$ & $3$ & $3,4,5$ & $3$ & $5$ \\
+  $31$ & $3$ & $3,4,5,6$ & $4$ & $6$ \\
+  \bottomrule
+\end{tabular}}
+\end{center}
 
-The home slot is $h(x)=(3x+4)\bmod 7$.
-\[
-\begin{array}{c|c|c|c}
-x & h(x) & \text{probes} & \text{slot}\\
-\hline
-1 & 7 \bmod 7 = 0 & 1 & 0\\
-3 & 13 \bmod 7 = 6 & 1 & 6\\
-8 & 28 \bmod 7 = 0 & 0,1 & 1\\
-10 & 34 \bmod 7 = 6 & 6,0,1,2 & 2
-\end{array}
-\]
-The table is
-\[
-\begin{array}{c|ccccccc}
-\text{slot} & 0 & 1 & 2 & 3 & 4 & 5 & 6\\
-\hline
-\text{key} & 1 & 8 & 10 & - & - & - & 3
-\end{array}
-\]
-so the contents are $1,8,10,-,-,-,3$.
-
-\emph{Why the distractors tempt.} (D) reverses the last two placements, which is what happens if $10$ is inserted before $8$; the question fixes the order. (A) forgets that $1$ and $3$ were inserted first and occupy their home slots.
-
-\section*{Q5 --- Answer 13}
-
-For $k=90$, $m=23$:
-\[
-h_1(90)=90 \bmod 23=21,
-\qquad
-h_2(90)=1+(90 \bmod 19)=1+14=15.
-\]
-Probe $0$ is the home slot, probe $1$ adds one step of the secondary hash:
-\[
-\text{probe }1=(h_1(90)+1\cdot h_2(90))\bmod 23=(21+15)\bmod 23=36-23=13.
-\]
-The address is $13$. (The full sequence $21,13,5,20,12,\dots$ visits slots in steps of $15$, i.e.\ $-8$, modulo $23$.)
+Total $1+2+3+4 = 10$ probes; final table $3{:}10$, $4{:}17$, $5{:}24$, $6{:}31$, slots $0,1,2$ empty and $\alpha = 4/7 \approx 0.57$. This is primary clustering in its purest form: the hash function is perfect in the sense of being uniform on these keys, and the probe sequence still turns four insertions into ten probes.
 
 \section*{Q6 --- Answer (C)}
 
-A fixed function --- division or multiplication --- is published in the code, so an adversary who knows it can choose $k>m$ keys that all map to one slot, producing a chain of length $k$ and $\Theta(k)$ search. Universal hashing chooses $(a,b)$ uniformly at random when the table is created, after the adversary has committed to the keys. For every distinct pair $k_1,k_2$,
+$h(30) = 30 \bmod 11 = 8$, so $p_0 = 8$. Then
 \[
-\Pr[h_{a,b}(k_1)=h_{a,b}(k_2)]\le \frac{1}{m},
-\]
-so no input can force a bad distribution and the expected search cost is $O(1+\alpha)$ whatever the keys are.
-
-\emph{Why the distractors tempt.} (B) looks ``random'' because of the multiplication, but $A$ is a fixed constant and the function is still deterministic and known. (D) confuses the primality of the \emph{key count} $k$ with the primality of the \emph{table size} $m$; it does not remove the adversary's knowledge of $h$.
-
-\section*{Q7 --- Load factor and expected probe counts}
-
-(a) $\alpha=n/m=1500/2000=0.75$.
-
-(b) Under uniform hashing, a chained table costs
-\[
-\text{successful}\approx 1+\frac{\alpha}{2}=1+\frac{0.75}{2}=1.375,
-\qquad
-\text{unsuccessful}\approx \alpha=0.75.
-\]
-The successful search is half the chain on average because the target is equally likely to sit anywhere in it; a miss must walk the whole chain.
-
-(c) Knuth's linear-probing approximations are
-\[
-S\approx \frac12\left(1+\frac{1}{1-\alpha}\right)=\frac12\left(1+\frac{1}{0.25}\right)=2.5,
+  p_1 = (8 + 1^2) \bmod 11 = 9,\qquad
+  p_2 = (8 + 2^2) \bmod 11 = 12 \bmod 11 = 1,
 \]
 \[
-U\approx \frac12\left(1+\frac{1}{(1-\alpha)^2}\right)=\frac12\left(1+\frac{1}{0.0625}\right)=8.5.
+  p_3 = (8 + 3^2) \bmod 11 = 17 \bmod 11 = 6 .
 \]
-The failed-search figure is the warning: at $\alpha=0.75$ a miss already costs about $8.5$ probes, and the function blows up as $\alpha\to1$.
+The sequence is $8, 9, 1, 6$.
 
-(d) Chaining is safer at $\alpha=0.75$: its miss cost is $0.75$ comparisons, against $8.5$ probes for linear probing. Linear probing is normally kept at $\alpha\le 0.5$ (or at most $0.75$ with careful tuning), whereas chaining tolerates $\alpha>1$.
+The traps are informative. (A) is the linear-probing sequence, which is what a student writes when the $i^2$ is forgotten. (B) adds the \emph{square} of the hash start rather than of the step, or forgets to reduce $12$ modulo $11$ before adding again. (D) subtracts the squares instead of adding. Note also that quadratic probing visits only about half the slots, which is why safe implementations keep $m$ prime and the table at most half full.
 
-\section*{Q8 --- Tombstone trace}
+\section*{Q7 --- Answer: slot $10$}
 
-(a) Insert in order, using $h(k)=k \bmod 11$ and probing forward cyclically:
-\[
-\begin{array}{c|c|c|c}
-k & h(k) & \text{probes} & \text{slot}\\
-\hline
-12 & 1 & 1 & 1\\
-44 & 0 & 1 & 0\\
-13 & 2 & 1 & 2\\
-88 & 0 & 0,1,2,3 & 3\\
-23 & 1 & 1,2,3,4 & 4\\
-94 & 6 & 1 & 6
-\end{array}
-\]
-Final table:
-\[
-\begin{array}{c|ccccccccccc}
-\text{slot} & 0 & 1 & 2 & 3 & 4 & 5 & 6 & 7 & 8 & 9 & 10\\
-\hline
-\text{key} & 44 & 12 & 13 & 88 & 23 & - & 94 & - & - & - & -
-\end{array}
-\]
+Every key is congruent to $6$ modulo $13$ ($6, 19 = 13+6, 32 = 26+6, 45 = 39+6, 58 = 52+6$), so all five share the start $h_1 = 6$; the strides separate them.
 
-(b) Delete $13$ from slot $2$. Clearing the slot would create an \texttt{EMPTY} in the middle of the probe path of $88$ and $23$, so the slot becomes a tombstone:
-\[
-\begin{array}{c|ccccccccccc}
-\text{slot} & 0 & 1 & 2 & 3 & 4 & 5 & 6 & 7 & 8 & 9 & 10\\
-\hline
-\text{key} & 44 & 12 & \texttt{DEL} & 88 & 23 & - & 94 & - & - & - & -
-\end{array}
-\]
+\begin{center}
+{\small
+\begin{tabular}{rcccc}
+  \toprule
+  key & $h_1$ & $h_2 = 1 + (k \bmod 11)$ & probe sequence & probes \\
+  \midrule
+  $6$  & $6$ & $7$  & $6$ & $1$ \\
+  $19$ & $6$ & $9$  & $6 \to 2$ & $2$ \\
+  $32$ & $6$ & $11$ & $6 \to 4$ & $2$ \\
+  $45$ & $6$ & $2$  & $6 \to 8$ & $2$ \\
+  $58$ & $6$ & $4$  & $6 \to 10$ & $2$ \\
+  \bottomrule
+\end{tabular}}
+\end{center}
 
-(c) \texttt{search(88)} starts at $h(88)=0$ and probes $0$ ($44$), $1$ ($12$), $2$ (\texttt{DEL}), $3$ ($88$): four probes. It succeeds because a tombstone means ``a key may have passed through here'' and does not stop the search; only \texttt{EMPTY} does.
+The check on each stride: $19 \bmod 11 = 8$ so $h_2 = 9$ and $(6+9) \bmod 13 = 2$; $32 \bmod 11 = 10$ so $h_2 = 11$ and $(6+11) \bmod 13 = 4$; $45 \bmod 11 = 1$ so $h_2 = 2$ and $8$; $58 \bmod 11 = 3$ so $h_2 = 4$ and $(6+4) \bmod 13 = 10$. All five keys take $9$ probes in total, against $1+2+3+4+5 = 15$ under linear probing with the same starts --- the second hash function is what buys that.
 
-(d) Insert $35$: $h(35)=35 \bmod 11=2$. Slot $2$ holds a tombstone, which an insertion may reuse, so $35$ goes into slot $2$ after one probe:
-\[
-\begin{array}{c|ccccccccccc}
-\text{slot} & 0 & 1 & 2 & 3 & 4 & 5 & 6 & 7 & 8 & 9 & 10\\
-\hline
-\text{key} & 44 & 12 & 35 & 88 & 23 & - & 94 & - & - & - & -
-\end{array}
-\]
+\section*{Q8 --- Answer (B)}
 
-(e) If slot $2$ had been cleared, \texttt{search(88)} would probe $0$ ($44$), $1$ ($12$), $2$ (\texttt{EMPTY}) and stop, reporting $88$ \emph{absent} after three probes --- a false negative, since $88$ is in slot $3$. That is exactly why deletion in open addressing needs a third slot state.
+A search in open addressing stops at the first \emph{empty} slot; that is how a miss is recognised. If a deleted record were removed by blanking its slot, every key that had been displaced past that slot during probing would become unreachable: the search would hit the new empty slot and report absent for a record that is still in the table. A \key{tombstone} is a third state that a search walks \emph{over} and an insertion may \emph{reuse}, so the probe chain survives the deletion.
 
-\section*{Q9 --- Choosing a file organization}
+(A) is false (a tombstone occupies the slot exactly as the record did, and cannot be used for new insertions until reused), (C) is false (the hash function is untouched by deletion policy), and (D) is false (tombstones \emph{raise} the effective load, which is why the table is rehashed when live entries plus tombstones cross the ceiling).
 
-(a) Records per block and blocks:
-\[
-\left\lfloor \frac{4096}{80}\right\rfloor = 51 \text{ records/block},
-\qquad
-\left\lceil \frac{400{,}000}{51}\right\rceil = 7844 \text{ blocks}.
-\]
+\section*{Q9 --- Answer (B)}
 
-(b) The workload has both point lookups and range queries, and hashing cannot answer a range. Choose an \textbf{indexed-sequential file}: the data blocks stay sorted by roll number and a sparse index holds one (highest key, block address) entry per block. Binary-searching $7844$ index entries takes
-\[
-\lceil \log_2 7844\rceil = 13 \text{ block reads}
-\]
-(the index itself is stored in blocks), then one data block is read:
-\[
-13+1=14 \text{ block reads per point lookup}.
-\]
+Write the key as $k = q\cdot 2^d$. Its low $d$ bits are all zero, so $k \bmod 2^p$ ignores them and depends only on the remaining $p-d$ bits of $q$; there are $2^{p-d}$ distinct values those bits can take. Equivalently, $k \bmod 2^p = 2^d \cdot (q \bmod 2^{p-d})$, so every reachable slot index is a multiple of $2^d$ --- exactly $2^{p-d}$ of them. Choosing a prime $m$ avoids the collapse entirely, because a prime shares no factor with the keys.
 
-(c) Once the first block of the range is located, the remaining records are contiguous. For $5{,}000$ records:
-\[
-13+\left\lceil \frac{5000}{51}\right\rceil = 13+99 = 112 \text{ block reads}.
-\]
+\section*{Q10 --- Answer (C)}
 
-(d) A hashed file computes one bucket for a point lookup --- excellent --- but it destroys key order. The rolls in $[a,b]$ are scattered over essentially every bucket, so a range query must scan all $7844$ data blocks (plus any overflow chains): $\Theta(n)$ block reads instead of $112$.
+Three requirements, three costs, and only one organization pays for all three. Lookup by account number rules out plain sequential only in the sense that sequential gives $O(\log b)$ block reads by binary search over blocks --- acceptable, but insertion is not: a new account must open a gap, rewriting on average half the file, $O(n)$ block traffic, and there are frequent insertions. Direct organization gives $O(1)$ lookup only if the key space is dense; account numbers are typically sparse, so the file would be as large as the number range and mostly empty. Hashed organization would make lookup and insertion cheap but destroys order, so the monthly sorted report would need a full read plus an external sort.
 
-(e) A direct (relative) file wins when the key is a dense integer, e.g.\ rolls $20230001$--$20240000$: the address is
-\[
-\text{offset}=(\text{roll}-20230001)\times 80,
-\]
-so search, insert and delete are one seek with no index and no collisions. The moment the key space is sparse or non-integer, the direct file wastes most of its slots and indexing or hashing is required.
+Indexed sequential keeps the data in key order (the report is one sequential pass, free) and adds a sparse index of one entry per block (lookup is $O(\log b)$ index reads plus one block read), while insertions land in an overflow area at $O(1)$ and are folded back by periodic reorganization. It is the only option that does not make one of the three requirements expensive.
 
-\section*{Q10 --- Hash-function computations}
-
-(a) \emph{Mid-square.} $3214^2=10{,}329{,}796$. The middle four digits of $10329796$ are $3297$, so with $m=1000$ the slot is
-\[
-3297 \bmod 1000 = 297.
-\]
-Taking the middle rather than the low digits is the point: the low digits of a square depend only on the low digits of the key.
-
-(b) \emph{Folding.} Split from the right into three-digit groups and add:
-\[
-987+654+321=1962,
-\qquad 1962 \bmod 1000=962.
-\]
-Every digit of the key contributes to the result, unlike a plain truncation.
-
-(c) \emph{Polynomial string hash.} Horner's rule with $B=31$, reducing modulo $97$ at every step:
-\[
-h=0;\quad
-h=0\cdot31+100=100;\quad
-h=100\cdot31+111=3211;
-\]
-\[
-h=3211\cdot31+103=99{,}644;
-\qquad
-99{,}644 \bmod 97=25.
-\]
-So \texttt{"dog"} hashes to slot $25$ in a $97$-slot table.
-
-(d) A prime $m$ shares no factor with the key patterns. If $m$ had a small factor $d$, every key divisible by $d$ would map only to multiples of $d$, leaving the other slots unused and raising the effective load factor. A prime table size lets every digit of the key influence the residue.
-
+\bibliography{../../Bibliography_base}
+\bibliographystyle{plain}
 \end{document}

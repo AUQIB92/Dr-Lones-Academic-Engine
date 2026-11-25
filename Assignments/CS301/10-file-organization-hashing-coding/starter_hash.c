@@ -1,171 +1,143 @@
 /*
- * starter_hash.c -- Coding Assignment 10 (File Organization and Hashing).
+ * starter_hash.c -- Coding Assignment 10 (Hashing).
  *
- * Copy this file to hash.c and implement every function declared in hash.h.
- * Compile with:
+ * Copy this file to hash.c and implement the twelve functions declared in
+ * hash.h. Compile and run the visible tests with:
+ *
  *   gcc -std=c11 -Wall -Wextra -Werror -o test_visible test_visible.c hash.c
  *   ./test_visible
  *
- * The stubs below compile and run but do nothing useful: create returns NULL,
- * so every table is "not implemented". Read the comments in hash.h for the
- * exact contract -- the probe rule, the resize thresholds, and the tombstone
- * rule are all stated there and are all tested.
+ * The stubs below compile (that is what the (void) casts are for) but do
+ * nothing useful. Read the contract in hash.h before writing code: the
+ * return values, the three slot states, and the tombstone rules are all
+ * graded, not just "does get find the key".
  *
- * Suggested order of work:
- *   1. hash_string and hash_int -- get the worked values in the problem
- *      statement to match before building anything on top of them.
- *   2. ChainTable: create, insert by pushing at the head, search, delete,
- *      then add the resize.
- *   3. OpenTable: create, probe, insert, search, delete with tombstones,
- *      then add the two rehashes.
+ * Build order that keeps the work testable:
+ *   1. hash_str               -- everything else depends on it;
+ *   2. chain_init/put/get/del -- the easy family; get it correct first;
+ *   3. chain_probes/chain_free;
+ *   4. oa_init/put/get/del    -- reuse the same key-copy discipline;
+ *   5. oa_probes/oa_free.
  */
 
 #include <stdlib.h>
 #include <string.h>
+
 #include "hash.h"
 
-/* ------------------------------------------------------------------ */
-/* Hash functions                                                     */
-/* ------------------------------------------------------------------ */
+/* -------------------------------------------------------------------------
+ * 1. The hash function
+ * ------------------------------------------------------------------------- */
 
-unsigned hash_string(const char *s, unsigned m)
+unsigned long hash_str(const char *s, unsigned long m)
 {
-    /* TODO: Horner, base 31, reduce modulo m at every step, unsigned. */
+    /* TODO: h = 0; for each unsigned char c: h = (h * 31 + c) % m; */
     (void)s;
     (void)m;
     return 0;
 }
 
-unsigned hash_int(int key, unsigned m)
+/* -------------------------------------------------------------------------
+ * 2-4. Separate chaining
+ * ------------------------------------------------------------------------- */
+
+int chain_init(ChainTable *t, size_t m)
 {
-    /* TODO: the division method, (unsigned)key % m. */
-    (void)key;
+    /* TODO: reject m == 0, calloc the slot array, set m and n. */
+    (void)t;
     (void)m;
-    return 0;
+    return -1;
 }
 
-/* ------------------------------------------------------------------ */
-/* Open hashing: separate chaining                                    */
-/* ------------------------------------------------------------------ */
-
-ChainTable *chain_create(unsigned m)
+int chain_put(ChainTable *t, const char *key, int val)
 {
-    /* TODO: allocate the head array of m slots, all NULL. */
-    (void)m;
-    return NULL;
-}
-
-int chain_insert(ChainTable *t, const char *key, int value)
-{
-    /* TODO: replace an existing key, else push a new node; resize at alpha>1. */
+    /* TODO: walk the chain for an existing key first; only then allocate. */
     (void)t;
     (void)key;
-    (void)value;
-    return 0;
+    (void)val;
+    return -1;
 }
 
-int chain_search(const ChainTable *t, const char *key, int *out)
+int chain_get(const ChainTable *t, const char *key, int *out)
 {
-    /* TODO: walk the one chain h(key) selects. */
+    /* TODO: walk the chain, compare with strcmp. */
     (void)t;
     (void)key;
     (void)out;
     return 0;
 }
 
-int chain_delete(ChainTable *t, const char *key)
+int chain_del(ChainTable *t, const char *key)
 {
-    /* TODO: unlink the node and free its key copy. */
+    /* TODO: unlink; remember that the head is a special case. */
     (void)t;
     (void)key;
     return 0;
 }
 
-int chain_count(const ChainTable *t)
+size_t chain_probes(const ChainTable *t, const char *key)
 {
+    /* TODO: count nodes compared; for an absent key, the whole chain. */
     (void)t;
+    (void)key;
     return 0;
 }
 
-unsigned chain_slots(const ChainTable *t)
+void chain_free(ChainTable *t)
 {
-    (void)t;
-    return 0;
-}
-
-double chain_load_factor(const ChainTable *t)
-{
-    (void)t;
-    return 0.0;
-}
-
-void chain_destroy(ChainTable *t)
-{
+    /* TODO: free each node's key and node, then the slot array. */
     (void)t;
 }
 
-/* ------------------------------------------------------------------ */
-/* Closed hashing: open addressing, linear probing, tombstones        */
-/* ------------------------------------------------------------------ */
+/* -------------------------------------------------------------------------
+ * 5-7. Open addressing with linear probing and tombstones
+ * ------------------------------------------------------------------------- */
 
-OpenTable *oa_create(unsigned m)
+int oa_init(OpenTable *t, size_t m)
 {
-    /* TODO: allocate m slots, all EMPTY. */
+    /* TODO: calloc m slots; every slot starts OA_EMPTY. */
+    (void)t;
     (void)m;
-    return NULL;
+    return -1;
 }
 
-int oa_insert(OpenTable *t, const char *key, int value)
+int oa_put(OpenTable *t, const char *key, int val)
 {
-    /* TODO: probe; replace or place; rehash on occupancy/tombstone limits. */
+    /* TODO: probe; remember the first tombstone; update on a match; insert
+     * at the tombstone if one was seen, else at the first EMPTY slot. */
     (void)t;
     (void)key;
-    (void)value;
-    return 0;
+    (void)val;
+    return -1;
 }
 
-int oa_search(const OpenTable *t, const char *key, int *out)
+int oa_get(const OpenTable *t, const char *key, int *out)
 {
-    /* TODO: probe until the key or EMPTY; DELETED keeps the walk alive. */
+    /* TODO: walk over tombstones, stop at EMPTY, stop after m inspections. */
     (void)t;
     (void)key;
     (void)out;
     return 0;
 }
 
-int oa_delete(OpenTable *t, const char *key)
+int oa_del(OpenTable *t, const char *key)
 {
-    /* TODO: find the key and mark the slot DELETED -- never clear it. */
+    /* TODO: find, free the key, mark DELETED, decrement n (not used). */
     (void)t;
     (void)key;
     return 0;
 }
 
-int oa_count(const OpenTable *t)
+size_t oa_probes(const OpenTable *t, const char *key)
 {
+    /* TODO: same walk as oa_get, but return the number of slots inspected. */
     (void)t;
+    (void)key;
     return 0;
 }
 
-int oa_tombstones(const OpenTable *t)
+void oa_free(OpenTable *t)
 {
-    (void)t;
-    return 0;
-}
-
-unsigned oa_slots(const OpenTable *t)
-{
-    (void)t;
-    return 0;
-}
-
-double oa_load_factor(const OpenTable *t)
-{
-    (void)t;
-    return 0.0;
-}
-
-void oa_destroy(OpenTable *t)
-{
+    /* TODO: free keys of OCCUPIED slots, then the array. */
     (void)t;
 }
