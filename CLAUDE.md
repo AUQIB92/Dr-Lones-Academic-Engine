@@ -16,6 +16,7 @@
 - **Plan first** -- enter plan mode before non-trivial tasks; save plans to `quality_reports/plans/`
 - **Verify after** -- compile/render and confirm output at the end of every task
 - **Single source of truth** -- Beamer `.tex` is authoritative; Quarto course mirrors are legacy artifacts outside course workflows
+- **Teaching voice** -- course material uses very simple, plain language and starts with the smallest concrete example; examples then escalate to GATE-level exam questions. Simplicity is the entry point, never a reason to drop correctness or edge cases
 - **Quality gates** -- nothing ships below 80/100
 - **[LEARN] tags** -- when corrected, save `[LEARN:category] wrong → right` to [MEMORY.md](MEMORY.md)
 

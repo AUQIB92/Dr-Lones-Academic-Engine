@@ -7,7 +7,7 @@ paths:
   - "scripts/R/**/*.R"
 ---
 
-# Content Invariants (INV-1 through INV-12)
+# Content Invariants (INV-1 through INV-13)
 
 Numbered non-negotiable rules for content produced in this repository. Critic agents, reviewers, and audit agents should cite invariants by number (e.g., "violates INV-3") when flagging issues. Adapted from clo-author's enforcement pattern.
 
@@ -24,6 +24,7 @@ Numbered non-negotiable rules for content produced in this repository. Critic ag
 - **INV-6: No `\pause` or overlays.** Beamer `\pause`, `\only`, `\visible`, `\onslide` commands are forbidden. See `.claude/rules/no-pause-beamer.md` for rationale.
 - **INV-7: Max 2 colored boxes per slide.** Overusing `keybox`, `definitionbox`, or callout environments creates "box fatigue." Two per slide maximum.
 - **INV-8: Motivation before formalism.** Every definition must be preceded by a motivating example, intuition, or real-world question. No unmotivated math.
+- **INV-13: Plain language first, then GATE-level escalation.** Write in short, simple sentences and introduce each idea with the smallest concrete example that shows the mechanism. Then give a fully worked trace, then at least one GATE-level or exam-style variant. Simplicity is the entry point, not the ceiling: correctness, edge cases, and complexity cases are still mandatory.
 
 ## R script invariants
 

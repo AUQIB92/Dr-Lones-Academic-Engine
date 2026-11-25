@@ -175,6 +175,7 @@ paths:
 | State the ADT contract before any implementation, and implement the same ADT at least twice | Stack over array (Wk 3) then over a list (Wk 7); queue over circular array (Wk 5) then over a list (Wk 7). Two implementations of one contract is what makes the abstraction visible | Weeks 3, 5, 7 |
 | Pair every complexity claim with the case *and* a trace that exhibits it | "Quick sort is $O(n \log n)$" is the single most common misconception this course must dismantle — students must see the sorted-input worst case traced | Weeks 2, 8, 9, 10, 11 |
 | Draw memory, don't describe it | Pointer bugs are spatial. A consistent memory diagram (stack down, heap up, arrows to nodes) reused across Weeks 1, 6, 7, 11 does more than any prose warning | Weeks 1, 6, 7, 11 |
+| Plain language first, then GATE-level escalation | Students need a low-friction entry point before exam rigor. Each idea starts with the smallest concrete example, then a full trace, then a GATE/UG exam variant; simplicity never removes correctness or edge cases (INV-13) | All weeks (from Week 12 onward) |
 
 ## Anti-Patterns (Don't Do This)
 
