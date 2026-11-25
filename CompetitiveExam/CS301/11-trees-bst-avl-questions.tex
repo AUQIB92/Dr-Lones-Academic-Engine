@@ -1,0 +1,129 @@
+% =============================================================================
+% CompetitiveExam/CS301/11-trees-bst-avl-questions.tex
+% Competitive Exam Practice 11 — GATE (Computer Science) Pattern
+% Trees: terminology, binary-tree properties, traversals, expression trees,
+% BST search/insert/delete, AVL balance factors and rotations, height bounds.
+%
+% Student-facing — NO answers. Answer key: 11-trees-bst-avl-answers.tex.
+%
+% Provenance:
+%   Q1 [GATE CSE 2009 Q37, verified — ExamSIDE / SolutionsAdda]
+%   Q2 [GATE CSE 2020 Q6, verified — ExamSIDE]
+%   Q3 [GATE CSE 2017 Set 1, verified — ExamSIDE]
+%   Q4 [GATE CSE 2015 Set 1, verified — ExamSIDE]
+%   Q5-Q10 [Original, GATE-pattern] — fresh numbers, none reused from the deck,
+%     the written assignment, or the coding lab; every answer re-derived.
+%
+% Compile with: cd CompetitiveExam/CS301 &&
+%   TEXINPUTS=../../Preambles:$TEXINPUTS xelatex -interaction=nonstopmode 11-trees-bst-avl-questions.tex
+% =============================================================================
+
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\input{../../Preambles/header}
+\coursecode{CS301}
+\renewcommand{\thesection}{11.\arabic{section}}
+\setlength{\emergencystretch}{3em}
+
+\title{Competitive Exam Practice 11: Trees, BSTs and AVL\\\large GATE (Computer Science) Pattern}
+\author{Auqib Hamid Lone\\[0.3em]
+  \emph{Department of Computer Science \& Engineering}, \emph{GCET Ganderbal}}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\noindent Each question carries 1--2 marks. MCQ = single correct option; NAT = Numerical Answer Type. Height is measured in \emph{edges} unless a question states otherwise: a single node has height $0$, the empty tree $-1$. A BST satisfies, at every node, left subtree $<$ node $<$ right subtree; the balance factor is $\mathrm{height}(\text{left})-\mathrm{height}(\text{right})$.
+
+\begin{enumerate}
+\item[\textbf{Q1}] \textit{[GATE CSE 2009 Q37, verified --- ExamSIDE / SolutionsAdda]} \textbf{[MCQ, 1 mark]} What is the maximum height of any AVL-tree with $7$ nodes? Assume that the height of a tree with a single node is $0$.
+\begin{enumerate}
+  \item[(A)] $2$
+  \item[(B)] $3$
+  \item[(C)] $4$
+  \item[(D)] $5$
+\end{enumerate}
+
+\item[\textbf{Q2}] \textit{[GATE CSE 2020 Q6, verified --- ExamSIDE]} \textbf{[MCQ, 1 mark]} What is the worst case time complexity of inserting $n^{2}$ elements into an AVL-tree with $n$ elements initially?
+\begin{enumerate}
+  \item[(A)] $\Theta(n^{4})$
+  \item[(B)] $\Theta(n^{2})$
+  \item[(C)] $\Theta(n^{2}\log n)$
+  \item[(D)] $\Theta(n^{3})$
+\end{enumerate}
+
+\item[\textbf{Q3}] \textit{[GATE CSE 2017 Set 1, verified --- ExamSIDE]} \textbf{[MCQ, 1 mark]} Let $T$ be a binary search tree with $15$ nodes. The minimum and maximum possible heights of $T$ are:
+\emph{Note:} The height of a tree with a single node is $0$.
+\begin{enumerate}
+  \item[(A)] $4$ and $15$ respectively
+  \item[(B)] $3$ and $14$ respectively
+  \item[(C)] $4$ and $14$ respectively
+  \item[(D)] $3$ and $15$ respectively
+\end{enumerate}
+
+\item[\textbf{Q4}] \textit{[GATE CSE 2015 Set 1, verified --- ExamSIDE]} \textbf{[MCQ, 1 mark]} The height of a tree is the length of the longest root-to-leaf path in it. The maximum and minimum number of nodes in a binary tree of height $5$ are
+\begin{enumerate}
+  \item[(A)] $63$ and $6$, respectively
+  \item[(B)] $64$ and $5$, respectively
+  \item[(C)] $32$ and $6$, respectively
+  \item[(D)] $31$ and $5$, respectively
+\end{enumerate}
+
+\item[\textbf{Q5}] \textit{[Original, GATE-pattern]} \textbf{[MCQ, 2 marks]} A binary tree has inorder traversal
+\[
+  D,\ B,\ E,\ A,\ F,\ C,\ G
+\]
+and preorder traversal
+\[
+  A,\ B,\ D,\ E,\ C,\ F,\ G.
+\]
+Which one of the following is its postorder traversal?
+\begin{enumerate}
+  \item[(A)] $D,\ E,\ B,\ F,\ G,\ C,\ A$
+  \item[(B)] $D,\ B,\ E,\ A,\ F,\ C,\ G$
+  \item[(C)] $A,\ B,\ D,\ E,\ C,\ F,\ G$
+  \item[(D)] $D,\ E,\ B,\ C,\ F,\ G,\ A$
+\end{enumerate}
+
+\item[\textbf{Q6}] \textit{[Original, GATE-pattern]} \textbf{[MCQ, 2 marks]} Keys
+\[
+  50,\ 30,\ 70,\ 20,\ 40,\ 60,\ 80
+\]
+are inserted in that order into an empty BST. The key $30$ is then deleted using the inorder-successor rule. Which one of the following is the resulting inorder traversal?
+\begin{enumerate}
+  \item[(A)] $20,\ 40,\ 50,\ 60,\ 70,\ 80$
+  \item[(B)] $20,\ 30,\ 40,\ 50,\ 60,\ 70,\ 80$
+  \item[(C)] $20,\ 40,\ 50,\ 60,\ 80,\ 70$
+  \item[(D)] $40,\ 20,\ 50,\ 60,\ 70,\ 80$
+\end{enumerate}
+
+\item[\textbf{Q7}] \textit{[Original, GATE-pattern]} \textbf{[MCQ, 2 marks]} Keys $40,10,20$ are inserted in that order into an initially empty AVL tree. How many rotations are performed, and what is the final root?
+\begin{enumerate}
+  \item[(A)] one rotation; root $10$
+  \item[(B)] one rotation; root $20$
+  \item[(C)] two rotations; root $20$
+  \item[(D)] two rotations; root $40$
+\end{enumerate}
+
+\item[\textbf{Q8}] \textit{[Original, GATE-pattern]} \textbf{[NAT, 2 marks]} The tree below is a BST.
+\[
+50;\quad 30\ (20,\ 40\ (\,\_\,,35));\quad 70\ (60).
+\]
+Give the balance factor of node $30$, the balance factor of node $40$, and the height of the whole tree, in that order. Is the tree an AVL tree? \underline{\hspace{4cm}}
+
+\item[\textbf{Q9}] \textit{[Original, GATE-pattern]} \textbf{[NAT, 1 mark]} Let $N(h)$ be the minimum number of nodes in an AVL tree of height $h$ (a single node has height $0$). What is $N(4)$? \underline{\hspace{2cm}}
+
+\item[\textbf{Q10}] \textit{[Original, GATE-pattern]} \textbf{[MCQ, 2 marks]} The postfix expression
+\[
+  4\ 6\ +\ 2\ *\ 7\ -
+\]
+is represented by an expression tree. What is the value of the expression, and which traversal of the tree prints the original postfix form?
+\begin{enumerate}
+  \item[(A)] $13$; postorder
+  \item[(B)] $13$; preorder
+  \item[(C)] $21$; postorder
+  \item[(D)] $21$; inorder
+\end{enumerate}
+\end{enumerate}
+
+\end{document}

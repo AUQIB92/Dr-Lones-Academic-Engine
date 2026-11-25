@@ -123,11 +123,23 @@ paths:
 | Gap sequence | Decreasing strides $h_1 > \dots > h_t = 1$; each pass insertion-sorts every $h$-subsequence | **Week 9 (new)** |
 | Radix digit | One positional digit of a key; LSD radix sorts digit $0$ (units) first, with a stable pass per digit | **Week 9 (new)** |
 | Comparison lower bound | Any comparison sort makes $\Omega(n\log n)$ comparisons in the worst case (decision tree, $n!$ leaves) | **Week 9 (new)** |
-| Load factor $\alpha$ | $\alpha = n/m$ — entries over table slots; drives expected probe count in hashing | **Week 10 (projected)** |
-| Open / closed hashing | Open (separate chaining): collisions in per-slot lists. Closed (open addressing): collisions probed into other slots. **The names are historically confusing — define both explicitly every time.** | **Week 10 (projected)** |
-| `\texttt{root}` | Handle to a tree's root node; `\texttt{NULL}` for the empty tree | **Week 11 (projected)** |
-| Height $h$ | Longest root-to-leaf edge count; a single node has $h = 0$, the empty tree $h = -1$ (state the convention, it varies by book) | **Week 11 (projected)** |
-| Balance factor | $\text{height(left)} - \text{height(right)}$; an AVL node is balanced when it lies in $\{-1, 0, +1\}$ | **Week 11 (projected)** |
+| Load factor $\alpha$ | $\alpha = n/m$ — entries over table slots; drives expected probe count in hashing | **Week 10 (confirmed 10-file-organization-hashing)** |
+| Open / closed hashing | Open (separate chaining): collisions in per-slot lists. Closed (open addressing): collisions probed into other slots. **The names are historically confusing — define both explicitly every time.** | **Week 10 (confirmed 10-file-organization-hashing)** |
+| Hash function $h(k)$ | Deterministic map from a key to a slot, $h: U \to \{0,\dots,m-1\}$; must be uniform on the real key distribution and fast | **Week 10 (new)** |
+| Collision | Two distinct keys with $h(k_1)=h(k_2)$; unavoidable by pigeonhole when $\lvert U\rvert > m$ | **Week 10 (new)** |
+| Probe sequence | The slots visited after a collision: linear $(h+i)\bmod m$, quadratic $(h+c_1i+c_2i^2)\bmod m$, double $(h_1+i h_2)\bmod m$ | **Week 10 (new)** |
+| Tombstone | A `DELETED` marker left by open-addressing deletion; it keeps a probe chain alive while allowing the slot to be reused | **Week 10 (new)** |
+| Direct / relative file | Record address computed from a dense key: $\text{base}+(\text{key}-k_0)\times L$; one seek, no search | **Week 10 (new)** |
+| Indexed sequential file | Sorted data blocks plus a sparse block index; supports point and range queries; inserts go to an overflow area and are periodically reorganised | **Week 10 (new)** |
+| Tree vocabulary | root, leaf, parent, child, sibling, subtree; depth counts edges down from the root, height counts edges up from a leaf | **Week 11 (confirmed 11-trees-bst-avl)** |
+| `\texttt{root}` | Handle to a tree's root node; `\texttt{NULL}` for the empty tree | **Week 11 (confirmed 11-trees-bst-avl)** |
+| Height $h$ | Longest root-to-leaf edge count; a single node has $h = 0$, the empty tree $h = -1$ (state the convention, it varies by book) | **Week 11 (confirmed 11-trees-bst-avl)** |
+| Traversal orders | inorder (left, node, right), preorder (node, left, right), postorder (left, right, node), level order (queue / BFS) --- each $O(n)$ | **Week 11 (new)** |
+| BST invariant | For every node, every key in its left subtree is smaller and every key in its right subtree is larger --- a global rule, not a parent--child rule | **Week 11 (new)** |
+| Successor | The smallest key in a node's right subtree (right once, then left to the end); used by BST/AVL deletion's two-child case | **Week 11 (new)** |
+| Balance factor | $\text{height(left)} - \text{height(right)}$; an AVL node is balanced when it lies in $\{-1, 0, +1\}$ | **Week 11 (confirmed 11-trees-bst-avl)** |
+| AVL rotation cases | LL $\to$ one right rotation; RR $\to$ one left rotation; LR $\to$ left-rotate the child then right-rotate the node; RL $\to$ right-rotate the child then left-rotate the node | **Week 11 (new)** |
+| AVL height bound | $N(h)=N(h-1)+N(h-2)+1$ (minimum nodes at height $h$), so $h \le 1.44\log_2(n+2)-0.33 = O(\log n)$ | **Week 11 (new)** |
 | $G = (V, E)$ | Graph with vertex set $V$ and edge set $E$; $\lvert V \rvert = n$, $\lvert E \rvert = m$ | **Week 12 (projected)** |
 | Adjacency matrix / list | $\Theta(n^2)$ space, $O(1)$ edge query vs. $\Theta(n + m)$ space, $O(\deg v)$ scan — the density trade-off | **Week 12 (projected)** |
 
@@ -144,8 +156,8 @@ paths:
 | 7 | Doubly Linked Lists & Applications | What does a backward link buy, and what does it cost? | `\texttt{p->prev}` | Two-link invariant maintenance; polynomial merge |
 | 8 | Searching & Elementary Sorting | How much does sorted order accelerate search, and what is the cheapest way to get it? | $O(\log n)$, stability | Loop-invariant argument; comparison counting |
 | 9 | Efficient Sorting | Why can't a comparison sort beat $n \log n$, and what escapes that bound? | pivot, heap property, gap, radix digit | Recurrence/recursion-tree analysis; partition, heap, and radix traces; decision-tree lower bound |
-| 10 | File Organization & Hashing | How do we find a record in one probe instead of $n$? | load factor $\alpha$, open/closed hashing | Hash-function design; collision-resolution tracing |
-| 11 | Trees, BSTs & AVL | How do we keep search logarithmic when the data keeps changing? | `\texttt{root}`, height $h$, balance factor | Traversal recursion; rotation case analysis |
+| 10 | File Organization & Hashing | How do we find a record in one probe instead of $n$? | $h(k)$, load factor $\alpha$, open/closed hashing, probe sequence, tombstone | Hash-function design; collision-resolution tracing |
+| 11 | Trees, BSTs & AVL | How do we keep search logarithmic when the data keeps changing? | `\texttt{root}`, height $h$, traversals, BST invariant, successor, balance factor, rotation cases | Traversal recursion; rotation case analysis; height-recurrence argument |
 | 12 | Graphs: Traversal, MST, Shortest Paths | How do we reason about arbitrary connections rather than a fixed shape? | $G = (V,E)$, adjacency matrix/list | BFS/DFS frontier tracing; greedy-choice arguments |
 
 ## Empirical Applications
@@ -169,7 +181,12 @@ paths:
 | Anti-Pattern | What Happened | Correction |
 |-------------|---------------|-----------|
 | Presenting "open hashing" and "closed hashing" without immediately defining both | The names are historically inverted relative to intuition (open hashing = chaining, closed hashing = open addressing), and the syllabus uses the confusing pair | Define both on the slide that names them, and give each its alternative name (separate chaining / open addressing) |
+| Calling hash lookup "$O(1)$" with no qualifier | It is expected $O(1+\alpha)$ under uniform hashing, and worst-case $\Theta(n)$ when every key collides; at $\alpha=0.9$ linear probing needs about 50 probes for a miss | State the expected bound with $\alpha$, show the probe-count table at several load factors, and name the worst case |
+| Deleting from an open-addressing table by clearing the slot | An empty slot is the search's stopping condition; clearing it hides every key that probed past it | Mark the slot `DELETED` (tombstone); search stops only on `EMPTY`; rehash when tombstones accumulate |
 | Teaching binary search before establishing the sorted precondition as an invariant | Students apply it to unsorted arrays and get plausible-looking wrong answers | State the precondition in the ADT contract, then show a failure trace on unsorted input |
+| Calling any binary tree a BST, or checking only parent--child pairs | A key can be locally correct and globally wrong (e.g.\ 6 as the right child of 3 while both sit in the left subtree of 5) | State the BST rule as a global subtree invariant, then show a two-tree ``is this a BST?'' counterexample |
+| Claiming a BST is automatically $O(\log n)$ | Sorted insertion builds a chain, so search degrades to $O(n)$ --- the exact failure the AVL section exists to fix | Always pair the BST cost with $O(h)$ and show the sorted-insert chain before introducing AVL |
+| Saying a rotation changes the keys or the inorder order | Rotations change pointers and heights only; the inorder sequence is invariant, which is why they are safe | Trace inorder before and after every rotation example; if it changes, the rotation is wrong |
 
 ## R Code Pitfalls
 
