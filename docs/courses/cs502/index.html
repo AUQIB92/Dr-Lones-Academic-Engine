@@ -119,16 +119,31 @@
         <h2 class="section-title">Lectures</h2>
       </div>
 
+      <!-- Sticky lecture navigator: chip list + active lecture + prev/next. -->
+      <div class="lecture-nav" id="lectureNav" aria-label="Lecture navigation">
+        <div class="lecture-nav-inner">
+          <div class="lecture-nav-head">
+            <span class="lecture-nav-kicker">Jump to</span>
+            <span class="lecture-nav-current" id="lectureNavCurrent" aria-live="polite">Lecture 01</span>
+          </div>
+          <div class="lecture-nav-track" id="lectureNavTrack"></div>
+          <div class="lecture-nav-arrows">
+            <a class="lecture-nav-arrow" id="lecturePrev" href="#lectures" aria-label="Previous lecture">&larr;</a>
+            <a class="lecture-nav-arrow" id="lectureNext" href="#lectures" aria-label="Next lecture">&rarr;</a>
+          </div>
+        </div>
+      </div>
+
       <!-- publish-course-hub:rail:start -->
       <div class="rail">
 
-        <div class="rail-item">
+        <div class="rail-item" id="unit-1" data-unit="1">
           <span class="badge badge-unit">Unit I</span>
           <span class="badge badge-muted">9 lectures</span>
           <div class="rail-body"><h3 class="rail-title">Introduction to Operating Systems & Process Management</h3></div>
         </div>
 
-        <div class="rail-item">
+        <div class="rail-item" id="lecture-01" data-lecture="01" data-unit="1">
           <span class="badge">Lecture 01</span>
           <span class="badge badge-accent">Published</span>
           <div class="rail-actions">
@@ -146,7 +161,7 @@
           </div>
         </div>
 
-        <div class="rail-item">
+        <div class="rail-item" id="lecture-02" data-lecture="02" data-unit="1">
           <span class="badge">Lecture 02</span>
           <span class="badge badge-accent">Published</span>
           <div class="rail-actions">
@@ -164,7 +179,7 @@
           </div>
         </div>
 
-        <div class="rail-item">
+        <div class="rail-item" id="lecture-03" data-lecture="03" data-unit="1">
           <span class="badge">Lecture 03</span>
           <span class="badge badge-accent">Published</span>
           <div class="rail-actions">
@@ -182,7 +197,7 @@
           </div>
         </div>
 
-        <div class="rail-item">
+        <div class="rail-item" id="lecture-04" data-lecture="04" data-unit="1">
           <span class="badge">Lecture 04</span>
           <span class="badge badge-accent">Published</span>
           <div class="rail-actions">
@@ -200,7 +215,7 @@
           </div>
         </div>
 
-        <div class="rail-item">
+        <div class="rail-item" id="lecture-05" data-lecture="05" data-unit="1">
           <span class="badge">Lecture 05</span>
           <span class="badge badge-accent">Published</span>
           <div class="rail-actions">
@@ -218,7 +233,7 @@
           </div>
         </div>
 
-        <div class="rail-item">
+        <div class="rail-item" id="lecture-06" data-lecture="06" data-unit="1">
           <span class="badge">Lecture 06</span>
           <span class="badge badge-accent">Published</span>
           <div class="rail-actions">
@@ -236,7 +251,7 @@
           </div>
         </div>
 
-        <div class="rail-item">
+        <div class="rail-item" id="lecture-07" data-lecture="07" data-unit="1">
           <span class="badge">Lecture 07</span>
           <span class="badge badge-accent">Published</span>
           <div class="rail-actions">
@@ -254,7 +269,7 @@
           </div>
         </div>
 
-        <div class="rail-item">
+        <div class="rail-item" id="lecture-08" data-lecture="08" data-unit="1">
           <span class="badge">Lecture 08</span>
           <span class="badge badge-accent">Published</span>
           <div class="rail-actions">
@@ -274,7 +289,7 @@
           </div>
         </div>
 
-        <div class="rail-item">
+        <div class="rail-item" id="lecture-09" data-lecture="09" data-unit="1">
           <span class="badge">Lecture 09</span>
           <span class="badge badge-accent">Published</span>
           <div class="rail-actions">
@@ -292,13 +307,13 @@
           </div>
         </div>
 
-        <div class="rail-item">
+        <div class="rail-item" id="unit-2" data-unit="2">
           <span class="badge badge-unit">Unit II</span>
           <span class="badge badge-muted">10 lectures</span>
           <div class="rail-body"><h3 class="rail-title">Concurrent Processes & Deadlock</h3></div>
         </div>
 
-        <div class="rail-item dim">
+        <div class="rail-item dim" id="lecture-10" data-lecture="10" data-unit="2">
           <span class="badge">Lecture 10</span>
           <span class="badge badge-muted">In progress</span>
           <div class="rail-body">
@@ -310,7 +325,7 @@
           </div>
         </div>
 
-        <div class="rail-item dim">
+        <div class="rail-item dim" id="lecture-11" data-lecture="11" data-unit="2">
           <span class="badge">Lecture 11</span>
           <span class="badge badge-muted">In progress</span>
           <div class="rail-body">
@@ -322,7 +337,7 @@
           </div>
         </div>
 
-        <div class="rail-item dim">
+        <div class="rail-item dim" id="lecture-12" data-lecture="12" data-unit="2">
           <span class="badge">Lecture 12</span>
           <span class="badge badge-muted">In progress</span>
           <div class="rail-body">
@@ -334,7 +349,7 @@
           </div>
         </div>
 
-        <div class="rail-item dim">
+        <div class="rail-item dim" id="lecture-13" data-lecture="13" data-unit="2">
           <span class="badge">Lecture 13</span>
           <span class="badge badge-muted">In progress</span>
           <div class="rail-body">
@@ -346,7 +361,7 @@
           </div>
         </div>
 
-        <div class="rail-item dim">
+        <div class="rail-item dim" id="lecture-14" data-lecture="14" data-unit="2">
           <span class="badge">Lecture 14</span>
           <span class="badge badge-muted">In progress</span>
           <div class="rail-body">
@@ -358,7 +373,7 @@
           </div>
         </div>
 
-        <div class="rail-item dim">
+        <div class="rail-item dim" id="lecture-15" data-lecture="15" data-unit="2">
           <span class="badge">Lecture 15</span>
           <span class="badge badge-muted">In progress</span>
           <div class="rail-body">
@@ -370,7 +385,7 @@
           </div>
         </div>
 
-        <div class="rail-item dim">
+        <div class="rail-item dim" id="lecture-16" data-lecture="16" data-unit="2">
           <span class="badge">Lecture 16</span>
           <span class="badge badge-muted">In progress</span>
           <div class="rail-body">
@@ -382,7 +397,7 @@
           </div>
         </div>
 
-        <div class="rail-item dim">
+        <div class="rail-item dim" id="lecture-17" data-lecture="17" data-unit="2">
           <span class="badge">Lecture 17</span>
           <span class="badge badge-muted">In progress</span>
           <div class="rail-body">
@@ -394,7 +409,7 @@
           </div>
         </div>
 
-        <div class="rail-item dim">
+        <div class="rail-item dim" id="lecture-18" data-lecture="18" data-unit="2">
           <span class="badge">Lecture 18</span>
           <span class="badge badge-muted">In progress</span>
           <div class="rail-body">
@@ -406,7 +421,7 @@
           </div>
         </div>
 
-        <div class="rail-item dim">
+        <div class="rail-item dim" id="lecture-19" data-lecture="19" data-unit="2">
           <span class="badge">Lecture 19</span>
           <span class="badge badge-muted">In progress</span>
           <div class="rail-body">
@@ -418,13 +433,13 @@
           </div>
         </div>
 
-        <div class="rail-item">
+        <div class="rail-item" id="unit-3" data-unit="3">
           <span class="badge badge-unit">Unit III</span>
           <span class="badge badge-muted">10 lectures</span>
           <div class="rail-body"><h3 class="rail-title">Memory Management & Virtual Memory</h3></div>
         </div>
 
-        <div class="rail-item dim">
+        <div class="rail-item dim" id="lecture-20" data-lecture="20" data-unit="3">
           <span class="badge">Lecture 20</span>
           <span class="badge badge-muted">In progress</span>
           <div class="rail-body">
@@ -436,7 +451,7 @@
           </div>
         </div>
 
-        <div class="rail-item dim">
+        <div class="rail-item dim" id="lecture-21" data-lecture="21" data-unit="3">
           <span class="badge">Lecture 21</span>
           <span class="badge badge-muted">In progress</span>
           <div class="rail-body">
@@ -448,7 +463,7 @@
           </div>
         </div>
 
-        <div class="rail-item dim">
+        <div class="rail-item dim" id="lecture-22" data-lecture="22" data-unit="3">
           <span class="badge">Lecture 22</span>
           <span class="badge badge-muted">In progress</span>
           <div class="rail-body">
@@ -460,7 +475,7 @@
           </div>
         </div>
 
-        <div class="rail-item dim">
+        <div class="rail-item dim" id="lecture-23" data-lecture="23" data-unit="3">
           <span class="badge">Lecture 23</span>
           <span class="badge badge-muted">In progress</span>
           <div class="rail-body">
@@ -472,7 +487,7 @@
           </div>
         </div>
 
-        <div class="rail-item dim">
+        <div class="rail-item dim" id="lecture-24" data-lecture="24" data-unit="3">
           <span class="badge">Lecture 24</span>
           <span class="badge badge-muted">In progress</span>
           <div class="rail-body">
@@ -484,7 +499,7 @@
           </div>
         </div>
 
-        <div class="rail-item dim">
+        <div class="rail-item dim" id="lecture-25" data-lecture="25" data-unit="3">
           <span class="badge">Lecture 25</span>
           <span class="badge badge-muted">In progress</span>
           <div class="rail-body">
@@ -496,7 +511,7 @@
           </div>
         </div>
 
-        <div class="rail-item dim">
+        <div class="rail-item dim" id="lecture-26" data-lecture="26" data-unit="3">
           <span class="badge">Lecture 26</span>
           <span class="badge badge-muted">In progress</span>
           <div class="rail-body">
@@ -508,7 +523,7 @@
           </div>
         </div>
 
-        <div class="rail-item dim">
+        <div class="rail-item dim" id="lecture-27" data-lecture="27" data-unit="3">
           <span class="badge">Lecture 27</span>
           <span class="badge badge-muted">In progress</span>
           <div class="rail-body">
@@ -520,7 +535,7 @@
           </div>
         </div>
 
-        <div class="rail-item dim">
+        <div class="rail-item dim" id="lecture-28" data-lecture="28" data-unit="3">
           <span class="badge">Lecture 28</span>
           <span class="badge badge-muted">In progress</span>
           <div class="rail-body">
@@ -532,7 +547,7 @@
           </div>
         </div>
 
-        <div class="rail-item dim">
+        <div class="rail-item dim" id="lecture-29" data-lecture="29" data-unit="3">
           <span class="badge">Lecture 29</span>
           <span class="badge badge-muted">In progress</span>
           <div class="rail-body">
@@ -544,13 +559,13 @@
           </div>
         </div>
 
-        <div class="rail-item">
+        <div class="rail-item" id="unit-4" data-unit="4">
           <span class="badge badge-unit">Unit IV</span>
           <span class="badge badge-muted">10 lectures</span>
           <div class="rail-body"><h3 class="rail-title">I/O Management, Disk Scheduling & File Systems</h3></div>
         </div>
 
-        <div class="rail-item dim">
+        <div class="rail-item dim" id="lecture-30" data-lecture="30" data-unit="4">
           <span class="badge">Lecture 30</span>
           <span class="badge badge-muted">In progress</span>
           <div class="rail-body">
@@ -562,7 +577,7 @@
           </div>
         </div>
 
-        <div class="rail-item dim">
+        <div class="rail-item dim" id="lecture-31" data-lecture="31" data-unit="4">
           <span class="badge">Lecture 31</span>
           <span class="badge badge-muted">In progress</span>
           <div class="rail-body">
@@ -574,7 +589,7 @@
           </div>
         </div>
 
-        <div class="rail-item dim">
+        <div class="rail-item dim" id="lecture-32" data-lecture="32" data-unit="4">
           <span class="badge">Lecture 32</span>
           <span class="badge badge-muted">In progress</span>
           <div class="rail-body">
@@ -586,7 +601,7 @@
           </div>
         </div>
 
-        <div class="rail-item dim">
+        <div class="rail-item dim" id="lecture-33" data-lecture="33" data-unit="4">
           <span class="badge">Lecture 33</span>
           <span class="badge badge-muted">In progress</span>
           <div class="rail-body">
@@ -598,7 +613,7 @@
           </div>
         </div>
 
-        <div class="rail-item dim">
+        <div class="rail-item dim" id="lecture-34" data-lecture="34" data-unit="4">
           <span class="badge">Lecture 34</span>
           <span class="badge badge-muted">In progress</span>
           <div class="rail-body">
@@ -610,7 +625,7 @@
           </div>
         </div>
 
-        <div class="rail-item dim">
+        <div class="rail-item dim" id="lecture-35" data-lecture="35" data-unit="4">
           <span class="badge">Lecture 35</span>
           <span class="badge badge-muted">In progress</span>
           <div class="rail-body">
@@ -622,7 +637,7 @@
           </div>
         </div>
 
-        <div class="rail-item dim">
+        <div class="rail-item dim" id="lecture-36" data-lecture="36" data-unit="4">
           <span class="badge">Lecture 36</span>
           <span class="badge badge-muted">In progress</span>
           <div class="rail-body">
@@ -634,7 +649,7 @@
           </div>
         </div>
 
-        <div class="rail-item dim">
+        <div class="rail-item dim" id="lecture-37" data-lecture="37" data-unit="4">
           <span class="badge">Lecture 37</span>
           <span class="badge badge-muted">In progress</span>
           <div class="rail-body">
@@ -646,7 +661,7 @@
           </div>
         </div>
 
-        <div class="rail-item dim">
+        <div class="rail-item dim" id="lecture-38" data-lecture="38" data-unit="4">
           <span class="badge">Lecture 38</span>
           <span class="badge badge-muted">In progress</span>
           <div class="rail-body">
@@ -658,7 +673,7 @@
           </div>
         </div>
 
-        <div class="rail-item dim">
+        <div class="rail-item dim" id="lecture-39" data-lecture="39" data-unit="4">
           <span class="badge">Lecture 39</span>
           <span class="badge badge-muted">In progress</span>
           <div class="rail-body">
@@ -994,6 +1009,133 @@
       }, { threshold: 0.4 });
       io.observe(fill.closest('.ribbon'));
     }
+  </script>
+
+  <script>
+    // Sticky lecture navigator: build chips from the real lecture rail,
+    // highlight the lecture under the reading line, and power prev/next.
+    (() => {
+      const rail = document.querySelector('#lectures .rail');
+      const track = document.getElementById('lectureNavTrack');
+      const currentEl = document.getElementById('lectureNavCurrent');
+      const prev = document.getElementById('lecturePrev');
+      const next = document.getElementById('lectureNext');
+      if (!rail || !track || !prev || !next) return;
+
+      const units = [...rail.querySelectorAll('.rail-item[id^="unit-"]')];
+      const lectures = [...rail.querySelectorAll('.rail-item[id^="lecture-"]')];
+      if (!lectures.length) return;
+
+      const chipById = new Map();
+      const groupByUnit = new Map();
+
+      units.forEach(unitEl => {
+        const unitNo = unitEl.dataset.unit;
+        const label = unitEl.querySelector('.badge-unit')?.textContent.trim() || ('Unit ' + unitNo);
+        const group = document.createElement('div');
+        group.className = 'lecture-nav-group';
+        const unitLink = document.createElement('a');
+        unitLink.className = 'lecture-nav-unit';
+        unitLink.href = '#' + unitEl.id;
+        unitLink.textContent = label;
+        group.appendChild(unitLink);
+        track.appendChild(group);
+        groupByUnit.set(unitNo, group);
+      });
+
+      lectures.forEach(item => {
+        const no = item.dataset.lecture;
+        const group = groupByUnit.get(item.dataset.unit) || track;
+        const chip = document.createElement('a');
+        chip.className = 'lecture-nav-chip';
+        chip.href = '#' + item.id;
+        chip.dataset.target = item.id;
+        chip.textContent = no;
+        const title = item.querySelector('.rail-title')?.textContent.replace(/\s+/g, ' ').trim() || '';
+        const label = 'Lecture ' + no + (title ? ': ' + title : '');
+        chip.setAttribute('aria-label', label);
+        chip.title = label;
+        group.appendChild(chip);
+        chipById.set(item.id, chip);
+      });
+
+      let activeId = null;
+
+      const setArrow = (arrow, target) => {
+        if (target) {
+          arrow.href = '#' + target.id;
+          arrow.classList.remove('is-disabled');
+          arrow.removeAttribute('aria-disabled');
+        } else {
+          arrow.href = '#lectures';
+          arrow.classList.add('is-disabled');
+          arrow.setAttribute('aria-disabled', 'true');
+        }
+      };
+
+      const setActive = (id) => {
+        if (!id || id === activeId) return;
+        activeId = id;
+
+        chipById.forEach((chip, key) => {
+          const on = key === id;
+          chip.classList.toggle('active', on);
+          if (on) chip.setAttribute('aria-current', 'true');
+          else chip.removeAttribute('aria-current');
+        });
+
+        const item = document.getElementById(id);
+        const no = item?.dataset.lecture || '';
+        const title = item?.querySelector('.rail-title')?.textContent.replace(/\s+/g, ' ').trim() || '';
+        if (currentEl) {
+          currentEl.textContent = no ? ('Lecture ' + no) : 'Lecture navigation';
+          currentEl.title = title;
+        }
+
+        const idx = lectures.indexOf(item);
+        setArrow(prev, idx > 0 ? lectures[idx - 1] : null);
+        setArrow(next, idx >= 0 && idx < lectures.length - 1 ? lectures[idx + 1] : null);
+
+        // Keep the active chip visible in the horizontally scrolling track
+        // without moving the page itself.
+        const chip = chipById.get(id);
+        if (chip) {
+          const tr = track.getBoundingClientRect();
+          const cr = chip.getBoundingClientRect();
+          if (cr.left < tr.left + 20) {
+            track.scrollBy({ left: cr.left - tr.left - 20, behavior: 'smooth' });
+          } else if (cr.right > tr.right - 20) {
+            track.scrollBy({ left: cr.right - tr.right + 20, behavior: 'smooth' });
+          }
+        }
+      };
+
+      let ticking = false;
+      const update = () => {
+        ticking = false;
+        const line = innerHeight * 0.4;
+        let best = lectures[0];
+        for (const item of lectures) {
+          if (item.getBoundingClientRect().top <= line) best = item;
+          else break;
+        }
+        setActive(best.id);
+      };
+
+      addEventListener('scroll', () => {
+        if (ticking) return;
+        ticking = true;
+        requestAnimationFrame(update);
+      }, { passive: true });
+      addEventListener('resize', update, { passive: true });
+
+      track.addEventListener('click', (e) => {
+        const link = e.target.closest('a[href^="#lecture-"]');
+        if (link) setActive(link.getAttribute('href').slice(1));
+      });
+
+      update();
+    })();
   </script>
 
   <!-- Cloudflare Web Analytics -->
