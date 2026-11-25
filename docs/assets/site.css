@@ -746,7 +746,9 @@ code {
   font-size: 0.95rem;
   padding: 0.3rem 0.85rem;
   letter-spacing: 0.06em;
-  background: color-mix(in srgb, var(--secondary) 16%, transparent);
+  color: color-mix(in srgb, var(--primary) 82%, var(--ink));
+  background: var(--glow-strong);
+  border: 1px solid color-mix(in srgb, var(--accent) 48%, transparent);
 }
 @media (prefers-color-scheme: dark) {
   .badge-accent { color: var(--accent); }
