@@ -75,7 +75,7 @@ weeks:
   "08":
     deck: "08-cpu-scheduling-basics"
     stages:
-      slides:     { status: deployed, score: 100, note: "40 pp; XeLaTeX 3-pass clean; no overfull boxes or undefined citations; quality score 100/100" }
+      slides:     { status: deployed, score: 100, note: "40 pp; XeLaTeX 3-pass clean; no overfull boxes or undefined citations; quality score 100/100. Special revision deck 08b-cpu-scheduling-all-algorithms (55 pp) published alongside and linked from the Lecture 08 hub card." }
       notes:      { status: deployed, score: null, note: "12 pp; derived from the deck; manual parity check (notes-critic agent unavailable)" }
       assignment: { status: deployed, score: null, note: "assignment + solutions key present; solutions gitignored and excluded from docs/" }
       lab:        { status: skipped, score: null, note: "lab_mode: none" }
