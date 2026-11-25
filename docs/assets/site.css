@@ -741,6 +741,13 @@ code {
 }
 .badge-accent { background: var(--glow); color: color-mix(in srgb, var(--accent) 80%, var(--ink)); }
 .badge-muted { background: var(--surface-sunken); color: var(--muted); }
+/* Unit headings are section markers, not metadata: make them read at a glance. */
+.badge-unit {
+  font-size: 0.95rem;
+  padding: 0.3rem 0.85rem;
+  letter-spacing: 0.06em;
+  background: color-mix(in srgb, var(--secondary) 16%, transparent);
+}
 @media (prefers-color-scheme: dark) {
   .badge-accent { color: var(--accent); }
 }
