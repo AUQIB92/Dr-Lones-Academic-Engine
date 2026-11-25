@@ -1,0 +1,1370 @@
+% =============================================================================
+% 08b-cpu-scheduling-all-algorithms.tex — Special Lecture:
+% CPU Scheduling — The Complete Toolkit
+%
+% Course: Operating Systems (PCC CS-502)
+% A consolidation/revision deck after Lectures 8 and 9: every CPU-scheduling
+% algorithm on the GATE/UG syllabus, one measurement vocabulary, worked
+% examples on a single workload W, and a GATE-pattern homework set with
+% full solutions.
+%
+% Anchor reading: Silberschatz, Galvin & Gagne, Operating System Concepts,
+%   8th ed. — Ch. 5 §5.1–5.5 (pp. 183–206); Stallings, Operating Systems:
+%   Internals and Design Principles, 6th ed. — Ch. 9 §9.1–9.2 (pp. 406–420);
+%   Bovet & Cesati, Understanding the Linux Kernel, 3rd ed. — Ch. 7.
+%
+% Every Gantt chart and every CT/TAT/WT/RT number in this deck was produced
+% by a discrete-event simulator and cross-checked by hand. Conventions:
+%   * ties in SJF/priority: earlier arrival, then lower index;
+%   * SRTF preempts only on a STRICTLY shorter remaining time;
+%   * RR: an arrival at the instant a quantum expires joins the ready queue
+%     BEFORE the preempted process;
+%   * MLFQ: new arrivals enter Q0, a full quantum demotes one level, and a
+%     higher queue preempts a lower one.
+%
+% Compile with: /compile-latex CS502/08b-cpu-scheduling-all-algorithms
+% =============================================================================
+
+\documentclass[aspectratio=169]{beamer}
+\input{header}
+\coursecode{CS502}
+
+% -----------------------------------------------------------------------------
+% Per-process shades, so a process stays visually identifiable across
+% preemptions. These are only tracking colours, not semantic ones.
+% -----------------------------------------------------------------------------
+\colorlet{gP1}{light-bg}
+\colorlet{gP2}{primary-gold!30}
+\colorlet{gP3}{positive!18}
+\colorlet{gP4}{hi-slate!22}
+\colorlet{gP5}{neutral!18}
+\colorlet{gFg}{light-bg}
+\colorlet{gBg}{neutral!22}
+\colorlet{gQ0}{light-bg}
+\colorlet{gQ1}{primary-gold!30}
+\colorlet{gQ2}{hi-slate!22}
+
+% -----------------------------------------------------------------------------
+% Gantt helper (same convention as Lecture 9):
+%   #1 = cm per ms
+%   #2 = slices  name/start/end/fillcolour
+%   #3 = arrivals name/time   (pass {} for none)
+% Bars at y=0..0.7, tick labels just below, arrival arrows at -0.75 and
+% arrival labels at -0.95.
+% -----------------------------------------------------------------------------
+\newcommand{\gantt}[3]{%
+  \begin{tikzpicture}[x=#1cm,y=1cm,baseline={(0,0.35)}]
+    \foreach \n/\s/\e/\c in {#2} {
+      \draw[draw=primary-blue,fill=\c] (\s,0) rectangle (\e,0.7);
+      \node[font=\scriptsize] at ({(\s+\e)/2},0.35) {\n};
+      \node[font=\tiny,anchor=north] at (\s,-0.02) {\s};
+      \node[font=\tiny,anchor=north] at (\e,-0.02) {\e};
+    }
+    \foreach \n/\t in {#3} {
+      \draw[-{Latex[length=1.2mm]},draw=primary-gold,thick] (\t,-0.75) -- (\t,-0.42);
+      \node[font=\tiny,text=primary-gold] at (\t,-0.95) {\n};
+    }
+  \end{tikzpicture}%
+}
+
+% Compact per-process metrics table: #1 = body rows
+\newcommand{\metrichead}{%
+  \toprule
+  \textbf{Proc.} & \textbf{AT} & $\boldsymbol{\tau}$ & \textbf{CT} &
+  \textbf{TAT} & \textbf{WT} & \textbf{RT} \\
+  \midrule
+}
+
+\title{CPU Scheduling: The Complete Toolkit}
+\subtitle{Special Lecture --- Every Algorithm, Worked, with GATE-Level Practice}
+\author[Dr. Auqib Hamid Lone]{%
+  \textbf{Dr. Auqib Hamid Lone}\\
+  \small Assistant Professor in Computer Science \& Engineering
+}
+\institute[GCET Ganderbal]{%
+  \small\textbf{PCC CS-502: Operating Systems}\\[0.3em]
+  Department of Computer Science \& Engineering\\
+  Government College of Engineering \& Technology (GCET), Ganderbal
+}
+\date[\today]{\small\today}
+
+\begin{document}
+
+\frame{\titlepage}
+
+% =============================================================================
+% ACT 0 --- THE CONTRACT
+% =============================================================================
+\section{The Contract}
+
+\begin{frame}{Today's Contract}
+  \begin{block}{One workload, every algorithm}
+    Five processes, one CPU, and the same yardsticks. We schedule the same
+    work by FCFS, SJF, SRTF, Priority, Round Robin, and HRRN --- then meet
+    the two queue-based algorithms, MLQ and MLFQ.
+  \end{block}
+  \begin{itemize}
+    \item By the end you must be able to: draw the Gantt chart, fill the
+      CT/TAT/WT/RT table, and defend the algorithm choice.
+    \item The last third is a \key{GATE-pattern homework set} with full
+      solutions --- attempt before turning the page.
+  \end{itemize}
+  \vspace{0.15cm}
+  \begin{alertblock}{The one promise}
+    No formula will be stated without being used on a number.
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}{The Running Workload $W$}
+  \centering
+  \renewcommand{\arraystretch}{1.25}
+  \begin{tabular}{lcccc}
+    \toprule
+    \textbf{Process} & \textbf{Arrival (ms)} & \textbf{Burst $\tau$ (ms)} &
+    \textbf{Priority} & \textbf{Character} \\
+    \midrule
+    \texttt{P1} & 0 & 7 & 3 & batch compile \\
+    \texttt{P2} & 2 & 4 & 1 & interactive, important \\
+    \texttt{P3} & 4 & 1 & 2 & tiny utility \\
+    \texttt{P4} & 5 & 4 & 4 & background daemon \\
+    \texttt{P5} & 9 & 3 & 2 & short, low-importance \\
+    \bottomrule
+  \end{tabular}
+  \vspace{0.3cm}
+  \begin{itemize}
+    \item Total work $=7+4+1+4+3=19$ ms, so a work-conserving schedule with
+      no idle time ends at $t=19$.
+    \item \key{Lower priority number $=$ higher priority} (Silberschatz's
+      convention). Ties go to the earlier arrival, then to the lower index.
+  \end{itemize}
+  \muted{Queue-based algorithms use their own small examples; the six
+  single-queue policies all use $W$ so their numbers are comparable.}
+\end{frame}
+
+% =============================================================================
+% ACT 1 --- THE MEASUREMENT VOCABULARY
+% =============================================================================
+\section{The Measurement Vocabulary}
+
+\transitionslide{Before asking ``which algorithm is better?'', we must agree on what we are measuring.}
+
+\begin{frame}{Vocabulary I: The Five Time Stamps}
+  \centering
+  \begin{tikzpicture}[x=0.55cm,y=1cm,every node/.style={font=\small}]
+    % Timeline: waiting 0-3, first CPU 3-7, waiting again 7-9, CPU 9-12.
+    \draw[draw=neutral!45,fill=neutral!12] (0,0) rectangle (3,0.7);
+    \node[font=\scriptsize] at (1.5,0.35) {waiting};
+    \draw[draw=primary-blue,fill=gP1] (3,0) rectangle (7,0.7);
+    \node[font=\scriptsize] at (5,0.35) {CPU burst};
+    \draw[draw=neutral!45,fill=neutral!12] (7,0) rectangle (9,0.7);
+    \node[font=\scriptsize] at (8,0.35) {waiting};
+    \draw[draw=primary-blue,fill=gP1] (9,0) rectangle (12,0.7);
+    \node[font=\scriptsize] at (10.5,0.35) {CPU};
+    \foreach \t in {0,3,7,9,12}
+      \node[font=\tiny,anchor=north] at (\t,0) {\t};
+    % AT / ST / CT markers
+    \draw[-{Latex[length=1.3mm]},primary-gold,thick] (0,1.45) -- (0,0.85);
+    \node[font=\tiny,text=primary-gold] at (0,1.65) {AT};
+    \draw[-{Latex[length=1.3mm]},primary-gold,thick] (3,1.05) -- (3,0.85);
+    \node[font=\tiny,text=primary-gold,anchor=south west] at (3,1.0) {ST};
+    \draw[-{Latex[length=1.3mm]},primary-gold,thick] (12,1.45) -- (12,0.85);
+    \node[font=\tiny,text=primary-gold] at (12,1.65) {CT};
+    % RT brace
+    \draw[decorate,decoration={brace,amplitude=4pt},neutral]
+      (3,-0.35) -- (7,-0.35) node[midway,below=5pt,font=\tiny] {RT};
+    % TAT brace
+    \draw[decorate,decoration={brace,amplitude=5pt},primary-blue]
+      (0,-0.95) -- (12,-0.95) node[midway,below=6pt,font=\tiny] {TAT};
+  \end{tikzpicture}
+  \vspace{0.45cm}
+  \footnotesize
+  \begin{tabular}{lll}
+    \toprule
+    \textbf{Time stamp} & \textbf{Symbol} & \textbf{Meaning} \\
+    \midrule
+    Arrival time & AT & enters the ready queue \\
+    Burst time & BT or $\tau$ & CPU time this process needs (its next burst) \\
+    Start / first dispatch & ST & first instant it gets the CPU \\
+    Completion time & CT & instant its final burst ends \\
+    Remaining time & --- & burst left; the key to preemptive SJF \\
+    \bottomrule
+  \end{tabular}
+  \vspace{0.1cm}
+  \par
+  \muted{Waiting can be split: before ST and again after a preemption.}
+\end{frame}
+
+\begin{frame}{Vocabulary II: The Three Per-Process Metrics}
+  \begin{block}{Definitions}
+    For process $P_i$ with arrival $\mathrm{AT}_i$, burst $\tau_i$,
+    first dispatch $\mathrm{ST}_i$, completion $\mathrm{CT}_i$:
+    \[
+      \boxed{\;\mathrm{TAT}_i=\mathrm{CT}_i-\mathrm{AT}_i\;}
+      \qquad
+      \boxed{\;\mathrm{WT}_i=\mathrm{TAT}_i-\tau_i\;}
+      \qquad
+      \boxed{\;\mathrm{RT}_i=\mathrm{ST}_i-\mathrm{AT}_i\;}
+    \]
+  \end{block}
+  \begin{itemize}
+    \item \key{Turnaround time} is the whole lifetime: waiting $+$ execution
+      $+$ every re-wait caused by preemption.
+    \item \key{Waiting time} is only the time spent ready but not running:
+      $\mathrm{WT}=\mathrm{TAT}-\tau$. It is \emph{not} $\mathrm{CT}-\mathrm{AT}$.
+    \item \key{Response time} stops at the first dispatch. Always
+      $\mathrm{RT}\le\mathrm{WT}$; they are equal for a non-preemptive policy
+      when each process has one burst.
+    \item Average is $\frac1n\sum_i$ for each metric; the identity
+      $\sum_i \mathrm{WT}_i=\sum_i \mathrm{TAT}_i-\sum_i \tau_i$ catches
+      arithmetic slips.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Worked Example: Read Every Metric Off One Gantt Chart}
+  \centering
+  \footnotesize
+  \texttt{P1}$(0,5)$, \texttt{P2}$(2,3)$, \texttt{P3}$(4,1)$ as
+  (AT, $\tau$), scheduled FCFS.\\[0.15cm]
+  \gantt{0.7}{P1/0/5/gP1,P2/5/8/gP2,P3/8/9/gP3}{P1/0,P2/2,P3/4}
+  \\[0.15cm]
+  {\footnotesize
+  \begin{tabular}{lrrrrrr}
+    \metrichead
+    \texttt{P1} & 0 & 5 & 5 & 5 & 0 & 0 \\
+    \texttt{P2} & 2 & 3 & 8 & 6 & 3 & 3 \\
+    \texttt{P3} & 4 & 1 & 9 & 5 & 4 & 4 \\
+    \midrule
+    \multicolumn{4}{@{}l}{\textbf{Average}} & 5.33 & 2.33 & 2.33 \\
+    \bottomrule
+  \end{tabular}}
+  \vspace{0.1cm}
+  \begin{itemize}
+    \item \texttt{P2}: $\mathrm{TAT}=8-2=6$, so $\mathrm{WT}=6-3=3$ ---
+      not $8-2=6$.
+    \item CPU utilization over $[0,9]$ is $9/9=100\%$; throughput is
+      $3/9=0.33$ jobs/ms.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{The Other Three Measurement Terms}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{block}{CPU utilization}
+        Fraction of time the CPU does useful work:
+        \[
+          U=\frac{\text{busy}}{\text{busy}+\text{idle}}.
+        \]
+        Dispatcher time is not useful work.
+      \end{block}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{block}{Throughput}
+        Completed jobs per unit time:
+        \[
+          X=\frac{\text{jobs completed}}{\text{interval}}.
+        \]
+        A system rate, not a per-process time.
+      \end{block}
+    \end{column}
+  \end{columns}
+  \vspace{0.1cm}
+  \begin{itemize}
+    \item \key{Dispatch latency} $s$: time to stop one process and start the
+      next (context switch, mode switch, cache/TLB effects).
+    \item On $W$ (19 ms of work), FCFS uses 5 dispatches. With $s=0.5$ ms:
+      elapsed $=21.5$ ms, so
+      $U=19/21.5\approx 88.4\%$ and $X=5/21.5\approx 0.233$ jobs/ms.
+    \item More preemption can lower $U$ and $X$ even when it wins on TAT,
+      WT, or RT.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{When the Scheduler May Choose, and the Tie Rules We Use}
+  \footnotesize
+  A scheduling decision is needed when a process:
+  \begin{enumerate}
+    \item blocks (running $\to$ waiting);
+    \item is preempted by the timer (running $\to$ ready);
+    \item wakes (waiting $\to$ ready);
+    \item terminates.
+  \end{enumerate}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{block}{Non-preemptive}
+        Decisions only in cases 1 and 4. Once running, a process keeps the
+        CPU until it blocks or exits. Here $\mathrm{WT}=\mathrm{RT}$ for a
+        one-burst process.
+      \end{block}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{alertblock}{Preemptive}
+        Decisions also in cases 2 and 3. Necessary for interactive response,
+        but every preemption pays dispatch latency and forces the kernel to
+        protect shared data.
+      \end{alertblock}
+    \end{column}
+  \end{columns}
+  \vspace{0.15cm}
+  \begin{itemize}
+    \item \key{Tie rules used in every number here:} earlier arrival first,
+      then lower index.
+    \item SRTF preempts only for a \emph{strictly} shorter remaining time.
+    \item RR: an arrival at the instant a quantum expires joins the queue
+      \emph{before} the preempted process.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{The Algorithm Family Tree}
+  \centering
+  \scriptsize
+  \renewcommand{\arraystretch}{1.18}
+  \setlength{\tabcolsep}{3pt}
+  \begin{tabular}{p{1.25cm}p{2.95cm}p{1.65cm}p{2.4cm}p{2.95cm}}
+    \toprule
+    \textbf{Policy} & \textbf{Key idea} & \textbf{Preemptive?} &
+    \textbf{What it favours} & \textbf{Main weakness} \\
+    \midrule
+    FCFS & serve in arrival order & no & simplicity, no starvation &
+    convoy effect, long WT \\
+    SJF & shortest next burst & no & minimum average WT (batch) &
+    burst unknown; starves long jobs \\
+    SRTF & shortest remaining time & yes & minimum average WT (preemptive) &
+    more switches; starves long jobs \\
+    LJF / LRTF & longest burst / remaining & both & almost nothing &
+    worst averages; severe starvation \\
+    Priority & highest importance first & both & policy goals &
+    starvation without ageing \\
+    RR & fixed time quantum & yes (timer) & response time &
+    WT and TAT rise; switch overhead \\
+    HRRN & highest response ratio & no & long waiters + short jobs &
+    needs service times known \\
+    MLQ & fixed process classes & both & class isolation &
+    no migration; lower classes starve \\
+    MLFQ & classes learned by behaviour & yes & responsiveness + short jobs &
+    many parameters; can be gamed \\
+    \bottomrule
+  \end{tabular}
+\end{frame}
+
+\transitionslide{First, the four policies that order a single queue: arrival, burst, remaining time, and importance.}
+
+% =============================================================================
+% ACT 2 --- SINGLE-QUEUE POLICIES
+% =============================================================================
+\section{Single-Queue Policies}
+
+\begin{frame}{FCFS: First-Come, First-Served}
+  \begin{block}{Definition}
+    \key{First-Come, First-Served} gives the CPU to the process that entered
+    the ready queue first. The queue is FIFO: arrivals join the tail, the
+    scheduler takes the head.
+  \end{block}
+  \begin{itemize}
+    \item \key{Non-preemptive}: a process runs until it blocks or finishes.
+    \item \key{Starvation-free}: everyone waits only for those already ahead.
+    \item Average WT depends on arrival order, not just on the bursts ---
+      the same jobs in a different order can differ by a large factor.
+    \item Implementation is a linked list with head and tail pointers.
+  \end{itemize}
+  \muted{Silberschatz et al., Ch.~5 \S5.3.1, pp.~188--189; Stallings,
+  Ch.~9 \S9.2, p.~410.}
+\end{frame}
+
+\begin{frame}{FCFS on $W$: The Numbers}
+  \centering
+  \footnotesize
+  \gantt{0.6}{P1/0/7/gP1,P2/7/11/gP2,P3/11/12/gP3,P4/12/16/gP4,P5/16/19/gP5}%
+    {P1/0,P2/2,P3/4,P4/5,P5/9}
+  \\[0.1cm]
+  {\footnotesize
+  \begin{tabular}{lrrrrrr}
+    \metrichead
+    \texttt{P1} & 0 & 7 & 7 & 7 & 0 & 0 \\
+    \texttt{P2} & 2 & 4 & 11 & 9 & 5 & 5 \\
+    \texttt{P3} & 4 & 1 & 12 & 8 & 7 & 7 \\
+    \texttt{P4} & 5 & 4 & 16 & 11 & 7 & 7 \\
+    \texttt{P5} & 9 & 3 & 19 & 10 & 7 & 7 \\
+    \midrule
+    \multicolumn{4}{@{}l}{\textbf{Average}} & 9.0 & 5.2 & 5.2 \\
+    \bottomrule
+  \end{tabular}}
+  \vspace{0.1cm}
+  \begin{itemize}
+    \item \texttt{P3} needs 1 ms and waits 7 ms; \texttt{P5} needs 3 ms and
+      waits 7 ms. Arrival order, not job size, decides.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{The Convoy Effect}
+  \begin{itemize}
+    \item One CPU-bound process takes a long burst; many short I/O-bound
+      processes queue behind it and their devices sit idle.
+    \item When the long job finally blocks, the short jobs flash through and
+      block on I/O --- now the CPU sits idle.
+    \item Everyone moves at the speed of the slowest, and utilization falls
+      on both the CPU and the devices.
+  \end{itemize}
+  \vspace{0.1cm}
+  \begin{exampleblock}{Two-minute proof}
+    All arrive at 0; bursts $(20,1,1)$.\\
+    FCFS order $20,1,1$: WT $=0,20,21$, average $=13.67$ ms.\\
+    SJF order $1,1,20$: WT $=0,0,2$, average $=0.67$ ms.
+  \end{exampleblock}
+  \muted{Silberschatz et al., Ch.~5 \S5.3.1, pp.~188--189.}
+\end{frame}
+
+\begin{frame}{SJF: Shortest-Job-First (Non-preemptive)}
+  \begin{block}{Definition}
+    \key{Shortest-Job-First} gives the CPU to the ready process with the
+    smallest \emph{next CPU burst}. Ties are broken FCFS.
+  \end{block}
+  \begin{itemize}
+    \item The accurate name is \key{shortest-next-CPU-burst}: only the next
+      burst matters, not the total job length.
+    \item Non-preemptive here: once chosen, a process runs its whole burst.
+    \item Needs a prediction of $\tau$ --- the scheduler cannot read the
+      future (we return to this).
+    \item Can starve a long job if short jobs keep arriving.
+  \end{itemize}
+  \muted{Silberschatz et al., Ch.~5 \S5.3.2, pp.~189--192; Stallings calls
+  it SPN, Ch.~9 \S9.2.}
+\end{frame}
+
+\begin{frame}{SJF on $W$: The Numbers}
+  \centering
+  \footnotesize
+  \gantt{0.6}{P1/0/7/gP1,P3/7/8/gP3,P2/8/12/gP2,P5/12/15/gP5,P4/15/19/gP4}%
+    {P1/0,P2/2,P3/4,P4/5,P5/9}
+  \\[0.1cm]
+  {\footnotesize
+  \begin{tabular}{lrrrrrr}
+    \metrichead
+    \texttt{P1} & 0 & 7 & 7 & 7 & 0 & 0 \\
+    \texttt{P2} & 2 & 4 & 12 & 10 & 6 & 6 \\
+    \texttt{P3} & 4 & 1 & 8 & 4 & 3 & 3 \\
+    \texttt{P4} & 5 & 4 & 19 & 14 & 10 & 10 \\
+    \texttt{P5} & 9 & 3 & 15 & 6 & 3 & 3 \\
+    \midrule
+    \multicolumn{4}{@{}l}{\textbf{Average}} & 8.2 & 4.4 & 4.4 \\
+    \bottomrule
+  \end{tabular}}
+  \vspace{0.1cm}
+  \begin{itemize}
+    \item At $t=7$ the ready set is $\{4,1,4\}$: \texttt{P3} (1 ms) runs
+      first; \texttt{P2} beats \texttt{P4} on the arrival-time tie-break.
+    \item Average WT falls from 5.2 ms (FCFS) to \good{4.4 ms}.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Why SJF Is Optimal (When All Jobs Are Ready)}
+  \begin{itemize}
+    \item $n$ processes ready at time 0, run in order with bursts
+      $\tau_{(1)},\tau_{(2)},\dots,\tau_{(n)}$.
+    \item The $k$-th burst delays every one of the $n-k$ processes after it:
+      \[
+        \sum_i \mathrm{WT}_i=\sum_{k=1}^{n}(n-k)\,\tau_{(k)}.
+      \]
+    \item The first burst carries weight $n-1$, the largest. Put the
+      smallest burst there, then repeat on the rest.
+  \end{itemize}
+  \begin{alertblock}{Result and its fine print}
+    For a fixed batch of simultaneously available jobs, non-preemptive SJF
+    minimises average waiting time. The proof is an exchange argument:
+    swapping an adjacent long--short pair into short--long lowers the total.
+    With arbitrary arrivals, SJF is a heuristic, not a theorem.
+  \end{alertblock}
+  \muted{Silberschatz et al., Ch.~5 \S5.3.2, p.~189.}
+\end{frame}
+
+\begin{frame}{The Catch: Predicting the Next Burst}
+  \begin{itemize}
+    \item The scheduler can only predict the next burst from past ones. The
+      standard predictor is the \key{exponential average}:
+  \end{itemize}
+  \begin{block}{Exponential averaging}
+    \[
+      \hat{\tau}_{n+1}=\alpha\,\tau_n+(1-\alpha)\,\hat{\tau}_n,
+      \qquad 0\le\alpha\le1.
+    \]
+    $\alpha=0$: history only. $\alpha=1$: only the last burst. Expanding,
+    older bursts get weights $\alpha(1-\alpha)^j$.
+  \end{block}
+  \vspace{0.05cm}
+  \centering
+  \scriptsize
+  \begin{tabular}{lcccccccc}
+    \toprule
+    $n$ & 0 & 1 & 2 & 3 & 4 & 5 & 6 & 7 \\
+    \midrule
+    measured $\tau_n$ & 6 & 4 & 6 & 4 & 13 & 13 & 13 & --- \\
+    predicted $\hat{\tau}_n$ & 10 & 8 & 6 & 6 & 5 & 9 & 11 & 12 \\
+    \bottomrule
+  \end{tabular}
+  \vspace{0.1cm}
+  \muted{$\hat{\tau}_0=10$, $\alpha=1/2$. Example follows Silberschatz
+  et al., Ch.~5 \S5.3.2.}
+\end{frame}
+
+\begin{frame}{SRTF: Shortest-Remaining-Time-First}
+  \begin{block}{Definition}
+    \key{SRTF} is preemptive SJF. On every arrival, compare the newcomer's
+    burst with the \emph{remaining} time of the running process; preempt only
+    if the newcomer is strictly shorter.
+  \end{block}
+  \begin{itemize}
+    \item Decisions at every arrival and completion, not only at block/exit.
+    \item Equal remaining times do \key{not} preempt: ties go to the earlier
+      arrival.
+    \item WT now includes time spent back in the ready queue after
+      preemption, so $\mathrm{WT}\ne\mathrm{RT}$ in general.
+    \item SRTF minimises average WT among preemptive policies when burst
+      times are known --- at the cost of more dispatches.
+  \end{itemize}
+  \muted{Silberschatz et al., Ch.~5 \S5.3.2; Stallings calls it SRT,
+  Ch.~9 \S9.2.}
+\end{frame}
+
+\begin{frame}{SRTF on $W$: The Numbers}
+  \centering
+  \footnotesize
+  \gantt{0.6}{P1/0/2/gP1,P2/2/4/gP2,P3/4/5/gP3,P2/5/7/gP2,P4/7/11/gP4,%
+    P5/11/14/gP5,P1/14/19/gP1}{P1/0,P2/2,P3/4,P4/5,P5/9}
+  \\[0.1cm]
+  {\footnotesize
+  \begin{tabular}{lrrrrrr}
+    \metrichead
+    \texttt{P1} & 0 & 7 & 19 & 19 & 12 & 0 \\
+    \texttt{P2} & 2 & 4 & 7 & 5 & 1 & 0 \\
+    \texttt{P3} & 4 & 1 & 5 & 1 & 0 & 0 \\
+    \texttt{P4} & 5 & 4 & 11 & 6 & 2 & 2 \\
+    \texttt{P5} & 9 & 3 & 14 & 5 & 2 & 2 \\
+    \midrule
+    \multicolumn{4}{@{}l}{\textbf{Average}} & 7.2 & 3.4 & 0.8 \\
+    \bottomrule
+  \end{tabular}}
+  \vspace{0.1cm}
+  \begin{itemize}
+    \item At $t=4$, \texttt{P3} (1 ms) beats \texttt{P2}'s remaining 2 ms:
+      \texttt{P2} is preempted and resumes at 5.
+    \item Average WT falls to 3.4 ms, but \texttt{P1}'s WT rises to 12 ms and
+      the schedule needs more switches.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Priority Scheduling}
+  \begin{block}{Definition}
+    \key{Priority scheduling} gives the CPU to the ready process with the
+    highest priority; equal priorities are broken FCFS. It has
+    non-preemptive and preemptive forms.
+  \end{block}
+  \begin{itemize}
+    \item \textbf{Internal} priority: a measured quantity --- time limit,
+      memory need, I/O-to-CPU ratio.
+    \item \textbf{External} priority: set outside the OS --- importance,
+      department, payment.
+    \item SJF is the special case ``priority $=$ predicted next burst''.
+    \item \key{Starvation}: a steady stream of higher-priority arrivals can
+      postpone a low-priority process forever.
+    \item \key{Ageing}: raise a waiting process's priority gradually. With
+      priorities $0$--$63$ and ageing one level per 10 ms, a process entering
+      at 63 reaches 0 after $63\times10=630$ ms --- its wait is bounded.
+  \end{itemize}
+  \muted{Silberschatz et al., Ch.~5 \S5.3, p.~192.}
+\end{frame}
+
+\begin{frame}{Priority (Non-preemptive) on $W$}
+  \centering
+  \footnotesize
+  \gantt{0.6}{P1/0/7/gP1,P2/7/11/gP2,P3/11/12/gP3,P5/12/15/gP5,P4/15/19/gP4}%
+    {P1/0,P2/2,P3/4,P4/5,P5/9}
+  \\[0.1cm]
+  {\footnotesize
+  \begin{tabular}{lrrrrrr}
+    \metrichead
+    \texttt{P1} & 0 & 7 & 7 & 7 & 0 & 0 \\
+    \texttt{P2} & 2 & 4 & 11 & 9 & 5 & 5 \\
+    \texttt{P3} & 4 & 1 & 12 & 8 & 7 & 7 \\
+    \texttt{P4} & 5 & 4 & 19 & 14 & 10 & 10 \\
+    \texttt{P5} & 9 & 3 & 15 & 6 & 3 & 3 \\
+    \midrule
+    \multicolumn{4}{@{}l}{\textbf{Average}} & 8.8 & 5.0 & 5.0 \\
+    \bottomrule
+  \end{tabular}}
+  \vspace{0.1cm}
+  \begin{itemize}
+    \item At $t=7$: \texttt{P2}(1) runs; at 11 \texttt{P3}(2) beats
+      \texttt{P5}(2) on earlier arrival; then \texttt{P5}, then \texttt{P4}.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Priority (Preemptive) on $W$}
+  \centering
+  \footnotesize
+  \gantt{0.6}{P1/0/2/gP1,P2/2/6/gP2,P3/6/7/gP3,P1/7/9/gP1,P5/9/12/gP5,%
+    P1/12/15/gP1,P4/15/19/gP4}{P1/0,P2/2,P3/4,P4/5,P5/9}
+  \\[0.1cm]
+  {\footnotesize
+  \begin{tabular}{lrrrrrr}
+    \metrichead
+    \texttt{P1} & 0 & 7 & 15 & 15 & 8 & 0 \\
+    \texttt{P2} & 2 & 4 & 6 & 4 & 0 & 0 \\
+    \texttt{P3} & 4 & 1 & 7 & 3 & 2 & 2 \\
+    \texttt{P4} & 5 & 4 & 19 & 14 & 10 & 10 \\
+    \texttt{P5} & 9 & 3 & 12 & 3 & 0 & 0 \\
+    \midrule
+    \multicolumn{4}{@{}l}{\textbf{Average}} & 7.8 & 4.0 & 2.4 \\
+    \bottomrule
+  \end{tabular}}
+  \vspace{0.1cm}
+  \begin{itemize}
+    \item At $t=2$, \texttt{P2}(1) preempts \texttt{P1}(3); at $t=9$,
+      \texttt{P5}(2) preempts \texttt{P1}(3). \texttt{P4}(4) waits longest.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{What Preemption Bought --- and Who Paid}
+  \centering
+  \renewcommand{\arraystretch}{1.2}
+  \begin{tabular}{lcccc}
+    \toprule
+    \textbf{Policy on $W$} & \textbf{avg WT} & \textbf{WT of P2} &
+    \textbf{WT of P5} & \textbf{WT of P4} \\
+    \midrule
+    FCFS & 5.2 & 5 & 7 & 7 \\
+    Priority, non-preemptive & 5.0 & 5 & 3 & 10 \\
+    Priority, preemptive & \good{4.0} & \good{0} & \good{0} & \bad{10} \\
+    \bottomrule
+  \end{tabular}
+  \vspace{0.25cm}
+  \begin{itemize}
+    \item The important process \texttt{P2} and the short \texttt{P5} now wait
+      0 ms; \texttt{P4} pays with 10 ms.
+    \item Non-preemptive priority could not help \texttt{P2}: \texttt{P1}
+      already held the CPU when \texttt{P2} arrived.
+    \item Priority is a statement about \emph{importance}, not about length.
+      Without ageing, a low-priority process can starve.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Round Robin: FCFS With a Timer}
+  \begin{block}{Definition}
+    \key{Round Robin} gives each process at most one \key{time quantum} $q$.
+    If its burst is unfinished when the quantum expires, it is preempted and
+    placed at the tail of the circular ready queue.
+  \end{block}
+  \begin{itemize}
+    \item A burst shorter than $q$ releases the CPU voluntarily.
+    \item Timer interrupt enforces the quantum --- this is why Lecture 2's
+      timer is a scheduling mechanism.
+    \item \key{Tie rule:} an arrival at the instant a quantum expires joins
+      the queue before the preempted process.
+    \item \key{Guarantee:} with $n$ ready processes, each waits at most
+      $(n-1)q$ for its next turn, ignoring switch time.
+  \end{itemize}
+  \muted{Silberschatz et al., Ch.~5 \S5.3, p.~194; Stallings,
+  Ch.~9 \S9.2, p.~410.}
+\end{frame}
+
+\begin{frame}{RR with $q=3$ on $W$: The Numbers}
+  \centering
+  \footnotesize
+  \gantt{0.6}{P1/0/3/gP1,P2/3/6/gP2,P1/6/9/gP1,P3/9/10/gP3,P4/10/13/gP4,%
+    P2/13/14/gP2,P5/14/17/gP5,P1/17/18/gP1,P4/18/19/gP4}%
+    {P1/0,P2/2,P3/4,P4/5,P5/9}
+  \\[0.1cm]
+  {\footnotesize
+  \begin{tabular}{lrrrrrr}
+    \metrichead
+    \texttt{P1} & 0 & 7 & 18 & 18 & 11 & 0 \\
+    \texttt{P2} & 2 & 4 & 14 & 12 & 8 & 1 \\
+    \texttt{P3} & 4 & 1 & 10 & 6 & 5 & 5 \\
+    \texttt{P4} & 5 & 4 & 19 & 14 & 10 & 5 \\
+    \texttt{P5} & 9 & 3 & 17 & 8 & 5 & 5 \\
+    \midrule
+    \multicolumn{4}{@{}l}{\textbf{Average}} & 11.6 & 7.8 & 3.2 \\
+    \bottomrule
+  \end{tabular}}
+  \vspace{0.1cm}
+  \begin{itemize}
+    \item $q=3$: P1, P2, P1, P3, P4, P2, P5, P1, P4.
+    \item Average RT is 3.2 ms --- far better than FCFS's 5.2 ms --- but
+      average WT rises to 7.8 ms. RR trades turnaround for responsiveness.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{The Quantum Changes Everything}
+  \centering
+  \renewcommand{\arraystretch}{1.15}
+  \begin{tabular}{lccccc}
+    \toprule
+    \textbf{RR on $W$} & \textbf{avg WT} & \textbf{avg TAT} &
+    \textbf{avg RT} & \textbf{switches} \\
+    \midrule
+    $q=1$ & 6.80 & 10.60 & \good{1.00} & 17 \\
+    $q=2$ & 6.20 & 10.00 & 2.00 & 10 \\
+    $q=3$ & \bad{7.80} & \bad{11.60} & 3.20 & 8 \\
+    $q=4$ & \good{5.00} & \good{8.80} & 4.00 & 5 \\
+    $q=5$ & 5.80 & 9.60 & 4.00 & 5 \\
+    $q\ge 9$ & 5.20 & 9.00 & 5.20 & 4 \\
+    \bottomrule
+  \end{tabular}
+  \vspace{0.2cm}
+  \begin{itemize}
+    \item RT rises monotonically with $q$; average WT does \key{not} ---
+      $q=3$ is worse than both $q=2$ and $q=4$. It depends on how quantum
+      boundaries line up with bursts.
+    \item Once $q\ge$ the longest burst (9 ms), RR \emph{is} FCFS.
+    \item Overhead: with switch cost $s$, useful fraction is
+      $\frac{q}{q+s}$. For $s=0.5$: $q=1\Rightarrow66.7\%$,
+      $q=3\Rightarrow85.7\%$, $q=10\Rightarrow95.2\%$.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{HRRN: Highest Response Ratio Next}
+  \begin{block}{Definition}
+    \key{HRRN} is non-preemptive. At each completion, choose the ready
+    process with the highest \key{response ratio}
+    \[
+      R=\frac{W+\tau}{\tau}=1+\frac{W}{\tau},
+    \]
+    where $W$ is the time already waited and $\tau$ the required service.
+  \end{block}
+  \begin{itemize}
+    \item A short job gets a high $R$ because $\tau$ is small; a long-waiting
+      job gets a high $R$ because $W$ is large.
+    \item It behaves like SJF for fresh jobs and like FCFS for old ones ---
+      which bounds starvation.
+    \item Costs: it must know the service time $\tau$, and it recomputes
+      $R$ at every completion.
+  \end{itemize}
+  \muted{Not in every Silberschatz edition; standard in GATE/UG treatments
+  of scheduling.}
+\end{frame}
+
+\begin{frame}{HRRN on $W$: The Numbers}
+  \centering
+  \footnotesize
+  \gantt{0.6}{P1/0/7/gP1,P3/7/8/gP3,P2/8/12/gP2,P4/12/16/gP4,P5/16/19/gP5}%
+    {P1/0,P2/2,P3/4,P4/5,P5/9}
+  \\[0.1cm]
+  {\footnotesize
+  \begin{tabular}{lrrrrrr}
+    \metrichead
+    \texttt{P1} & 0 & 7 & 7 & 7 & 0 & 0 \\
+    \texttt{P2} & 2 & 4 & 12 & 10 & 6 & 6 \\
+    \texttt{P3} & 4 & 1 & 8 & 4 & 3 & 3 \\
+    \texttt{P4} & 5 & 4 & 16 & 11 & 7 & 7 \\
+    \texttt{P5} & 9 & 3 & 19 & 10 & 7 & 7 \\
+    \midrule
+    \multicolumn{4}{@{}l}{\textbf{Average}} & 8.4 & 4.6 & 4.6 \\
+    \bottomrule
+  \end{tabular}}
+  \vspace{0.1cm}
+  \begin{itemize}
+    \item At $t=8$: \texttt{P2} $R=(6+4)/4=2.5$ beats \texttt{P4}
+      $R=(3+4)/4=1.75$.
+    \item At $t=12$: \texttt{P4} $R=(7+4)/4=2.75$ beats \texttt{P5}
+      $R=(3+3)/3=2.0$ --- the long waiter finally wins one.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{LJF / LRTF: The Deliberately Bad Mirror Image}
+  \begin{block}{Definition}
+    \key{Longest-Job-First} picks the largest burst; \key{LRTF} is its
+    preemptive form, picking the largest remaining time.
+  \end{block}
+  \begin{itemize}
+    \item If SJF minimises average waiting time, LJF maximises it: the
+      largest weight is now placed on the largest burst.
+    \item It is useful as a contrast case and in real-time systems where the
+      longest job has the earliest deadline --- never as a general-purpose
+      policy.
+    \item It starves short jobs even more aggressively than SJF starves long
+      ones.
+  \end{itemize}
+  \vspace{0.1cm}
+  \begin{exampleblock}{Same three jobs, both extremes}
+    All arrive at 0; bursts $(3,5,2)$.
+    LJF order $5,3,2$: WT $=0,5,8$, average $4.33$ ms.\\
+    SJF order $2,3,5$: WT $=0,2,5$, average $2.33$ ms.
+  \end{exampleblock}
+\end{frame}
+
+\transitionslide{A single queue forces one policy on everyone. Real systems put processes into classes --- and sometimes let the classes move.}
+
+% =============================================================================
+% ACT 3 --- QUEUE-BASED POLICIES
+% =============================================================================
+\section{Queue-Based Policies}
+
+\begin{frame}{Multilevel Queue (MLQ)}
+  \centering
+  \begin{tikzpicture}[every node/.style={font=\small}]
+    % Queue boxes, priority arrow, per-queue policy labels.
+    \node[dag-node, minimum width=6cm, minimum height=0.65cm] (q0) at (0,1.5)
+      {system processes};
+    \node[dag-node, minimum width=6cm, minimum height=0.65cm] (q1) at (0,0.5)
+      {interactive processes};
+    \node[dag-node, minimum width=6cm, minimum height=0.65cm] (q2) at (0,-0.5)
+      {interactive editing};
+    \node[dag-node, minimum width=6cm, minimum height=0.65cm] (q3) at (0,-1.5)
+      {batch processes};
+    \node[text=primary-gold,anchor=west] at (3.3,1.5) {RR};
+    \node[text=primary-gold,anchor=west] at (3.3,0.5) {RR};
+    \node[text=primary-gold,anchor=west] at (3.3,-0.5) {RR};
+    \node[text=primary-gold,anchor=west] at (3.3,-1.5) {FCFS};
+    \draw[observed-edge] (-4.3,-1.85) -- (-4.3,1.85);
+    \node[align=center,font=\footnotesize] at (-5.5,0) {higher\\priority};
+  \end{tikzpicture}
+  \vspace{0.05cm}
+  \begin{itemize}
+    \item Each process is \key{permanently} assigned to one queue by type,
+      memory need, or priority.
+    \item Each queue runs its own algorithm; a policy \emph{between} queues
+      is still required:
+      \begin{itemize}
+        \item fixed priority, preemptive --- lower queues can starve;
+        \item time slicing, e.g.\ 80\% foreground / 20\% background --- no
+          starvation, but no strict priority either.
+      \end{itemize}
+  \end{itemize}
+  \muted{After Silberschatz et al., Ch.~5 \S5.3, p.~196 (Fig.~5.6).}
+\end{frame}
+
+\begin{frame}{MLQ Worked Example: Two Queues}
+  \footnotesize
+  \begin{columns}[T]
+    \begin{column}{0.28\textwidth}
+      \renewcommand{\arraystretch}{1.15}
+      \begin{tabular}{lccc}
+        \toprule
+        & \textbf{AT} & $\tau$ & \textbf{queue} \\
+        \midrule
+        \texttt{A} & 0 & 4 & fg \\
+        \texttt{B} & 1 & 5 & bg \\
+        \texttt{C} & 2 & 2 & fg \\
+        \texttt{D} & 3 & 3 & bg \\
+        \bottomrule
+      \end{tabular}
+      \vspace{0.2cm}
+
+      Foreground: RR, $q=2$.\\
+      Background: FCFS.\\
+      Between queues: fixed priority, preemptive.
+    \end{column}
+    \begin{column}{0.68\textwidth}
+      \centering
+      \gantt{0.5}{A/0/2/gFg,C/2/4/gFg,A/4/6/gFg,B/6/11/gBg,D/11/14/gBg}{A/0,B/1,C/2,D/3}
+    \end{column}
+  \end{columns}
+  \vspace{0.15cm}
+  \begin{itemize}
+    \item $t=2$: \texttt{C} arrives in the foreground just as \texttt{A}'s
+      quantum expires, so \texttt{C} runs next; \texttt{A} resumes at 4.
+    \item $t=6$: foreground empty, so the background starts. \texttt{B}
+      (arrived at 1) has waited 5 ms; \texttt{D} waits 8 ms.
+    \item WT: A $2$, B $5$, C $0$, D $8$; average $15/4=3.75$ ms.
+      Foreground never waits for background.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Multilevel Feedback Queue (MLFQ)}
+  \centering
+  \begin{tikzpicture}[every node/.style={font=\small}]
+    \node[dag-node, minimum width=5.4cm, minimum height=0.7cm] (q0) at (0,1.5)
+      {$Q_0$: RR, $q=2$ ms};
+    \node[dag-node, minimum width=5.4cm, minimum height=0.7cm] (q1) at (0,0)
+      {$Q_1$: RR, $q=4$ ms};
+    \node[dag-node, minimum width=5.4cm, minimum height=0.7cm] (q2) at (0,-1.5)
+      {$Q_2$: FCFS};
+    \draw[observed-edge] (q0.east) -- (3.8,1.5) -- (3.8,0) -- (q1.east);
+    \draw[observed-edge] (q1.east) -- (3.8,0) -- (3.8,-1.5) -- (q2.east);
+    \node[anchor=west,font=\scriptsize,text=primary-gold] at (3.95,0.75)
+      {used full quantum};
+    \node[anchor=west,font=\scriptsize,text=primary-gold] at (3.95,-0.75)
+      {used full quantum};
+    \draw[observed-edge] (-4.9,1.5) -- (q0.west);
+    \node[anchor=east,font=\scriptsize] at (-5.0,1.5) {new arrival};
+  \end{tikzpicture}
+  \vspace{0.1cm}
+  \begin{itemize}
+    \item Processes \key{move}: a full quantum demotes one level; an
+      I/O-bound process that finishes early stays high.
+    \item Promotion (ageing) prevents starvation in the bottom queue.
+    \item With the right parameters MLFQ behaves like RR, like FCFS, or like
+      an \emph{approximation of SJF} --- without ever being told $\tau$.
+  \end{itemize}
+  \muted{After Silberschatz et al., Ch.~5 \S5.3, p.~197.}
+\end{frame}
+
+\begin{frame}{MLFQ Worked Example: A Late Short Job Wins}
+  \centering
+  \footnotesize
+  Queues: $Q_0$ RR $q=2$, $Q_1$ RR $q=4$, $Q_2$ FCFS; arrivals enter $Q_0$;
+  a full quantum demotes.\\[0.1cm]
+  \gantt{0.6}{P1/0/2/gQ0,P2/2/4/gQ0,P3/4/6/gQ0,P1/6/8/gQ1,P4/8/10/gQ0,%
+    P2/10/11/gQ1,P3/11/15/gQ1,P1/15/19/gQ1,P1/19/20/gQ2}{P1/0,P2/1,P3/2,P4/8}
+  \\[0.1cm]
+  {\scriptsize
+  \begin{tabular}{lrrrrrr}
+    \metrichead
+    \texttt{P1} & 0 & 9 & 20 & 20 & 11 & 0 \\
+    \texttt{P2} & 1 & 3 & 11 & 10 & 7 & 1 \\
+    \texttt{P3} & 2 & 6 & 15 & 13 & 7 & 2 \\
+    \texttt{P4} & 8 & 2 & 10 & 2 & 0 & 0 \\
+    \midrule
+    \multicolumn{4}{@{}l}{\textbf{Average}} & 11.25 & 6.25 & 0.75 \\
+    \bottomrule
+  \end{tabular}}
+  \vspace{0.1cm}
+  \begin{itemize}
+    \item 0--6: every process gets one 2 ms slice in $Q_0$; none finishes,
+      so all three are demoted.
+    \item 8--10: \texttt{P4} (2 ms, arrives at 8) runs in $Q_0$ and finishes
+      at 10 --- \good{a 2 ms turnaround for a late arrival}.
+    \item 10--15: $Q_1$ drains \texttt{P2} (1 ms left) and \texttt{P3}
+      (4 ms). \texttt{P1} then runs 15--19 in $Q_1$, is demoted, and finishes
+      its last 1 ms in $Q_2$ at 20.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{MLFQ: Five Knobs and One Way to Game It}
+  \begin{block}{The five parameters}
+    \begin{enumerate}
+      \item number of queues;
+      \item scheduling algorithm per queue;
+      \item demotion rule;
+      \item promotion (ageing) rule;
+      \item entry queue for a new process.
+    \end{enumerate}
+  \end{block}
+  \begin{itemize}
+    \item \key{Gaming:} a CPU-bound process can issue a tiny I/O request
+      just before each quantum expires, so it never ``uses a full quantum''
+      and never gets demoted.
+    \item \key{Defence:} charge CPU time cumulatively at each level, and
+      demote when the allotment is exhausted however it was split.
+    \item Periodic promotion protects the processes the gamer would
+      otherwise starve.
+  \end{itemize}
+  \muted{Silberschatz et al., Ch.~5 \S5.3, p.~197.}
+\end{frame}
+
+% =============================================================================
+% ACT 4 --- COMPARISON AND CHOICE
+% =============================================================================
+\section{Comparison and Choice}
+
+\transitionslide{Seven policies, one workload. If one algorithm won every column, scheduling would be an easy subject.}
+
+\begin{frame}{All Seven Policies on $W$}
+  \centering
+  \footnotesize
+  \renewcommand{\arraystretch}{1.22}
+  \begin{tabular}{lcccc}
+    \toprule
+    \textbf{Policy} & \textbf{avg WT} & \textbf{avg TAT} &
+    \textbf{avg RT} & \textbf{switches} \\
+    \midrule
+    FCFS & 5.2 & 9.0 & 5.2 & 4 \\
+    SJF (non-preemptive) & 4.4 & 8.2 & 4.4 & 4 \\
+    SRTF & \good{3.4} & \good{7.2} & \good{0.8} & 6 \\
+    Priority (non-preemptive) & 5.0 & 8.8 & 5.0 & 4 \\
+    Priority (preemptive) & 4.0 & 7.8 & 2.4 & 6 \\
+    RR, $q=3$ & \bad{7.8} & \bad{11.6} & 3.2 & 8 \\
+    HRRN & 4.6 & 8.4 & 4.6 & 4 \\
+    \bottomrule
+  \end{tabular}
+  \vspace{0.2cm}
+  \begin{itemize}
+    \item SRTF wins all three averages here, but it needs burst prediction,
+      causes the most starvation, and pays for six dispatches.
+    \item RR is worst on WT and TAT and best on nothing here --- except the
+      guarantee that no one waits more than $(n-1)q$.
+    \item ``Best'' is always relative to the criterion the system values.
+  \end{itemize}
+  \muted{All times in ms. Switch count = changes of the running process.}
+\end{frame}
+
+\begin{frame}{How to Choose: A One-Minute Decision Guide}
+  \centering
+  \footnotesize
+  \renewcommand{\arraystretch}{1.22}
+  \begin{tabular}{p{5.3cm}p{6.8cm}}
+    \toprule
+    \textbf{If the system is \ldots} & \textbf{Reach for \ldots} \\
+    \midrule
+    batch, no interaction, simple & FCFS (or SJF if bursts are known) \\
+    interactive / time-sharing & RR, or MLFQ for mixed behaviour \\
+    priority-driven (kernel threads, real-time-ish) & Priority + ageing \\
+    fixed classes (system, interactive, batch) & MLQ with a between-queue rule \\
+    SJF-like, but bursts unknown & MLFQ \\
+    service times known, long jobs must not starve & HRRN \\
+    \bottomrule
+  \end{tabular}
+  \vspace{0.3cm}
+  \begin{block}{Exam translation table}
+    ``preemptive SJF'' $=$ SRTF \quad\textbullet\quad
+    ``time slice'' $=$ RR quantum \quad\textbullet\quad
+    ``quantum $\to\infty$'' $=$ FCFS \quad\textbullet\quad
+    ``feedback'' $=$ processes migrate between queues
+  \end{block}
+\end{frame}
+
+\begin{frame}{Common Exam Traps}
+  \footnotesize
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{block}{Wrong}
+        \begin{itemize}
+          \item ``Waiting time is CT $-$ AT.''
+          \item ``Response time is when the process finishes.''
+          \item ``SJF is always optimal.''
+          \item ``A bigger quantum always lowers WT.''
+          \item ``SRTF preempts on equal remaining time.''
+          \item ``MLQ moves a process between queues.''
+          \item ``Idle CPU time counts as someone's waiting time.''
+        \end{itemize}
+      \end{block}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{block}{Right}
+        \begin{itemize}
+          \item That is TAT; WT $=$ TAT $-$ BT.
+          \item RT stops at the first dispatch.
+          \item Optimal only for a simultaneous batch, and only for WT.
+          \item WT is not monotone in $q$ (6.2, 7.8, 5.0 on $W$).
+          \item Only a strictly shorter newcomer preempts.
+          \item Only MLFQ migrates; MLQ assignment is permanent.
+          \item No process is ready, so nobody waited.
+        \end{itemize}
+      \end{block}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% =============================================================================
+% ACT 5 --- GATE-PATTERN HOMEWORK
+% =============================================================================
+\section{GATE-Pattern Homework}
+
+\transitionslide{Homework: six numerical problems and one design question, in GATE style. Attempt first; solutions follow.}
+
+\begin{frame}{Homework Set: Instructions}
+  \footnotesize
+  \begin{block}{Before you turn the page}
+    \begin{itemize}
+      \item Time: 45 minutes. Calculator not needed; all numbers are small.
+      \item Use the tie rules from this lecture: earlier arrival, then lower
+        index; SRTF preempts only if strictly shorter; RR arrivals at a
+        quantum boundary join before the preempted process.
+      \item For every question: draw the Gantt chart \emph{first}, then fill
+        CT, TAT, WT, RT, then average.
+    \end{itemize}
+  \end{block}
+  \begin{itemize}
+    \item Q1: three policies on one batch.
+    \item Q2: SRTF trace.
+    \item Q3: RR with $q=3$.
+    \item Q4: five true/false statements.
+    \item Q5: HRRN versus SJF.
+    \item Q6: two-queue MLQ.
+    \item Q7: design choices.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Q1--Q2}
+  \begin{block}{Q1 \normalfont (metrics, 8 marks)}
+    Three processes arrive at time 0 in the order \texttt{P1}, \texttt{P2},
+    \texttt{P3} with bursts $8,4,2$ ms. Compute average WT and average TAT
+    under (a) FCFS, (b) non-preemptive SJF, (c) RR with $q=2$. Which policy
+    minimises average TAT?
+  \end{block}
+  \begin{block}{Q2 \normalfont (SRTF, 8 marks)}
+    \texttt{P1}$(0,8)$, \texttt{P2}$(1,4)$, \texttt{P3}$(2,9)$,
+    \texttt{P4}$(3,5)$ as (AT, $\tau$) in ms. Draw the SRTF Gantt chart,
+    find the average waiting time, and state \texttt{P1}'s completion time.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Q3--Q4}
+  \begin{block}{Q3 \normalfont (RR, 8 marks)}
+    Five processes arrive together with bursts $6,4,2,8,3$ ms; RR uses
+    $q=3$. Give the completion order, the average WT, and the number of
+    time slices used.
+  \end{block}
+  \begin{block}{Q4 \normalfont (true/false, 10 marks)}
+    State whether each is TRUE or FALSE and justify in one line:
+    \begin{enumerate}
+      \item[(i)] If all processes arrive at $t=0$, non-preemptive SJF
+        minimises average WT.
+      \item[(ii)] Preemptive priority scheduling can starve a low-priority
+        process.
+      \item[(iii)] RR with $q$ larger than every burst is FCFS.
+      \item[(iv)] In SRTF, a newcomer with remaining time equal to the
+        running process preempts it.
+      \item[(v)] Increasing the RR quantum always decreases average WT.
+    \end{enumerate}
+  \end{block}
+\end{frame}
+
+\begin{frame}{Q5--Q7}
+  \begin{block}{Q5 \normalfont (HRRN, 8 marks)}
+    \texttt{P1}$(0,10)$, \texttt{P2}$(1,6)$, \texttt{P3}$(10,5)$ as
+    (AT, $\tau$). (a) Schedule by HRRN: show the response ratios at $t=10$.
+    (b) Compare average WT with non-preemptive SJF.
+  \end{block}
+  \begin{block}{Q6 \normalfont (MLQ, 8 marks)}
+    Two queues: foreground RR $q=2$, background FCFS, fixed priority
+    preemptive. \texttt{A}$(0,5)$ and \texttt{C}$(2,3)$ are foreground;
+    \texttt{B}$(1,4)$ and \texttt{D}$(4,2)$ are background. Draw the Gantt
+    chart, find average WT, and explain why \texttt{B} waits despite
+    arriving before \texttt{C}.
+  \end{block}
+  \begin{block}{Q7 \normalfont (design, 5 marks)}
+    Name the best policy for: (a) a nightly payroll batch; (b) an
+    interactive shell; (c) a mix of system, interactive, and batch work;
+    (d) SJF-like behaviour when bursts are unknown.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Solution 1: Three Policies on One Batch}
+  \centering
+  \footnotesize
+  \gantt{0.5}{P1/0/8/gP1,P2/8/12/gP2,P3/12/14/gP3}{}
+  \quad
+  \gantt{0.5}{P3/0/2/gP3,P2/2/6/gP2,P1/6/14/gP1}{}
+  \\[0.05cm]
+  \gantt{0.6}{P1/0/2/gP1,P2/2/4/gP2,P3/4/6/gP3,P1/6/8/gP1,P2/8/10/gP2,%
+    P1/10/14/gP1}{}
+  \\[0.15cm]
+  {\footnotesize
+  \begin{tabular}{lcccl}
+    \toprule
+    \textbf{Policy} & \textbf{avg WT} & \textbf{avg TAT} &
+    \textbf{avg RT} & \textbf{Why} \\
+    \midrule
+    FCFS & 6.67 & 11.33 & 6.67 & order 1,2,3 \\
+    SJF & \good{2.67} & \good{7.33} & 2.67 & order 3,2,1 \\
+    RR $q=2$ & 5.33 & 10.00 & \good{2.00} & six slices \\
+    \bottomrule
+  \end{tabular}}
+  \vspace{0.1cm}
+  \begin{itemize}
+    \item SJF minimises average TAT. RR gives the best average RT, but its
+      WT sits between FCFS and SJF.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Solution 2: SRTF Trace}
+  \centering
+  \footnotesize
+  \gantt{0.48}{P1/0/1/gP1,P2/1/5/gP2,P4/5/10/gP4,P1/10/17/gP1,P3/17/26/gP3}%
+    {P1/0,P2/1,P3/2,P4/3}
+  \\[0.1cm]
+  {\footnotesize
+  \begin{tabular}{lrrrrrr}
+    \metrichead
+    \texttt{P1} & 0 & 8 & 17 & 17 & 9 & 0 \\
+    \texttt{P2} & 1 & 4 & 5 & 4 & 0 & 0 \\
+    \texttt{P3} & 2 & 9 & 26 & 24 & 15 & 15 \\
+    \texttt{P4} & 3 & 5 & 10 & 7 & 2 & 2 \\
+    \midrule
+    \multicolumn{4}{@{}l}{\textbf{Average}} & 13.0 & \good{6.5} & 4.25 \\
+    \bottomrule
+  \end{tabular}}
+  \vspace{0.1cm}
+  \begin{itemize}
+    \item At $t=1$, \texttt{P2}(4) beats \texttt{P1}'s remaining 7; at $t=3$,
+      \texttt{P4}(5) does \emph{not} beat \texttt{P2}'s remaining 2.
+    \item \texttt{P1} completes at \good{17 ms}; average WT $=26/4=6.5$ ms.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Solution 3: RR with $q=3$}
+  \centering
+  \footnotesize
+  \gantt{0.5}{P1/0/3/gP1,P2/3/6/gP2,P3/6/8/gP3,P4/8/11/gP4,P5/11/14/gP5,%
+    P1/14/17/gP1,P2/17/18/gP2,P4/18/23/gP4}{}
+  \\[0.1cm]
+  {\footnotesize
+  \begin{tabular}{lrrrrrr}
+    \metrichead
+    \texttt{P1} & 0 & 6 & 17 & 17 & 11 & 0 \\
+    \texttt{P2} & 0 & 4 & 18 & 18 & 14 & 3 \\
+    \texttt{P3} & 0 & 2 & 8 & 8 & 6 & 6 \\
+    \texttt{P4} & 0 & 8 & 23 & 23 & 15 & 8 \\
+    \texttt{P5} & 0 & 3 & 14 & 14 & 11 & 11 \\
+    \midrule
+    \multicolumn{4}{@{}l}{\textbf{Average}} & 16.0 & \bad{11.4} & 5.6 \\
+    \bottomrule
+  \end{tabular}}
+  \vspace{0.1cm}
+  \begin{itemize}
+    \item Completion order: \texttt{P3}(8), \texttt{P5}(14), \texttt{P1}(17),
+      \texttt{P2}(18), \texttt{P4}(23).
+    \item Slices: \texttt{P1},\texttt{P2},\texttt{P3},\texttt{P4},
+      \texttt{P5},\texttt{P1},\texttt{P2},\texttt{P4} --- \good{8 slices}.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Solution 4: Five Statements}
+  \centering
+  \footnotesize
+  \renewcommand{\arraystretch}{1.3}
+  \begin{tabular}{clp{8.2cm}}
+    \toprule
+    & \textbf{Answer} & \textbf{Reason} \\
+    \midrule
+    (i) & \good{TRUE} & All ready at 0: the exchange argument applies. \\
+    (ii) & \good{TRUE} & A stream of higher-priority arrivals postpones it
+      indefinitely. \\
+    (iii) & \good{TRUE} & No process is ever preempted; the queue is FIFO. \\
+    (iv) & \bad{FALSE} & SRTF preempts only on a \emph{strictly} shorter
+      remaining time. \\
+    (v) & \bad{FALSE} & WT is not monotone in $q$; on $W$, $q=3$ is worse
+      than $q=2$ and $q=4$. \\
+    \bottomrule
+  \end{tabular}
+  \vspace{0.3cm}
+  \begin{itemize}
+    \item The two false statements are the two most common GATE traps:
+      non-strict preemption and a monotonicity assumption that does not hold.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Solution 5: HRRN versus SJF}
+  \centering
+  \footnotesize
+  \textbf{HRRN:} \gantt{0.5}{P1/0/10/gP1,P2/10/16/gP2,P3/16/21/gP3}%
+    {P1/0,P2/1,P3/10}
+  \\[0.1cm]
+  \textbf{SJF:} \gantt{0.5}{P1/0/10/gP1,P3/10/15/gP3,P2/15/21/gP2}%
+    {P1/0,P2/1,P3/10}
+  \\[0.1cm]
+  {\footnotesize
+  \begin{tabular}{lccc}
+    \toprule
+    \textbf{Policy} & \textbf{avg WT} & \textbf{WT of P2} & \textbf{WT of P3} \\
+    \midrule
+    HRRN & 5.00 & \good{9} & 6 \\
+    SJF & \good{4.67} & \bad{14} & \good{0} \\
+    \bottomrule
+  \end{tabular}}
+  \vspace{0.1cm}
+  \begin{itemize}
+    \item At $t=10$: $R_2=(9+6)/6=2.5$, $R_3=(0+5)/5=1.0$ --- HRRN picks
+      \texttt{P2}.
+    \item SJF wins average WT by 0.33 ms, but \texttt{P2} waits 14 ms
+      instead of 9 ms. HRRN converts a small average loss into a bounded
+      wait for the long waiter.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Solution 6: Two-Queue MLQ}
+  \centering
+  \footnotesize
+  \gantt{0.6}{A/0/2/gFg,C/2/4/gFg,A/4/6/gFg,C/6/7/gFg,A/7/8/gFg,%
+    B/8/12/gBg,D/12/14/gBg}{A/0,B/1,C/2,D/4}
+  \\[0.1cm]
+  {\footnotesize
+  \begin{tabular}{lrrrrrr}
+    \metrichead
+    \texttt{A} & 0 & 5 & 8 & 8 & 3 & 0 \\
+    \texttt{B} & 1 & 4 & 12 & 11 & 7 & 7 \\
+    \texttt{C} & 2 & 3 & 7 & 5 & 2 & 0 \\
+    \texttt{D} & 4 & 2 & 14 & 10 & 8 & 8 \\
+    \midrule
+    \multicolumn{4}{@{}l}{\textbf{Average}} & 8.5 & \good{5.0} & 3.75 \\
+    \bottomrule
+  \end{tabular}}
+  \vspace{0.1cm}
+  \begin{itemize}
+    \item Foreground slices: \texttt{A}(0--2), \texttt{C}(2--4),
+      \texttt{A}(4--6), \texttt{C}(6--7), \texttt{A}(7--8). Then background
+      FCFS: \texttt{B}, \texttt{D}.
+    \item \texttt{B} arrives at 1 but is background; fixed priority says
+      foreground first, so it waits until 8. A steady foreground stream
+      would starve it --- the reason MLQ needs a time-slicing rule or ageing.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Solution 7: Design Choices}
+  \centering
+  \footnotesize
+  \renewcommand{\arraystretch}{1.35}
+  \begin{tabular}{p{5.6cm}p{6.2cm}}
+    \toprule
+    \textbf{Workload} & \textbf{Best fit and why} \\
+    \midrule
+    (a) nightly payroll batch & FCFS: simple, no user waiting, job order
+      irrelevant. SJF if runtimes are known. \\
+    (b) interactive shell & RR (small $q$): bounds response time; FCFS would
+      freeze the user behind a long job. \\
+    (c) system + interactive + batch & MLQ: fixed classes, each with its own
+      policy; add time slicing between queues to avoid starvation. \\
+    (d) SJF-like, bursts unknown & MLFQ: infers short jobs by demoting
+      full-quantum users; no burst prediction needed. \\
+    \bottomrule
+  \end{tabular}
+  \vspace{0.25cm}
+  \begin{itemize}
+    \item Full marks require the \emph{reason}, not just the name: what the
+      workload values (response, throughput, fairness) and what information
+      the scheduler actually has.
+  \end{itemize}
+\end{frame}
+
+% =============================================================================
+% ACT 6 --- WRAP-UP
+% =============================================================================
+\section{Wrap-Up}
+
+\begin{frame}{Takeaways}
+  \begin{itemize}
+    \item Measure before comparing: TAT $=$ CT $-$ AT, WT $=$ TAT $-$ BT,
+      RT $=$ ST $-$ AT; utilization and throughput are system-wide.
+    \item \key{FCFS}: simple, starvation-free, convoy-prone.
+    \item \key{SJF}: optimal average WT for a ready batch, but needs a burst
+      prediction; \key{SRTF} is its preemptive form.
+    \item \key{Priority}: encodes importance; preemption helps important
+      arrivals; ageing bounds starvation.
+    \item \key{RR}: bounds response at $(n-1)q$; the quantum trades RT
+      against WT, TAT, and switch overhead.
+    \item \key{HRRN}: SJF-like, but the response ratio protects long waiters.
+    \item \key{MLQ}: fixed classes, no migration; \key{MLFQ}: learned
+      classes, migration, and the closest practical approximation to SJF.
+    \item Always draw the Gantt chart first, then compute per process, then
+      average. Never average an average of something else.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Further Reading (Page-Cited)}
+  \footnotesize
+  \begin{itemize}
+    \item A.~Silberschatz, P.~B.~Galvin, G.~Gagne, \emph{Operating System
+      Concepts}, 8e --- Ch.~5 \S5.1 (basic concepts, p.~183), \S5.2
+      (criteria, p.~187), \S5.3.1 (FCFS, p.~188), \S5.3.2 (SJF/SRTF,
+      p.~189), \S5.3 (priority p.~192, RR p.~194, MLQ p.~196, MLFQ p.~197),
+      \S5.5 (multiprocessor, p.~200).
+    \item W.~Stallings, \emph{Operating Systems: Internals and Design
+      Principles}, 6e --- Ch.~9 \S9.1 (types of scheduling, p.~406), \S9.2
+      (FCFS, SPN, SRT, RR, priority, HRRN, p.~410 ff.).
+    \item D.~P.~Bovet \& M.~Cesati, \emph{Understanding the Linux Kernel},
+      3e --- Ch.~7 (process scheduling, pp.~258--293).
+  \end{itemize}
+  \vspace{0.2cm}
+  \muted{Page-verified via each book's \texttt{index.md} under
+  \texttt{master\_supporting\_docs/CS502/supporting\_books/}.}
+\end{frame}
+
+\begin{frame}[allowframebreaks]{References}
+  \footnotesize
+  \bibliographystyle{plain}
+  \nocite{SilberschatzOSC_operating_system_concepts,
+    StallingsOS_internals_design_principles,
+    BovetCesati_understanding_linux_kernel}
+  \bibliography{../../Bibliography_base}
+\end{frame}
+
+\end{document}
