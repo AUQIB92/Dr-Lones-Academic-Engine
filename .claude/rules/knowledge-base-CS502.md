@@ -189,6 +189,7 @@ paths:
 |-----------|----------|-----------------|
 | Motivate every mechanism with the concrete failure or cost it prevents (race → lost update, no-TLB → double memory access, no-scheduling → convoy) before naming it | Prevents "list of mechanisms to memorize" fatigue | L01-L39 |
 | Thread one worked example across each unit (e.g. a 3-process workload through FCFS→SJF→RR→MLFQ; a reference string through FIFO→OPT→LRU→Clock) so trade-offs are quantitative, not adjectives | Cost/speed and correctness trade-offs are the recurring theme of OS content | Units I-IV |
+| Plain language first, then GATE-level escalation | Students need a low-friction entry point before exam rigor. Each idea starts with the smallest concrete example, then a full trace, then a GATE/UG exam variant; simplicity never removes correctness or edge cases (INV-13) | All units (from Lecture 10 onward) |
 
 ## Anti-Patterns (Don't Do This)
 
