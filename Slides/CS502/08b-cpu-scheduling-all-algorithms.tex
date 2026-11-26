@@ -75,6 +75,14 @@
   \midrule
 }
 
+% Same table, but with the priority visible on the priority frames.
+\newcommand{\metricheadpr}{%
+  \toprule
+  \textbf{Proc.} & \textbf{Pr} & \textbf{AT} & $\boldsymbol{\tau}$ &
+  \textbf{CT} & \textbf{TAT} & \textbf{WT} & \textbf{RT} \\
+  \midrule
+}
+
 \title{CPU Scheduling: The Complete Toolkit}
 \subtitle{Special Lecture --- Every Algorithm, Worked, with GATE-Level Practice}
 \author[Dr. Auqib Hamid Lone]{%
@@ -171,7 +179,7 @@
     \node[font=\tiny,text=primary-gold] at (12,1.65) {CT};
     % RT brace
     \draw[decorate,decoration={brace,amplitude=4pt},neutral]
-      (3,-0.35) -- (7,-0.35) node[midway,below=5pt,font=\tiny] {RT};
+      (0,-0.35) -- (3,-0.35) node[midway,below=5pt,font=\tiny] {RT};
     % TAT brace
     \draw[decorate,decoration={brace,amplitude=5pt},primary-blue]
       (0,-0.95) -- (12,-0.95) node[midway,below=6pt,font=\tiny] {TAT};
@@ -558,6 +566,8 @@
     non-preemptive and preemptive forms.
   \end{block}
   \begin{itemize}
+    \item \key{On $W$:} P1$=3$, P2$=1$, P3$=2$, P4$=4$, P5$=2$ --- lower
+      number $=$ higher priority.
     \item \textbf{Internal} priority: a measured quantity --- time limit,
       memory need, I/O-to-CPU ratio.
     \item \textbf{External} priority: set outside the OS --- importance,
@@ -579,21 +589,22 @@
     {P1/0,P2/2,P3/4,P4/5,P5/9}
   \\[0.1cm]
   {\footnotesize
-  \begin{tabular}{lrrrrrr}
-    \metrichead
-    \texttt{P1} & 0 & 7 & 7 & 7 & 0 & 0 \\
-    \texttt{P2} & 2 & 4 & 11 & 9 & 5 & 5 \\
-    \texttt{P3} & 4 & 1 & 12 & 8 & 7 & 7 \\
-    \texttt{P4} & 5 & 4 & 19 & 14 & 10 & 10 \\
-    \texttt{P5} & 9 & 3 & 15 & 6 & 3 & 3 \\
+  \begin{tabular}{lrrrrrrr}
+    \metricheadpr
+    \texttt{P1} & 3 & 0 & 7 & 7 & 7 & 0 & 0 \\
+    \texttt{P2} & 1 & 2 & 4 & 11 & 9 & 5 & 5 \\
+    \texttt{P3} & 2 & 4 & 1 & 12 & 8 & 7 & 7 \\
+    \texttt{P4} & 4 & 5 & 4 & 19 & 14 & 10 & 10 \\
+    \texttt{P5} & 2 & 9 & 3 & 15 & 6 & 3 & 3 \\
     \midrule
-    \multicolumn{4}{@{}l}{\textbf{Average}} & 8.8 & 5.0 & 5.0 \\
+    \multicolumn{5}{@{}l}{\textbf{Average}} & 8.8 & 5.0 & 5.0 \\
     \bottomrule
   \end{tabular}}
   \vspace{0.1cm}
   \begin{itemize}
-    \item At $t=7$: \texttt{P2}(1) runs; at 11 \texttt{P3}(2) beats
-      \texttt{P5}(2) on earlier arrival; then \texttt{P5}, then \texttt{P4}.
+    \item At $t=7$: \texttt{P2} (pr 1) runs; at 11 \texttt{P3} (pr 2) beats
+      \texttt{P5} (pr 2) on earlier arrival; then \texttt{P5}, then
+      \texttt{P4} (pr 4).
   \end{itemize}
 \end{frame}
 
@@ -604,21 +615,22 @@
     P1/12/15/gP1,P4/15/19/gP4}{P1/0,P2/2,P3/4,P4/5,P5/9}
   \\[0.1cm]
   {\footnotesize
-  \begin{tabular}{lrrrrrr}
-    \metrichead
-    \texttt{P1} & 0 & 7 & 15 & 15 & 8 & 0 \\
-    \texttt{P2} & 2 & 4 & 6 & 4 & 0 & 0 \\
-    \texttt{P3} & 4 & 1 & 7 & 3 & 2 & 2 \\
-    \texttt{P4} & 5 & 4 & 19 & 14 & 10 & 10 \\
-    \texttt{P5} & 9 & 3 & 12 & 3 & 0 & 0 \\
+  \begin{tabular}{lrrrrrrr}
+    \metricheadpr
+    \texttt{P1} & 3 & 0 & 7 & 15 & 15 & 8 & 0 \\
+    \texttt{P2} & 1 & 2 & 4 & 6 & 4 & 0 & 0 \\
+    \texttt{P3} & 2 & 4 & 1 & 7 & 3 & 2 & 2 \\
+    \texttt{P4} & 4 & 5 & 4 & 19 & 14 & 10 & 10 \\
+    \texttt{P5} & 2 & 9 & 3 & 12 & 3 & 0 & 0 \\
     \midrule
-    \multicolumn{4}{@{}l}{\textbf{Average}} & 7.8 & 4.0 & 2.4 \\
+    \multicolumn{5}{@{}l}{\textbf{Average}} & 7.8 & 4.0 & 2.4 \\
     \bottomrule
   \end{tabular}}
   \vspace{0.1cm}
   \begin{itemize}
-    \item At $t=2$, \texttt{P2}(1) preempts \texttt{P1}(3); at $t=9$,
-      \texttt{P5}(2) preempts \texttt{P1}(3). \texttt{P4}(4) waits longest.
+    \item At $t=2$, \texttt{P2} (pr 1) preempts \texttt{P1} (pr 3); at
+      $t=9$, \texttt{P5} (pr 2) preempts \texttt{P1} (pr 3). \texttt{P4}
+      (pr 4) waits longest.
   \end{itemize}
 \end{frame}
 
@@ -705,7 +717,7 @@
     $q=3$ & \bad{7.80} & \bad{11.60} & 3.20 & 8 \\
     $q=4$ & \good{5.00} & \good{8.80} & 4.00 & 5 \\
     $q=5$ & 5.80 & 9.60 & 4.00 & 5 \\
-    $q\ge 9$ & 5.20 & 9.00 & 5.20 & 4 \\
+    $q\ge 7$ & 5.20 & 9.00 & 5.20 & 4 \\
     \bottomrule
   \end{tabular}
   \vspace{0.2cm}
@@ -713,7 +725,7 @@
     \item RT rises monotonically with $q$; average WT does \key{not} ---
       $q=3$ is worse than both $q=2$ and $q=4$. It depends on how quantum
       boundaries line up with bursts.
-    \item Once $q\ge$ the longest burst (9 ms), RR \emph{is} FCFS.
+    \item Once $q\ge$ the longest burst (7 ms), RR \emph{is} FCFS.
     \item Overhead: with switch cost $s$, useful fraction is
       $\frac{q}{q+s}$. For $s=0.5$: $q=1\Rightarrow66.7\%$,
       $q=3\Rightarrow85.7\%$, $q=10\Rightarrow95.2\%$.
@@ -978,7 +990,7 @@
   \vspace{0.2cm}
   \begin{itemize}
     \item SRTF wins all three averages here, but it needs burst prediction,
-      causes the most starvation, and pays for six dispatches.
+      causes the most starvation, and pays for six switches.
     \item RR is worst on WT and TAT and best on nothing here --- except the
       guarantee that no one waits more than $(n-1)q$.
     \item ``Best'' is always relative to the criterion the system values.
